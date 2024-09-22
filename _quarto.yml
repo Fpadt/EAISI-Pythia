@@ -1,6 +1,10 @@
 project:
   title: "Pythia's Advice"
+  type: manuscript
 
+manuscript:
+  article: EAISI-Pythia.qmd
+  
 editor: visual
 
 format:
