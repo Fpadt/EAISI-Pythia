@@ -1,5 +1,5 @@
 project:
-  title: "EAISI-Pythia"
+  title: "Pythia's Advice"
 
 editor: visual
 
@@ -9,5 +9,15 @@ format:
     comments:
       hypothesis: true  
     theme: solar
+  jss-pdf:
+    keep-tex: true 
+    journal:
+      type: article 
+      cite-shortnames: false
+      suppress: 
+      include-jss-default: true    
   pdf: default
+  typst: default
 
+execute:
+  freeze: auto

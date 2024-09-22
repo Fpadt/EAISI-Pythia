@@ -1,6 +1,7 @@
 ---
-title: "Pythia's Advice"
-author: "F.J. Padt MSc."
+title       : "Pythia's Advice"
+subtitle    : "decision Tooling"
+author      : "F.J. Padt MSc."
 bibliography: references.bib
 ---
 
