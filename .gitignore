@@ -41,8 +41,9 @@ _freeze/
 _*/
 *.pdf
 *.tex
-
 # Quarto Extensions
 # https://quarto.org/docs/extensions/listing-journals.html
 # quarto add quarto-journals/jss
 _extensions/
+dev_rfc.log
+Results
