@@ -26,7 +26,12 @@ editor_options:
 
 -   
 
-```{r Setup, eval=TRUE}
+    # Setup
+
+```{r}
+#| label: 'setup'
+#| eval:  TRUE
+
 
 knitr::opts_chunk$set(
   cache   = FALSE,
@@ -52,17 +57,14 @@ invisible(source(KS))
 if( file.exists("functions.R")){source("functions.R")}
 
 PDAT <- file.path("C:", "PW", "OneDrive", "ET", "pythia", "dat")
+PYTH <- file.path(PET , "pythia", "upg", "data") 
+
 
 FLD <- file.path(IMM, "SLM")
 wbt <- "" # workbook Title
 wbc <- "" # workbook Category
 wbf <- "" # workbook FileName
 
-```
-
-```{r}
-#| label = 'set_globvar_and_functions',
-#| eval  = true
 
 SID <- "WPB500"
 CCD <- "FR30" 
@@ -81,9 +83,8 @@ fdiff_mnths <- function(x, y) {
 # Business reports
 
 ```{r}
-#| label   = 'get_business_reports',
-#| eval    = FALSE,
-#| comment = "Open Sharepoint reports"  
+#| label: 'get_business_reports',
+#| eval:   false
   
 shell.exec(normalizePath(file.path(OPS, "DOC", "EBI.xlsx")))
 ```
@@ -91,8 +92,8 @@ shell.exec(normalizePath(file.path(OPS, "DOC", "EBI.xlsx")))
 ## Sharepoint
 
 ```{r}
-#| label = 'get_sharepoint_reports',
-#| eval  = FALSE
+#| label: 'get_sharepoint_reports',
+#| eval:  false
 
 EBP <- 
   read.xlsx(
@@ -120,22 +121,353 @@ fOpen_as_xlsx(
 )  
 ```
 
+# Data Export
+
+```{r}
+
+ONE <- file.path("C:", "Users", "floris.padt", "OneDrive - Wessanen")
+DAT <- file.path(ONE, "Forecasting", "upg", "data") 
+PNW <- file.path(DAT, "WPB", "NEW", "perkz_w") 
+PYT <- file.path("C:", "PW", "OneDrive", "ET", "pythia", "upg", "data")
+  
+fCopy2Pythia <- 
+  function(x, .p){
+
+    file.copy(
+      from = x,
+      to   = file.path(.p, basename(x)),
+      overwrite = TRUE
+    )
+  }
+
+purrr::walk(
+  .x = list.files(PNW, pattern = "MD*", full.names = TRUE),
+  .f = fCopy2Pythia,
+  .p = PYT
+)
+```
+
 # Data Import
+
+## SDMDMFR1
+
+```{r}
+
+# Active Data Table for DataStore SDMDMFR1 #### 
+B4_SDMDMFR12_A <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BIC/ASDMDMFR12",
+     pOptions  = list(
+       "MATERIAL = '000000000000010023'", "AND",
+       "CALMONTH = '202409'"
+     ),
+     pFields   = list(
+        # "COMP_CODE"       , # Company code                                     X
+        # "SALESORG"        , # Sales Organization                               X
+        # "MATERIAL"        , # Material                                         X
+        # "CALMONTH"        , # Calendar year/month                              X
+        # "RECORDMODE"      , #                                                  
+        # "PLANT"           , # Plant                                            
+        # "SALES_UNIT"      , # Sales unit                                       
+        # "BASE_UOM"        , # Base Unit of Measure                             
+        # "MAT_PLANT"       , # Material Plant                                   
+        # "CURRENCY"        , # Currency key                                     
+        # "CALQUARTER"      , # Calendar year/quarter                            
+        # "CALYEAR"         , # Calendar year                                    
+        # "CALMONTH2"       , # Calendar month                                   
+        # "/BIC/UOM_SEL2"   , # UoM Selection: 1 = BUoM | 2 = SUoM               
+        # "/BIC/FCPER"      , # Forecast Period                                  
+        # "/BIC/MEAS_SEL2"  , # Measure selection                                
+        # "MAT_SALES"       , # Material (Sales)                                 
+        # "DISTR_CHAN"      , # Distribution Channel                             
+        # "DLV_QTY"         , # Actual quantity delivered (in sales units)       
+        # "ACT_DL_QTY"      , # Actual quantity delivered in stockkeeping units  
+        # "REQU_QTY"        , # Desired Delivery Quantity                        
+        # "/BIC/FC8QTYB"    , # Forecast qty -8 BU                               
+        # "/BIC/FC8_QTY"    , # Forecast qty -8 (SUoM)                           
+        # "/BIC/FC13SUQTY"  , # Forecast Qty -13 SU                              
+        # "/BIC/FC13_QTY"   , # Forecast qty -13 (BUoM)                          
+        # "/BIC/FER8QTYB"   , # Forecast Error -8 BU                             
+        # "/BIC/FERR8QTY"   , # Forecast Error -8 (SUoM)                         
+        # "/BIC/FERR13QTY"  , # Forcast Error -13  (BUoM)                        
+        # "/BIC/FER13QTYS"  , # Forecast Error -13 SU                            
+        # "/BIC/ACTVAL"     , # Actuals amount                                   
+        # "/BIC/FC8VAL"     , # Forecast -8 amount                               
+        # "/BIC/FCER8VAL"   , # Forecast err -8 amount                           
+        # "/BIC/FC13VAL"    , # Forecast -13 amount                              
+        # "/BIC/FCER13VAL"  , # Forecast err -13 amount                          
+        # "/BIC/F4QTYB"     , # Forecast Qty -4  (BUoM)                          
+        # "/BIC/F4QTYS"     , # Forecast Qty -4  (SUoM)                          
+        # "/BIC/F4VAL"      , # Forecast -4 amount                               
+        # "/BIC/FER4QTYB"   , # Forecast Error -4  (BUoM)                        
+        # "/BIC/FER4QTYS"   , # Forecast Error -4  (SUoM)                        
+        # "/BIC/FER4VAL"    , # Forecast Error -4 amount                         
+        # "/BIC/FCQTYBU"    , # Forecast Qty BU                                  
+        # "/BIC/FCQTYSU"    , # Forecast Qty SU                                  
+        # "/BIC/FERQTYB"    , # Forecast Error  (BUoM)                           
+        # "/BIC/FERQTYS"    , # Forecast Error (SUoM)                            
+        # "/BIC/FCVAL"      , # Forecast amount                                  
+        # "/BIC/FERVAL"       # Forecast Error amount                            
+    ),
+     pRowcount = Inf
+   )
+
+```
+
+## SDWDMMG1
+
+```{r}
+#| label: 'get_data_SDWDMMG1',
+#| eval:  TRUE
+
+# Active Data Table for DataStore SDWDMMG1 #### 
+B4_SDWDMMG12_A <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BIC/ASDWDMMG12",
+     pOptions  = list(
+       "MATERIAL = '000000000000010023'", "AND",
+       "CALMONTH = '202409'"
+     ),
+     pFields   = list(
+        # "COMP_CODE"       , # Company code                                     X
+        # "SALESORG"        , # Sales Organization                               X
+        # "MATERIAL"        , # Material                                         X
+        # "CALMONTH"        , # Calendar year/month                              X
+        # "SALES_UNIT"      , # Sales unit                                       X
+        # "BASE_UOM"        , # Base Unit of Measure                             X
+        # "RECORDMODE"      , #                                                  
+        # "DISTR_CHAN"      , # Distribution Channel                             
+        # "PLANT"           , # Plant                                            
+        # "/BIC/PRDH1"      , # Name of the Brand                                
+        # "/BIC/PRDH2"      , # Main Category                                    
+        # "/BIC/PRDH3"      , # Product Sub Category                             
+        # "/BIC/PRDH4"      , # Product Family                                   
+        # "/BIC/MAT_PROMO"  , # Promotional Material                             
+        # "/BIC/PROMO_IDC"  , # Promotion Indicator                              
+        # "DLV_QTY"         , # Actual quantity delivered (in sales units)       
+        # "ACT_DL_QTY"      , # Actual quantity delivered in stockkeeping units  
+        # "REQU_QTY"        , # Desired Delivery Quantity                        
+        # "/BIC/FCQTYBU"    , # Forecast Qty BU                                  
+        # "/BIC/FCQTYSU"    , # Forecast Qty SU                                  
+        # "/BIC/F4QTYB"     , # Forecast Qty -4  (BUoM)                          
+        # "/BIC/F4QTYS"     , # Forecast Qty -4  (SUoM)                          
+        # "/BIC/FC8QTYB"    , # Forecast qty -8 BU                               
+        # "/BIC/FC8_QTY"    , # Forecast qty -8 (SUoM)                           
+        # "/BIC/FC13SUQTY"  , # Forecast Qty -13 SU                              
+        # "/BIC/FC13_QTY"     # Forecast qty -13 (BUoM)                          
+    ),
+     pRowcount = Inf
+   )
+
+```
+
+## SDWVAIT0
+
+```{r}
+
+# Active Data Table for DataStore SDWVAIT0 #### 
+B4_SDWVAIT02_A <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BIC/ASDWVAIT02",
+     pOptions  = list(
+       "MATERIAL   EQ '000000000000010023'", "AND",
+       "ACT_DL_DTE GE '20240901'"          , "AND",
+       "ACT_DL_DTE LE '20240930'"
+     ),
+     pFields   = list(
+        # "FISCVARNT"       , # Fiscal year variant                                           X
+        # "DOC_NUMBER"      , # Sales document                                                X
+        # "S_ORD_ITEM"      , # Sales document item                                           X
+        # "RECORDMODE"      , #                                                               
+        # "REJECTN_ST"      , # Rejection status for SD item                                  
+        # "STS_ITM"         , # General incompletion status of the item                       
+        # "STS_BILL"        , # Item incompletion status with respect to billing              
+        # "STS_PRC"         , # Item is incomplete with respect to pricing                    
+        # "STS_DEL"         , # Incompletion status of the item with regard to delivery       
+        # "QUOT_FROM"       , # Quotation validity date (quotation is valid from ...)         
+        # "DOC_TYPE"        , # Sales document type                                           
+        # "ORD_REASON"      , # Order reason (reason for the business transaction)            
+        # "QUOT_TO"         , # Date until which bid/quotation is binding (valid-to date)     
+        # "COMP_CODE"       , # Company code                                                  
+        # "BILL_BLOCK"      , # Billing block in SD document                                  
+        # "SOLD_TO"         , # Sold-to party                                                 
+        # "RATE_TYPE"       , # Exchange Rate Type                                            
+        # "CUST_GRP1"       , # Forecast group                                                
+        # "CUST_GRP2"       , # Control Prc Inv                                               
+        # "CUST_GRP3"       , # Shelf life Grp                                                
+        # "CUST_GRP4"       , # Deliv. GSL grp                                                
+        # "CUST_GRP5"       , # Customer group 5                                              
+        # "DEL_BLOCK"       , # Delivery block document header                                
+        # "DOC_CATEG"       , # Sales Document Category                                       
+        # "SALES_OFF"       , # Sales Office                                                  
+        # "SALES_GRP"       , # Sales group                                                   
+        # "SALESORG"        , # Sales Organization                                            
+        # "DISTR_CHAN"      , # Distribution Channel                                          
+        # "REASON_REJ"      , # Reason for rejection of quotations and sales orders           
+        # "CH_ON"           , # Last changed on                                               
+        # "ORDER_PROB"      , # Order probability of the item                                 
+        # "BWAPPLNM"        , # Application component                                         
+        # "PROCESSKEY"      , # BW: Transaction Key                                           
+        # "BATCH"           , # Batch number                                                  
+        # "EANUPC"          , # European Article Numbers/Universal Product Code               
+        # "CREATEDON"       , # Date on which the record was created                          
+        # "CREATEDBY"       , # Name of person who created the object                         
+        # "CREA_TIME"       , # Time Created                                                  
+        # "BILBLK_ITM"      , # Billing block for item                                        
+        # "SALESDEAL"       , # Sales Deal                                                    
+        # "STOR_LOC"        , # Storage location                                              
+        # "MATL_GROUP"      , # Material group                                                
+        # "MAT_ENTRD"       , # Material Entered                                              
+        # "MATL_GRP_1"      , # Material group 1                                              
+        # "MATL_GRP_2"      , # Material group 2                                              
+        # "MATL_GRP_3"      , # Material group 3                                              
+        # "MATL_GRP_4"      , # Material group 4                                              
+        # "MATL_GRP_5"      , # Material group 5                                              
+        # "UNLD_PT_WE"      , # Unloading point of the ship-to party                          
+        # "BILLTOPRTY"      , # Bill-to party                                                 
+        # "PAYER"           , # Payer                                                         
+        # "/BIC/ZFDEST"     , # Final Destination                                             
+        # "HG_LV_ITEM"      , # Higher-level item in bill of material structures              
+        # "SHIP_TO"         , # Ship-To Party                                                 
+        # "PROD_HIER"       , # Product hierarchy                                             
+        # "FORWAGENT"       , # Forw.Agent                                                    
+        # "ITEM_CATEG"      , # Sales document item category                                  
+        # "SALESEMPLY"      , # Sales Representative                                          
+        # "ROUTE"           , # Route                                                         
+        # "SHIP_STCK"       , # Delivery from Warehouse                                       
+        # "DIVISION"        , # Division                                                      
+        # "STAT_DATE"       , # Statistics date                                               
+        # "BND_IND"         , # Independent of Delivery Tolerances                            
+        # "ST_UP_DTE"       , # Update Date Statistics                                        
+        # "PRVDOC_CTG"      , # Preceding document category                                   
+        # "SHIP_POINT"      , # Shipping point                                                
+        # "PLANT"           , # Plant                                                         
+        # "SALES_DIST"      , # Sales District                                                
+        # "SERV_DATE"       , # Date on which services rendered                               
+        # "BILL_DATE"       , # Date for invoice/billing index and printout                   
+        # "INCOTERMS"       , # Incoterms part 1                                              
+        # "INCOTERMS2"      , # Incoterms part 2                                              
+        # "CUST_GROUP"      , # Customer group                                                
+        # "ACCNT_ASGN"      , # Customer Account Assignment Group                             
+        # "TRANS_DATE"      , # Conversion Date                                               
+        # "PRICE_DATE"      , # Date for pricing and exchange rate                            
+        # "RT_PROMO"        , # Promotion                                                     
+        # "PRODCAT"         , # Product catalog number                                        
+        # "DIV_HEAD"        , # Division for order header                                     
+        # "DOC_CATEGR"      , # SD document category of the reference document                
+        # "WBS_ELEMT"       , # Work Breakdown Structure Element (WBS Element)                
+        # "COND_PR_UN"      , # Price Unit                                                    
+        # "SUB_REASON"      , # Material - Reason for Substitution                            
+        # "MATERIAL"        , # Material                                                      
+        # "MAT_SALES"       , # Material (Sales)                                              
+        # "MAT_PLANT"       , # Material Plant                                                
+        # "REFER_DOC"       , # Document number of the reference document                     
+        # "REFER_ITM"       , # Item number of the reference item                             
+        # "APOPLANNED"      , # Sales Scheduling Agreement Item Planned in SAP APO            
+        # "/BIC/ANTLF"      , # Max. Part. Del                                                
+        # "/BIC/KZTLF"      , # Partial delivery indicator                                    
+        # "PROMOTION"       , # Promotion                                                     
+        # "PROFIT_CTR"      , # Profit Center                                                 
+        # "CO_AREA"         , # Controlling area                                              
+        # "DLV_STSO"        , # Overall delivery status of the item                           
+        # "DLV_STS"         , # Delivery Status                                               
+        # "GI_STS"          , # Goods Issue Status                                            
+        # "LW_GISTS"        , # Lowest GI Status of an Order Item                             
+        # "DSDEL_DATE"      , # Requested delivery date (MRP)                                 
+        # "DSDEL_TIME"      , # Requested Delivery Time                                       
+        # "CONF_DATE"       , # Confirmed Delivery Date                                       
+        # "CONF_TIME"       , # Confirmed Delivery Time                                       
+        # "PLD_GI_DTE"      , # Planned Goods Issue Date of a Confirmed Scheule Line          
+        # "ACT_GI_DTE"      , # Actual goods issue date                                       
+        # "LST_A_GD"        , # Last Actual Goods Issue Date of an Order Item                 
+        # "ACT_DL_DTE"      , # Actual Delivery Date                                          
+        # "ACT_DL_TME"      , # Actual Delivery Time                                          
+        # "LST_A_DD"        , # Last Actual Delivery Date of an Order Item                    
+        # "LST_A_DT"        , # Last Actual Delivery Time of an Order Item                    
+        # "DLV_BLOCKD"      , # Default delivery block                                        
+        # "SCHED_DEL"       , # Schedule Line Deleted                                         
+        # "REC_DELETD"      , # Record deleted                                                
+        # "LOGSYS"          , # Source System                                                 
+        # "UNIT_OF_WT"      , # Weight unit                                                   
+        # "SALES_UNIT"      , # Sales unit                                                    
+        # "BASE_UOM"        , # Base Unit of Measure                                          
+        # "DOC_CURRCY"      , # Document currency                                             
+        # "VOLUMEUNIT"      , # Volume unit                                                   
+        # "TARGET_QU"       , # Target quantity UoM                                           
+        # "LOC_CURRCY"      , # Local currency                                                
+        # "SHIP_COND"       , # Shipping conditions                                           
+        # "/BIC/PO_TYPE"    , # PO type                                                       
+        # "/BIC/ZVEBLV"     , # Original order number                                         
+        # "/BIC/ERNAMO"     , # Creator original sales order                                  
+        # "/BIC/COMPL_INV"  , # "Invoiced" Indicator                                          
+        # "CURRENCY"        , # Currency key                                                  
+        # "/BIC/SCALE_IND"  , # Scale Usage Indication                                        
+        # "/BIC/SCALE_LVL"  , # Scale Qty Level                                               
+        # "CUSTOMER"        , # Customer number                                               
+        # "CUST_SALES"      , # Customer number (sales view)                                  
+        # "GROSS_WGT"       , # Gross Weight of Sales Item                                    
+        # "EXCHG_CRD"       , # Credit data exchange rate for requested delivery date         
+        # "CML_CF_QTY"      , # Cumulative confirmed quantity in sales unit                   
+        # "CML_CD_QTY"      , # Cumulative confirmed quantity in base unit                    
+        # "CML_OR_QTY"      , # Cumulative order quantity in sales units                      
+        # "SUBTOTAL_1"      , # Condition Subtotal 1 from Pricing Procedure                   
+        # "SUBTOTAL_2"      , # Condition Subtotal 2 from Pricing Procedure                   
+        # "SUBTOTAL_3"      , # Invoiced sales (DC)                                           
+        # "SUBTOTAL_4"      , # Condition Subtotal 4 from Pricing Procedure                   
+        # "SUBTOTAL_5"      , # Condition Subtotal 5 from Pricing Procedure                   
+        # "SUBTOTAL_6"      , # Condition Subtotal 6 from Pricing Procedure                   
+        # "MIN_DL_QTY"      , # Minimum delivery quantity in delivery note processing         
+        # "REQDEL_QTY"      , # Cumulative required delivery qty (all dlv-relev.sched.lines)  
+        # "NET_PRICE"       , # Net price                                                     
+        # "NET_VALUE"       , # Net value of the order item in document currency              
+        # "NET_WT_AP"       , # Net weight of item                                            
+        # "EXCHG_STAT"      , # Exchange rate for statistics                                  
+        # "UPPR_BND"        , # Tolerance Limit for Over Delivery in %                        
+        # "DENOMINTR"       , # Denominator (divisor) for conversion of sales qty. into SKU   
+        # "NUMERATOR"       , # Numerator(Factor) for Conversion of Sales Quantity Into SKU   
+        # "DENOMINTRZ"      , # Factor for converting sales units to base units (target qty)  
+        # "NUMERATORZ"      , # Numerator for Converting Sales from Targt Qty to Qty Stored   
+        # "LOWR_BND"        , # Tolerance Limit for Under Delivery in %                       
+        # "VOLUME_AP"       , # Volume of Order Item                                          
+        # "COST"            , # Cost in document currency                                     
+        # "TARGET_QTY"      , # Target quantity in sales units                                
+        # "TARG_VALUE"      , # Target value with outline agreement in document currency      
+        # "EXCHG_RATE"      , # Exchange rate for pricing and statistics                      
+        # "ORD_ITEMS"       , # Sales Order Item                                              
+        # "TAX_VALUE"       , # Tax Amount in SD Document Currency                            
+        # "NETPR_VKM"       , # Net Price per 1*VKME                                          
+        # "REQU_QTY"        , # Desired Delivery Quantity                                     
+        # "CONF_QTY"        , # Confirmed quantity                                            
+        # "DLV_QTY"         , # Actual quantity delivered (in sales units)                    
+        # "/BIC/OPSALQTY"   , # Missed sales qty (SU)                                         
+        # "/BIC/DLV_QTYBU"  , # Actual quantity delivered BUOM (Req. Del.Date)                
+        # "PRICE_MAT"       , # Material Price                                                
+        # "/BIC/SC_VAL_BU"    # Scale Value per BU                                            
+    ),
+     pRowcount = Inf
+   )
+
+```
 
 ## SDMFRCAC
 
 ```{r}
-#| label = 'get_data_SDMFRCAC',
-#| eval  = FALSE
-
+#| label: 'get_data_SDMFRCAC',
+#| eval : FALSE
+MAT <- LP0("3026687", 18)
 # Active Data Table for DataStore SDMFRCAC #### 
 B4_SDMFRCAC2_A <- 
    fRead_and_Union(
      pSIDCLNT  = "WPB500",
      pTable    = "/BIC/ASDMFRCAC2",
      pOptions  = list(
-       paste0("MATERIAL = '", MAT, "'"), "AND",
-       "/BIC/VERSMON >= '202306'"
+       # "PLANT = 'FR30'"                , "AND",
+       # paste0("MATERIAL = '", MAT, "'"), "AND",
+       "/BIC/VERSMON >= '202306'"      , "AND",
+       "CALMONTH LE '202411'"
      ),
      pFields   = list(
         "COMP_CODE"       , # Company code                  X
@@ -162,7 +494,7 @@ B4_SDMFRCAC2_A <-
         "BASE_UOM"        , # Base Unit of Measure
         "/BIC/DEMND_QTY"  , # Demand qty
         "/BIC/BSELN_QTY"  , # Baseline qty
-        "/BIC/PROMO_QTY"  , # Promotion qty
+        # "/BIC/PROMO_QTY"  , # Promotion qty
         # "/BIC/DMDCP_QTY"  , # Demand components qty
         # "/BIC/PRMCP_QTY"  , # Promo components qty
         "/BIC/DEMQTYM0"   , # Demand qty ALL
@@ -189,6 +521,12 @@ B4_SDMFRCAC2_A <-
      pRowcount = Inf
    ) 
 
+if(rstudioapi::showQuestion(
+  title   = "Save?", 
+  message = "Do you want to save the data?"
+  ) == TRUE) {
+  saveRDS(object = B4_SDMFRCAC2_A, file = file.path(PDAT, "B4_SDMFRCAC2_A.rds"), ver)
+}
 ```
 
 ## SDSFRPR1
@@ -286,9 +624,9 @@ B4_SDMFRPR12_A <-
 ## SDMFRPR4
 
 ```{r}
-#| label = 'get_data_SDMFRPR42',
-#| comment = "post-DR Forecast ####",
-#| eval = TRUE
+#| label:   'get_data_SDMFRPR42',
+#| comment: 'post-DR Forecast',
+#| eval:     true
 
 # Active Data Table for DataStore SDMFRPR4 #### 
 B4_SDMFRPR42_A <- 
@@ -296,8 +634,10 @@ B4_SDMFRPR42_A <-
      pSIDCLNT  = "WPB500",
      pTable    = "/BIC/ASDMFRPR42",
      pOptions  = list(
-       paste0("MATERIAL = '", MAT, "'"), "AND",
-       "/BIC/VERSMON >= '202306'"
+       # paste0("MATERIAL = '", MAT, "'"), "AND",
+       "/BIC/VERSMON = '202411'", "AND",
+       "SALESORG = 'FR30'"      , "AND",
+       "CALMONTH <= 202606"
      ),
      pFields   = list(
         "COMP_CODE"       , # Company code                  X
@@ -331,8 +671,8 @@ B4_SDMFRPR42_A <-
         "CUST_HIE02"      , # Customer Hierarchy Level 2
         "CUST_HIE01"      , # Customer Hierarchy Level 1
         "/BIC/DEMND_QTY"  , # Demand qty
-        # "/BIC/BSELN_QTY"  , # Baseline qty
-        # "/BIC/PROMO_QTY"  , # Promotion qty
+        "/BIC/BSELN_QTY"  , # Baseline qty
+        "/BIC/PROMO_QTY"  , # Promotion qty
         # "/BIC/DMDCP_QTY"  , # Demand components qty
         # "/BIC/PRMCP_QTY"  , # Promo components qty
         "BASE_UOM"          # Base Unit of Measure
@@ -341,6 +681,23 @@ B4_SDMFRPR42_A <-
    )
 
 ```
+
+```{r}
+#| label: 'RainMan'
+#| eval:  true
+#| comment: "RainMan"
+
+dtRM <- 
+  copy(B4_SDMFRPR42_A)                                         %>%
+  .[SALESORG == 'FR30' & CALMONTH <= 202606]                   %>%
+  # .[!(DEMND_QTY == 0 & BSELN_QTY == 0 & PROMO_QTY == 0)]       %>%
+  .[, CHECK_QTY:= round(DEMND_QTY - BSELN_QTY - PROMO_QTY, 2)] %>%
+  .[abs(CHECK_QTY) > 0]                                        %T>%
+  fOpen_as_xlsx()
+
+
+```
+
 
 ## OPSTARG
 
@@ -499,9 +856,9 @@ B4_SDMDMFR12_A <-
 ## SDMDMFR2
 
 ```{r}
-#| label = 'get_data_SDMDMFR2',
-#| comment = "",
-#| eval = TRUE
+#| label:  'get_data_SDMDMFR2',
+#| comment: "",
+#| eval:    true
 
 # Active Data Table for DataStore SDMDMFR2 #### 
 B4_SDMDMFR22_A <- 
@@ -716,9 +1073,37 @@ PROMONAT <-
   )                                                        %>%
   setDT()
 
+fOpenExcel <- 
+  function(pFile) {
+    system(paste0("start excel ", normalizePath(pFile)))
+  }
 ```
 
 # Forecast Accuracy
+
+```{r}
+#| label:     'replicate_SC113B',
+#| eval:      true
+
+dtFA <- 
+  copy(B4_SDMFRCAC2_A)                                               %>%
+  .[, .(
+    ACT = sum(DEMND_QTY),
+    FM1 = sum(DEMQTYM1)
+  ), by = .(PLANT, MATERIAL, CALMONTH)
+  ]                                                                  %>%
+  .[, {
+    ERR = ACT - FM1
+    AE  = abs(ERR)
+    APE = 100 * (1 - AE / ACT)
+    EPE = 100 * (1 - AE / FM1)
+    .(PLANT, MATERIAL, CALMONTH, ERR, AE, APE, EPE)
+  }
+  ] 
+
+# fOpen_as_xlsx(
+#   B4_SDMFRCAC2_A[VERSMON %chin% c('202408', '202410')])
+```
 
 ```{r}
 
@@ -814,7 +1199,6 @@ train_tr |>
   accuracy(train)
 ```
 
-
 ## CSV
 
 ```{r}
@@ -825,13 +1209,12 @@ PTRN <- file.path("C:", "PW", "OneDrive", "ET", "pythia", "dat", "WPB", "TRAN")
 
 ```
 
-
 ## Refresh Transaction Data
 
 Note:decimal sep = , thousands sep = .
 
-1. execute DTP: DTP_006EICO68TUM23UTWQUR6YBKL
-2. download from AL11 to
+1.  execute DTP: DTP_006EICO68TUM23UTWQUR6YBKL
+2.  download from AL11 to
 
 ```{r}
 #| label = "write_destination_folder_in_clipboard",
@@ -842,42 +1225,11 @@ clipr::write_clip("C:\\Users\\Floris.padt\\OneDrive - Wessanen\\Forecasting\\upg
 # clipr::write_clip(file.path(PNW, PKZ, "DD_HISTO_QTY.CSV"))
 ```
 
-
 ```{r}
-#| label = "Fixes During Upgrade", 
-#| eval  = FALSE
+#| label: 'RTP SALES', 
+#| eval:  FALSE
 
-fsubDOT <- 
-  function(x){
-    sub(pattern = "\\.", replacement = "", x = x)
-  }
-
-fsubCOM <- 
-  function(x){
-    sub(pattern = ",", replacement = ".", x = x)
-  }
-
-cols <- paste0("V", 6:12)    
-
-fHST <- 
-  function(PKZ){
-    rbind(
-      fread(file = file.path(PNW , PKZ, "DD_HISTO_QTY_ALL.CSV"))     %>%
-        .[V5 < ymd("2024-01-01")],
-      fread(file = file.path(PNW , PKZ, "DD_HISTO_QTY.CSV"))
-    )                                                                %>%
-      .[ , (cols) := lapply(.SD, FUN = fsubDOT), .SDcols = cols]     %>%
-      .[ , (cols) := lapply(.SD, FUN = fsubCOM), .SDcols = cols]     %T>%
-      fwrite(
-        col.names = FALSE, 
-        file      = file.path(PNW , PKZ, "DEC", "DD_HISTO_QTY.CSV"), 
-        sep       = ";"
-      )                                                              
-  }
-
-# system.time(fHST("perkz_t"))
-system.time(fHST("perkz_w"))
-
+SLS_A <- fread(file = file.path(PYTH, "DD_HISTO_QTY.CSV"))
 
 ```
 
@@ -928,13 +1280,13 @@ CUST <-
 #   fwrite(file.path(PDAT, RL0(MAT), "IMP03SM1_F.csv"))
 ```
 
-
 ### 10023
 
 ```{r}
 
 SLS10023 <- 
-  fread(file.path(PNW , PKZ, "DEC", "DD_HISTO_QTY.CSV"))             %T>%
+  fread(file = file.path(PYTH, "DD_HISTO_QTY.CSV"))                  %T>%
+  # fread(file.path(PNW , PKZ, "DEC", "DD_HISTO_QTY.CSV"))             %T>%
   setnames(fGetOHFields("DSCP_TRAN"))                                %>%
   .[MATERIAL == RL0(MAT)]                                            %>%
   .[CALDAY   <  ymd("2024-10-01")]                                   %>%
@@ -1026,9 +1378,6 @@ PRM10023 <-
   # fwrite(file.path(PDAT, RL0(MAT), "PROMONAT.csv"))
 ```
 
-
-
-
 ## Create Workbook for Comparison
 
 ```{r add_to_list_for_sheet, eval=FALSE}
@@ -1111,6 +1460,168 @@ SDSFRCT02 <-
 ```
 
 # Material Master Data
+
+## BW
+
+```{r}
+
+# Master Data (Time-Ind.): Characteristic Material #### 
+B4_MATERIAL_P <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BI0/PMATERIAL",
+     pOptions  = list(
+       "MATL_TYPE in ('FERT', 'HAWA')"
+     ),
+     pFields   = list(
+        "MATERIAL"        , # Material                                          X
+        # "OBJVERS"         , # Object version                                    X
+        # "CHANGED"         , # Change flag ( I inserted / D deleted )
+        # "/BIC/PRODH1"     , # Brand responsibility type
+        # "/BIC/PRODH2"     , # Brand
+        # "/BIC/PRODH3"     , # Category
+        # "/BIC/PRODH4"     , # Family
+        # "APO_PROD"        , # Product
+        # "BASE_UOM"        , # Base Unit of Measure
+        # "BASIC_MATL"      , # Basic material (basic constituent of a material)
+        # "COMPETITOR"      , # Competitors
+        # "CONT_UNIT"       , # Content unit
+        # "CREATEDON"       , # Date on which the record was created
+        # "CRM_PROD"        , # Product
+        # "DIVISION"        , # Division
+        # "EANUPC"          , # European Article Numbers/Universal Product Code
+        # "EXTMATLGRP"      , # External material group
+        # "GROSS_CONT"      , # Gross contents
+        # "GROSS_WT"        , # Gross weight
+        # "HEIGHT"          , # Height
+        # "IND_SECTOR"      , # Industry sector
+        # "LENGHT"          , # Length
+        # "LOC_CURRCY"      , # Local currency
+        # "LOGSYS"          , # Source System
+        # "MANUFACTOR"      , # Manufacturer
+        # "MANU_MATNR"      , # Manufacturer Part Number
+        # "MATL_CAT"        , # Material category
+        "MATL_GROUP"      , # Material group
+        "MATL_TYPE"       , # Material type
+        # "MSA_USAGE"       , # Usage
+        # "NET_CONT"        , # Net contents
+        # "NET_WEIGHT"      , # Net weight of item
+        # "PO_UNIT"         , # Order unit
+        # "PROD_HIER"       , # Product hierarchy
+        # "SIZE_DIM"        , # Size/dimension
+        # "STD_DESCR"       , # Industry Standard Description (such as DIN)
+        # "UNIT_DIM"        , # Unit of dimension for length/width/height
+        # "UNIT_OF_WT"      , # Weight unit
+        # "VENDOR"          , # Vendor
+        # "VOLUME"          , # Volume
+        # "VOLUMEUNIT"      , # Volume unit
+        # "WIDTH"           , # Width
+        # "/BIC/MG_L1"      , # Old Material group level 1
+        # "/BIC/MG_L2"      , # Old Material group level 2
+        # "/BIC/MG_L3"      , # Old Material group level 3
+        # "/BIC/MIN_RSL"    , # Minimum remaining shelf life (PO)
+        "/BIC/MSTAE"      , # X-plant status
+        "/BIC/MSTAV"      , # X-distribution chain status
+        # "/BIC/OLD_MATNR"  , # Old material number
+        # "AF_COLOR"        , # AFS Elementary Field "Color"
+        # "AF_FCOCO"        , # AFS Fabric Content Code
+        # "AF_GENDER"       , # AFS Target Group
+        # "AF_GRID"         , # AFS Grid
+        # "AF_STYLE"        , # AFS Intersection
+        # "BBP_PROD"        , # Product
+        # "HC_AGENT1"       , # Active Ingredient 1 (Main Active Ingredient)
+        # "HC_AGENT2"       , # Active Ingredient 2
+        # "HC_AGENT3"       , # Active Ingredient 3
+        # "HC_ANESIND"      , # Anesthetic Indicator
+        # "HC_APPRTYP"      , # Approval Type
+        # "HC_ATCCODE"      , # ATC Code
+        # "HC_ATCMTYP"      , # Type of Med. Category for ATC Code
+        # "HC_CATIND1"      , # Catalog 1 Indicator
+        # "HC_CATIND2"      , # Catalog 2 Indicator
+        # "HC_CATIND3"      , # Catalog 3 Indicator
+        # "HC_HAZMIND"      , # Hazardous Substance Indicator
+        # "HC_IMPMIND"      , # Import Material Indicator
+        # "RPA_WGH1"        , # Material Group Hierarchy Level 1
+        # "RPA_WGH2"        , # Material Group Hierarchy Level 2
+        # "RPA_WGH3"        , # Material Group Hierarchy Level 3
+        # "RPA_WGH4"        , # Material Group Hierarchy Level 4
+        # "RTPLCST"         , # Planned Purchase Price
+        # "RT_COLOR"        , # Color
+        # "RT_CONFMAT"      , # Cross-Plant Configur. Material
+        # "RT_FASHGRD"      , # Fashion Grade
+        # "RT_MDRELST"      , # Master Data Release Status
+        # "RT_PRBAND"       , # Price Band Category
+        # "RT_PRRULE"       , # Procurement Rule
+        # "RT_SEAROLL"      , # Collection
+        # "RT_SEASON"       , # Season Category
+        # "RT_SEASYR"       , # Season Year
+        # "RT_SEAYR"        , # Season Year
+        # "RT_SIZE"         , # Size
+        # "RT_SUPS"         , # Source of Supply
+        # "UCCERTIFTY"      , # Certification Type
+        # "UCCONSTCLA"      , # Construction Class
+        # "UCFUNCCLAS"      , # Function Class
+        # "DF_DGNR"         , # Hazardous Material Number
+        # "DF_PROFILE"      , # Profile for Dangerous Goods Indicator
+        # "RF_SIZE2"        , # Size 2
+        # "RF_BNDID"        , # Brand
+        # "RF_FRECHAR"      , # General Analysis Characteristic
+        # "RT_COLRNGE"      , # Color Characteristic range
+        # "RT_SIZRNGE"      , # Size Characteristic range
+        # "/BIC/MATLGRP71"  , # Categ. Mgr NL40 Natudis
+        # "/BIC/MATLGRP72"  , # Categ. Mgr NL10 Foodprints
+        # "/BIC/MATLGRP73"  , # Categ. Mgr GB10 Kallo
+        # "/BIC/MATLGRP74"  , # Categ. Mgr FR30 Distriborg France
+        # "/BIC/MATLGRP75"  , # Categ. Mgr FR40 Bonneterre
+        # "/BIC/MATLGRP76"  , # Categ. Mgr BE10 Hagor
+        # "/BIC/MATLGRP77"  , # Categ. Mgr DE20 Fachhandel
+        # "/BIC/MATLGRP78"  , # Categ. Mgr DE30 CoSA Naturprodukte
+        # "/BIC/MATLGRP79"  , # Categ. Mgr DE*
+        # "/BIC/STRAT_BUY"  , # Family
+        # "/BIC/EA_PAL"     , # Eaches per Pallet
+        # "/BIC/SR_RSPO"    , # RSPO indicator
+        # "/BIC/SR_SUST"    , # Sustainability Indicator
+        # "/BIC/SR_FAIRTR"  , # Fair Trade
+        # "/BIC/SR_NUTRI"   , # Nutritional
+        # "/BIC/SR_ORG"     , # Organic
+        # "/BIC/SR_VEGI"    , # Vegetarian
+        "/BIC/PRDH1"      , # Name of the Brand
+        "/BIC/PRDH2"      , # Main Category
+        "/BIC/PRDH3"      , # Product Sub Category
+        "/BIC/PRDH4"      , # Product Family
+        "/BIC/BRANDTYP"   , # Marke
+        "/BIC/BRANDNAME"  , # Full brand Name
+        # "PLANT"           , # Plant
+        "/BIC/LVORM"      , # DF at client level
+        "DEL_FLAG"        #, # Deletion flag for all material data of a plant
+        # "/BIC/M_GLTNFRE"  , # Gluten free
+        # "/BIC/EA_CS"      , # Eaches per Case
+        # "/BIC/MTPOS"      , # Item Category Group
+        # "CH_ON"           , # Last changed on
+        # "/BIC/MGL1"       , # Material group level 1
+        # "/BIC/MGL2"       , # Material group level 2
+        # "/BIC/MGL3"       , # Material group level 3
+        # "/BIC/MGL4"       , # Material group level 4
+        # "/BIC/CATTYP"     , # Category type
+        # "/BIC/ZIS_SPEC"   , # Interspec Specification Number
+        # "NT_WT_KG"        , # Net weight in kilograms
+        # "GR_WT_KG"        , # Gross weight in kilograms
+        # "/BIC/EA_LAY"     , # EA per Layer
+        # "/BIC/TEMPCOND"   , # Temperature Conditions
+        # "/BIC/TEMPC"      , # Temperature class
+        # "CREATEDBY"         # Name of person who created the object
+    ),
+     pRowcount = Inf
+   )
+
+if(rstudioapi::showQuestion(
+  title   = "Save?", 
+  message = "Do you want to save the data?"
+  ) == TRUE) {
+  saveRDS(object = B4_MATERIAL_P, file = file.path(PDAT, "B4_MATERIAL_P.rds"))
+}
+```
+
 ```{r MATERIALS, eval = FALSE}
 MARA <-
   fRead_and_Union(
@@ -1153,8 +1664,6 @@ MARA <-
 
 
 ```
-
-
 
 ```{r Communicate, eval=TRUE}
 
