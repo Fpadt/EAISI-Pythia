@@ -16,15 +16,7 @@ editor_options:
 
 \newpage
 
-![Logo](C:/Users/floris.padt/OneDrive%20-%20Wessanen/Pictures/ECOTONE/Logo.png)
-
-# References
-
-## SAC
-
-## Teams
-
--   
+![Logo](C:/PW\OneDrive\ET\pythia\img\pythia_logo2_no_text.png)
 
 # Setup
 
@@ -44,99 +36,56 @@ knitr::opts_chunk$set(
   include = TRUE      # include the chunk output in the output 
 )
 
-# KnitR SetUp location
-KS <- 
-  file.path("C:", "RW", "ETRMK", "00_RProj", 
-    "00_Global", "KnitR_SetUp.R")
+SID <- "WPB500"
+SYS <- substr(SID, 1, 3)
 
 library(reticulate)
-use_condaenv("sapyr")
+# use_condaenv("sapyr")
 
 # public functions ---------------------------------------------------------
-invisible(source(KS))
+invisible(source('library/KnitR_SetUp.R'))
 
-setwd("C:/RW/EAISI-Pythia/notebooks")
-if( file.exists("functions.R")){source("functions.R")}
+# setwd("C:/RW/EAISI-Pythia/notebooks")
+lsrc <- "notebooks/10_data_import.R"  
+if( file.exists(lsrc)){source(lsrc)}
 
-# Path to OneDrive Personal
-PDAT <- file.path(PET , "pythia", "dat")
-PWPB <- file.path(PDAT, "WPB")
-PRTP <- file.path(PWPB, "RTP")    # Actuals deliverd to RTP project
-PIPM <- file.path(PWPB, "IPM")    # Actuals for Ambient for DSCP 2018
-PDYN <- file.path(PWPB, "DYN")    # Data From Dynasys Actuals & Forecast
-
-# Path to Teams
-OEXP <- file.path(FCT , "upg"   , "data")
-PNEW <- file.path(OEXP, "WPB"   , "NEW")
-PAMB <- file.path(PNEW, "perkz_w")
-
-FLD <- file.path(IMM, "SLM")
-wbt <- "" # workbook Title
-wbc <- "" # workbook Category
-wbf <- "" # workbook FileName
-
-
-SID <- "WPB500"
-CCD <- "FR30" 
-CYR <- 
-MAT <- "10023" %>% LP0(18)
-PLT <- "FR30"
-VWK <-  ''
-
-fdiff_mnths <- function(x, y) {
-  strdate <- ymd(paste0(x, "01"))
-  enddate <- ymd(paste0(y, "01"))
-  interval(strdate, enddate) %/% months(1)
-}
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
 ```
 
-# Export & Copy Procedure
-
-1.  AL11 - DSCP E:\USR\SAP\STAGE\DSCP\PERKZ\_W\
-2.  save on teams (use clipr below)
-3.  execute next code chunk to change Thousands Separator
-4.  execute the code chunk after wards to copy files
+# Sales Data
 
 ```{r}
-#| label: 'Change Thousand separator'
-#| eval:  false
+#| label: 'Sales Data',
+#| eval:   true
 
-fsubDOT <- 
-  function(x){
-    sub(pattern = "\\.", replacement = "", x = x)
-  }
+# Define the path to your Feather file
+FFN <- 
+  file.path(
+      PS02, SYS, "RTP", "IPC", 
+      "DD_HISTO_QTY_GE21.arrow"
+    ) %>% 
+  normalizePath() 
 
-fsubCOM <- 
-  function(x){
-    sub(pattern = ",", replacement = ".", x = x)
-  }
+# Check file metadata
+# read_parquet(FFN, as_data_frame = FALSE) %T>%
+#   print()
 
-cols <- paste0("V", 6:12)    
+# Query the file and load it into a data.table
+SLS <- 
+  dbGetQuery(
+    con, 
+    paste0("SELECT * FROM read_parquet('", FFN, "')")
+  )                                                                  %>%
+  setDT()
 
-fHST <- 
-  function(PKZ){
-    rbind(
-      fread(file = file.path(PNEW , PKZ, "DD_HISTO_QTY_ALL.CSV"))     %>%
-        .[V5 < ymd("2024-01-01")],
-      fread(file = file.path(PNEW , PKZ, "DD_HISTO_QTY.CSV"))
-    )                                                                %>%
-      .[ , (cols) := lapply(.SD, FUN = fsubDOT), .SDcols = cols]     %>%
-      .[ , (cols) := lapply(.SD, FUN = fsubCOM), .SDcols = cols]     %T>%
-      fwrite(
-        col.names = FALSE, 
-        file      = file.path(PNEW , PKZ, "DEC", "DD_HISTO_QTY.CSV"), 
-        sep       = ";"
-      )
+# Disconnect from DuckDB
+dbDisconnect(con)
 
-    fread(file.path(PNEW , PKZ, "DEC", "DD_HISTO_QTY.CSV"))
-  }
-
-
-# system.time(TEST_t <- fHST("perkz_t"))
-system.time(TEST_w <- fHST("perkz_w"))
-
-
+# View the data.table
+View(SLS[0:100])
 ```
+
 
 ## RTP Master Data
 
@@ -162,6 +111,11 @@ MATERIAL <-
     file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
     sep       = ";"
   )
+
+MATERIAL <- 
+  fread(
+    file = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM])
+  )
 ```
 
 #### MAT_SALES
@@ -186,6 +140,10 @@ MAT_SALES <-
     sep       = ";"
   )                                                                   
 
+MAT_SALES <- 
+  fread(
+    file = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM])
+  )
 ```
 
 #### MAT_PLANT
@@ -208,10 +166,17 @@ MAT_PLANT <-
     col.names = TRUE,
     file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
     sep       = ";"
-  )                                                                     
+  ) 
+
+MAT_PLANT <- 
+  fread(
+    file = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM])
+  )
 ```
 
-### CUST_SALES
+### Customer
+
+#### CUST_SALES
 
 ```{r}
 #| label: 'CUST_SALES',
@@ -240,6 +205,51 @@ CUST_SALES <-
     file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
     sep       = ";"
   )
+
+CUST_SALES <- 
+  fread(
+    file = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM])
+  )
+```
+
+### ProMo
+
+#### CL2
+
+```{r}
+#| label: 'PROMO'
+#| eval:   true
+
+# PROMONAT <- 
+#   read_xlsx(
+#     file = file.path(PPRM, "PROMONAT.xlsx"),
+#     sheet = "PROMONAT"
+#   )                                                                       %>%
+
+CR_PR_PROMO_CL2_HEADER <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL2_HEADER.CSV")
+  )
+
+CR_PR_PROMO_CL2_LINE <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL2_LINE.CSV")
+  )
+
+CR_PR_PROMO_CL3_HEADER <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL3_HEADER.CSV")
+  )
+
+CR_PR_PROMO_CL3_LINE <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL3_LINE.CSV")
+  )
+```
+
+#### CL3
+
+```{r}
 
 ```
 
@@ -270,6 +280,12 @@ DD_HISTO_QTY <-
     sep       = ";"
   )
 
+DD_HISTO_QTY <- 
+  fread(
+    file = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM])
+  )
+
+
 ```
 
 # Scoping
@@ -278,6 +294,7 @@ DD_HISTO_QTY <-
 #| label: 'Scoping',
 #| eval:   true
 
+DD_HISTO_QTY <- DD_HISTO_QTY[SALESORG %chin% c('FR30', 'NL10')]
 
 dtMATERIAL <- 
   copy(MATERIAL)                                           %>%
@@ -688,7 +705,6 @@ dtCMP <-
   .[round(DIFF,0) != 0]                                          
 ```
 
-
 ```{r}
 dtNL10 <- 
   OH_IPM002_A %>%
@@ -698,8 +714,6 @@ dtNL10 <-
     ., on = .(CUST_SALES == CUSTOMER, SALESORG)]  %>%
   .[is.na(CUST_HIE03)]
 ```
-
-
 
 ```{r}
 dtACT <-
@@ -729,8 +743,6 @@ dtACT <-
 # cols <- intersect(names(B4_SDSFRPR12_A), names(dtACT))
 ```
 
-
-
 ```{r}
 dtCMP2 <- 
   dtCMP[CALMONTH < ymd("20241101")] %>%
@@ -745,7 +757,6 @@ dtCMP2 <-
   .[DIFF != 0]
   
 ```
-
 
 ```{r}
 dtNIXTLA <- 

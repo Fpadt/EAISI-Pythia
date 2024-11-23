@@ -47,3 +47,5 @@ _*/
 _extensions/
 dev_rfc.log
 Results
+
+*.parquet
