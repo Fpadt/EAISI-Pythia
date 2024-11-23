@@ -1,0 +1,322 @@
+---
+title   : EAISI - Pythia
+subtitle: Data Ingestion
+author  : "F.J. Padt"
+date    : "`r format(Sys.time(), '%B %d, %Y')`"
+output  :
+  pdf_document:
+    df_print: paged
+    toc: yes
+    toc_depth: 1      
+editor_options:
+  chunk_output_type: console
+  markdown: 
+    wrap: 80  
+---
+
+\newpage
+
+![Logo](C:/PW\OneDrive\ET\pythia\img\pythia_logo2_no_text.png)
+
+# Purpose
+
+Refresh data sets for the Pythia project from BW OpenHub to Pythia on PET. The
+data sets are used to validate the Pythia model.
+
+This code needs to run in Ecotone Network and SAP should be available
+
+# Setup
+
+```{r}
+#| label:  setup
+#| eval:   true
+
+knitr::opts_chunk$set(
+  cache   = FALSE,
+  echo    = TRUE,     # include R source code in the output  
+  eval    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  results = "markup",
+  image   = TRUE,  
+  include = TRUE      # include the chunk output in the output 
+)
+
+SID <- "WPB500"
+SYS <- substr(SID, 1, 3)
+
+# SAP Access
+library(reticulate)
+use_condaenv("sapyr")
+
+# public functions ---------------------------------------------------------
+invisible(source('library/KnitR_SetUp.R'))
+
+lsrc <- "notebooks/05_data_ingestion.R"  
+if( file.exists(lsrc)){source(lsrc)}
+
+```
+
+```{r}
+clipr::write_clip(normalizePath(file.path(PS01, SYS, "RTP", "CSV")))
+```
+
+# Export & Copy Procedure
+
+## Pythia DTP's
+
+1.  \[15. Min\] DTP_006EIZGR39XAWPP4RBZMZCEU2 PYTHIA -\> IS PERKZ-W \[2021,
+    2022, 2023\]
+2.  \[05. Min\] DTP_006EIZGR39XAWPP4O3JPT9E6Y PYTHIA -\> IS PERKZ-W \[\>=2024\]
+3.  \[02. Min\] DTP_006EIZGR39XAWPP4SWFV127TM PYTHIA -\> OS PERKZ-W
+    \[\>=SY-DATE - 60\]
+
+## Export
+
+1.  \[15. Min\] RSPC: LC_DYN_PERKZ_W
+2.  \[05. Min\] DTP_006EIZGR39XAWPP4O3JPT9E6Y PYTHIA -\> IS PERKZ-W \[\>=2024\]
+3.  AL11 - DSCP E:\USR\SAP\STAGE\DSCP\PERKZ\_W\
+4.  save PRTP
+    1.  TMP execute next code chunk to change Thousands Separator
+5.  
+
+## RTP Sales
+
+```{r}
+#| label: 'Change Thousand separator'
+#| eval:   false
+
+fsubDOT <- 
+  function(x){
+    sub(pattern = "\\.", replacement = "", x = x)
+  }
+
+fsubCOM <- 
+  function(x){
+    sub(pattern = ",", replacement = ".", x = x)
+  }
+
+cols <- 
+  c("SLS_QT_SO",  "SLS_QT_RET", "SLS_QT_FOC", "SLS_QT_DIR",
+    "SLS_QT_PRO", "SLS_QT_IC" , "MSQTBUO"
+  )    
+
+SLS <- 
+  rbind(
+    fread(file = file.path(
+      PS01, SYS, "RTP", "CSV", 
+      "DD_SALES_QTY_LE23.csv")
+    )                                                                %>%
+      .[V5 < ymd("2024-01-01")],
+    fread(file = file.path(
+      PS01, SYS, "RTP", "CSV", 
+      "DD_SALES_QTY_GE24.csv")
+    )                                                                %>%
+      .[V5 >= ymd("2024-01-01")]
+  )                                                                  %T>%
+  setnames(fGet_FieldNames("DSCP_TRAN"))                             %>%
+  .[, `:=` (
+    CALDAY     = ymd(CALDAY)      ,
+    MATERIAL   = LP0(MATERIAL, 18),
+    MAT_SALES  = LP0(MATERIAL, 18),
+    MAT_PLANT  = LP0(MATERIAL, 18),      
+    CUST_SALES = LP0(CUSTOMER, 10),
+    CUSTOMER   = LP0(CUSTOMER, 10)    
+  )]                                                                 %>%
+  .[ , (cols) := lapply(.SD, FUN = fsubDOT), .SDcols = cols]         %>%
+  .[ , (cols) := lapply(.SD, FUN = fsubCOM), .SDcols = cols]         %T>%
+
+   write_parquet(
+    sink = file.path(
+      PS02, SYS, "RTP", "IPC", 
+      "DD_HISTO_QTY_GE21.arrow"
+    )
+  )
+
+```
+
+## RTP Master Data
+
+### Material
+
+#### MATERIAL
+
+```{r}
+#| label: 'MATERIAL'
+#| eval:   true
+
+pAREA <- "MATERIAL"
+MATERIAL <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    pKEY  = c(pAREA),
+    pPTH  = file.path(PS01, SYS, "RTP", "CSV")
+  )                                                                       %>% 
+ .[, MATERIAL:= LP0(MATERIAL, 18)]                                        %T>%
+  setcolorder("MATERIAL")                                                 %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "RTP", "IPC", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+    )
+  )
+
+```
+
+#### MAT_SALES
+
+```{r}
+#| label: 'MAT_SALES',
+#| eval:   true
+
+pAREA <- "MAT_SALES"
+MAT_SALES <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    pPTH  = file.path(PS01, SYS, "RTP", "CSV")
+  )                                                                       %>%
+  .[, DISTR_CHAN:= 10]                                                    %>%
+  .[, `:=` (MAT_SALES = LP0(MATERIAL, 18), MATERIAL = NULL)]              %T>%
+  setcolorder(c("MAT_SALES", "SALESORG", "DISTR_CHAN"))                   %T>%       
+  setkey("MAT_SALES", "SALESORG", "DISTR_CHAN")                           %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "RTP", "IPC", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+    )
+  )                                                              
+
+```
+
+#### MAT_PLANT
+
+```{r}
+#| label: 'MAT_PLANT',
+#| eval:   true
+
+pAREA <- "MAT_PLANT"
+MAT_PLANT <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    pKEY  = c("MAT_PLANT", "PLANT"),
+    pPTH  = file.path(PS01, SYS, "RTP", "CSV")
+  )                                                                       %>%
+  .[, `:=` (MAT_PLANT = LP0(MAT_PLANT, 18))]                              %T>%
+  setcolorder(c("MAT_PLANT", "PLANT"))                                    %T>%       
+  setkey("MAT_PLANT", "PLANT")                                            %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "RTP", "IPC", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+    )
+  ) 
+```
+
+### Customer
+
+#### CUST_SALES
+
+```{r}
+#| label: 'CUST_SALES',
+#| eval:   true
+
+pAREA <- "SOLDTO"
+CUST_SALES <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    # pKEY  = c("MAT_PLANT", "PLANT"),
+    pPTH  = file.path(PS01, SYS, "RTP", "CSV")
+  )                                                                       %>%
+  .[, `:=` (
+    CUST_SALES = LP0(CUSTOMER  , 10), 
+    CUSTHIE04  = LP0(CUSTHIE04 , 10), 
+    CUST_HIE03 = LP0(CUST_HIE03, 10), 
+    CUST_HIE02 = LP0(CUST_HIE02, 10), 
+    CUST_HIE01 = LP0(CUST_HIE01, 10),     
+    DISTR_CHAN = 10, 
+    CUSTOMER   = NULL
+    )]                                                                    %T>%
+  setcolorder(c("CUST_SALES", "SALESORG", "DISTR_CHAN"))                  %T>%         
+  setkey("CUST_SALES", "SALESORG", "DISTR_CHAN")                          %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "RTP", "IPC", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+    )
+  ) 
+```
+
+### Stock
+
+```{r}
+#| label: 'Stock'
+#| eval:   true
+
+pAREA <- "STOCK"
+STK <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    # pKEY  = c("MAT_PLANT", "PLANT"),
+    pPTH  = file.path(PS01, SYS, "STK", "CSV")
+  )                                                              %T>%         
+  setkey("CALDAY", "MATERIAL", "PLANT")                          %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "STK", "IPC",
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+    )
+  ) 
+
+```
+
+### Promotions
+
+#### PromoNat
+
+```{r}
+#| label: 'PROMO'
+#| eval:   true
+
+REL_FLDS <- 
+  wb_to_df(
+    file  = file.path(PS01, "PRM", "PROMONAT.xlsx"),
+    sheet = "FIELDS",
+    cols  = c(2, 4, 5)
+  )                         %>%
+  setDT()                   %>%
+  .[RELEVANT == "YES", COL] %>%
+  sort()
+
+PROMONAT <-
+  wb_to_df(
+    file  = file.path(PS01, "PRM", "PROMONAT.xlsx"),
+    sheet = "PROMONAT",
+    cols  = REL_FLDS
+  )                                                           %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, "PRM", "IPC", 
+      "PROMONAT.arrow"
+    )
+  )                                                     
+
+CR_PR_PROMO_CL2_HEADER <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL2_HEADER.CSV")
+  )
+
+CR_PR_PROMO_CL2_LINE <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL2_LINE.CSV")
+  )
+
+CR_PR_PROMO_CL3_HEADER <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL3_HEADER.CSV")
+  )
+
+CR_PR_PROMO_CL3_LINE <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL3_LINE.CSV")
+  )
+```

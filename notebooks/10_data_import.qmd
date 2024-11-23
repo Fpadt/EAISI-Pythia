@@ -16,15 +16,7 @@ editor_options:
 
 \newpage
 
-![Logo](C:/Users/floris.padt/OneDrive%20-%20Wessanen/Pictures/ECOTONE/Logo.png)
-
-# References
-
-## SAC
-
-## Teams
-
--   
+![Logo](C:/PW\OneDrive\ET\pythia\img\pythia_logo2_no_text.png)
 
 # Setup
 
@@ -44,233 +36,118 @@ knitr::opts_chunk$set(
   include = TRUE      # include the chunk output in the output 
 )
 
-# KnitR SetUp location
-KS <- 
-  file.path("C:", "RW", "ETRMK", "00_RProj", 
-    "00_Global", "KnitR_SetUp.R")
+SID <- "WPB500"
+SYS <- substr(SID, 1, 3)
 
 library(reticulate)
-use_condaenv("sapyr")
+# use_condaenv("sapyr")
 
 # public functions ---------------------------------------------------------
-invisible(source(KS))
+invisible(source('library/KnitR_SetUp.R'))
 
-setwd("C:/RW/EAISI-Pythia/notebooks")
-if( file.exists("functions.R")){source("functions.R")}
+# setwd("C:/RW/EAISI-Pythia/notebooks")
+lsrc <- "notebooks/10_data_import.R"  
+if( file.exists(lsrc)){source(lsrc)}
 
-# Path to OneDrive Personal
-PDAT <- file.path(PET , "pythia", "dat")
-PWPB <- file.path(PDAT, "WPB")
-PRTP <- file.path(PWPB, "RTP")    # Actuals deliverd to RTP project
-PIPM <- file.path(PWPB, "IPM")    # Actuals for Ambient for DSCP 2018
-PDYN <- file.path(PWPB, "DYN")    # Data From Dynasys Actuals & Forecast
-
-# Path to Teams
-OEXP <- file.path(FCT , "upg"   , "data")
-PNEW <- file.path(OEXP, "WPB"   , "NEW")
-PAMB <- file.path(PNEW, "perkz_w")
-
-FLD <- file.path(IMM, "SLM")
-wbt <- "" # workbook Title
-wbc <- "" # workbook Category
-wbf <- "" # workbook FileName
-
-
-SID <- "WPB500"
-CCD <- "FR30" 
-CYR <- 
-MAT <- "10023" %>% LP0(18)
-PLT <- "FR30"
-VWK <-  ''
-
-fdiff_mnths <- function(x, y) {
-  strdate <- ymd(paste0(x, "01"))
-  enddate <- ymd(paste0(y, "01"))
-  interval(strdate, enddate) %/% months(1)
-}
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
 ```
 
-# Export & Copy Procedure
-
-1.  AL11 - DSCP E:\USR\SAP\STAGE\DSCP\PERKZ\_W\
-2.  save on teams (use clipr below)
-3.  execute next code chunk to change Thousands Separator
-4.  execute the code chunk after wards to copy files
+# Sales Data
 
 ```{r}
-#| label: 'Change Thousand separator'
-#| eval:  false
+#| label: 'Sales Data',
+#| eval:   true
 
-fsubDOT <- 
-  function(x){
-    sub(pattern = "\\.", replacement = "", x = x)
-  }
+# Define the path to your Feather file
+FN_ISLS <- 
+  file.path(
+      PS02, SYS, "RTP", "IPC", 
+      "DD_HISTO_QTY_GE21.arrow"
+    ) %>% 
+  normalizePath() 
 
-fsubCOM <- 
-  function(x){
-    sub(pattern = ",", replacement = ".", x = x)
-  }
+FN_MATL<- 
+  file.path(
+      PS02, SYS, "RTP", "IPC", 
+      "MD_MATERIAL.arrow"
+    ) %>% 
+  normalizePath() 
 
-cols <- paste0("V", 6:12)    
 
-fHST <- 
-  function(PKZ){
-    rbind(
-      fread(file = file.path(PNEW , PKZ, "DD_HISTO_QTY_ALL.CSV"))     %>%
-        .[V5 < ymd("2024-01-01")],
-      fread(file = file.path(PNEW , PKZ, "DD_HISTO_QTY.CSV"))
-    )                                                                %>%
-      .[ , (cols) := lapply(.SD, FUN = fsubDOT), .SDcols = cols]     %>%
-      .[ , (cols) := lapply(.SD, FUN = fsubCOM), .SDcols = cols]     %T>%
-      fwrite(
-        col.names = FALSE, 
-        file      = file.path(PNEW , PKZ, "DEC", "DD_HISTO_QTY.CSV"), 
-        sep       = ";"
+# Check file metadata
+# read_parquet(FFN, as_data_frame = FALSE) %T>%
+#   print()
+
+# Query the file and load it into a data.table
+system.time({
+  ISLS <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT * FROM read_parquet('", FN_ISLS, "')"
       )
+    )                                                                  %>%
+    setDT()
+})
 
-    fread(file.path(PNEW , PKZ, "DEC", "DD_HISTO_QTY.CSV"))
-  }
+# Query the file and load it into a data.table
+system.time({
+  MATL <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT * FROM read_parquet('", FN_MATL, "')"
+      )
+    )                                                                  %>%
+    setDT()
+})
 
+# Disconnect from DuckDB
+dbDisconnect(con)
 
-# system.time(TEST_t <- fHST("perkz_t"))
-system.time(TEST_w <- fHST("perkz_w"))
-
-
+# View the data.table
+View(SLS[0:100])
 ```
 
-## RTP Master Data
-
-### Material
-
-#### MATERIAL
 
 ```{r}
-#| label: 'MATERIAL'
-#| eval:   true
 
-pAREA <- "MATERIAL"
-MATERIAL <- 
-  fLoadOpenHubExport(
-    pAREA = pAREA,  
-    pKEY  = c(pAREA),
-    pPTH  = file.path(PNEW , "perkz_w")
-  )                                                                       %>% 
- .[, MATERIAL:= LP0(MATERIAL, 18)]                                        %T>%
-  setcolorder("MATERIAL")                                                 %T>%
-  fwrite(
-    col.names = TRUE,
-    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
-    sep       = ";"
-  )
-```
+# Execute the SQL query and load the result into a data.table
+system.time({
+  JOINED <- 
+    dbGetQuery(
+      con,
+      paste0(
+        "SELECT 
+          MATL.MATERIAL, 
+          MATL.MATERIAL_TMD, 
+          DATE_TRUNC('month', ISLS.CALDAY) AS CALMONTH, 
+          SUM(CAST(ISLS.SLS_QT_SO AS DOUBLE)) AS SLS_QT_SO
+         FROM 
+          read_parquet('", FN_ISLS, "') AS ISLS
+         INNER JOIN 
+          read_parquet('", FN_MATL, "') AS MATL
+         ON 
+          ISLS.MATERIAL = MATL.MATERIAL
+         WHERE 
+          MATL.PRDH1 = '08'
+         GROUP BY 
+          MATL.MATERIAL, 
+          MATL.MATERIAL_TMD, 
+          CALMONTH
+         ORDER BY 
+          CALMONTH"
+      )
+    ) %>%
+    setDT()
+})
 
-#### MAT_SALES
-
-```{r}
-#| label: 'MAT_SALES',
-#| eval:   true
-
-pAREA <- "MAT_SALES"
-MAT_SALES <- 
-  fLoadOpenHubExport(
-    pAREA = pAREA,  
-    pPTH  = file.path(PNEW , "perkz_w")
-  )                                                                       %>%
-  .[, DISTR_CHAN:= 10]                                                    %>%
-  .[, `:=` (MAT_SALES = LP0(MATERIAL, 18), MATERIAL = NULL)]              %T>%
-  setcolorder(c("MAT_SALES", "SALESORG", "DISTR_CHAN"))                   %T>%       
-  setkey("MAT_SALES", "SALESORG", "DISTR_CHAN")                           %T>%
-  fwrite(
-    col.names = TRUE,
-    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
-    sep       = ";"
-  )                                                                   
+# Check the result
+View(JOINED)
 
 ```
 
-#### MAT_PLANT
-
-```{r}
-#| label: 'MAT_PLANT',
-#| eval:   true
-
-pAREA <- "MAT_PLANT"
-MAT_PLANT <- 
-  fLoadOpenHubExport(
-    pAREA = pAREA,  
-    pKEY  = c("MAT_PLANT", "PLANT"),
-    pPTH  = file.path(PNEW , "perkz_w")
-  )                                                                       %>%
-  .[, `:=` (MAT_PLANT = LP0(MAT_PLANT, 18))]                              %T>%
-  setcolorder(c("MAT_PLANT", "PLANT"))                                    %T>%       
-  setkey("MAT_PLANT", "PLANT")                                            %T>%
-  fwrite(
-    col.names = TRUE,
-    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
-    sep       = ";"
-  )                                                                     
-```
-
-### CUST_SALES
-
-```{r}
-#| label: 'CUST_SALES',
-#| eval:   true
-
-pAREA <- "SOLDTO"
-CUST_SALES <- 
-  fLoadOpenHubExport(
-    pAREA = pAREA,  
-    # pKEY  = c("MAT_PLANT", "PLANT"),
-    pPTH  = file.path(PNEW , "perkz_w")
-  )                                                                       %>%
-  .[, `:=` (
-    CUST_SALES = LP0(CUSTOMER  , 10), 
-    CUSTHIE04  = LP0(CUSTHIE04 , 10), 
-    CUST_HIE03 = LP0(CUST_HIE03, 10), 
-    CUST_HIE02 = LP0(CUST_HIE02, 10), 
-    CUST_HIE01 = LP0(CUST_HIE01, 10),     
-    DISTR_CHAN = 10, 
-    CUSTOMER   = NULL
-    )]                                                                    %T>%
-  setcolorder(c("CUST_SALES", "SALESORG", "DISTR_CHAN"))                  %T>%         
-  setkey("CUST_SALES", "SALESORG", "DISTR_CHAN")                          %T>%
-  fwrite(
-    col.names = TRUE,
-    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
-    sep       = ";"
-  )
-
-```
-
-## RTP Sales
-
-```{r}
-#| label: 'SALES',
-#| eval:   true
-
-pAREA <- "SALES"
-DD_HISTO_QTY <-  
-  fLoadOpenHubExport(
-    pAREA = pAREA,  
-    pKEY = c("CALDAY", "MATERIAL", "CUSTOMER", "PLANT"),
-    pPTH  = file.path(PNEW , "perkz_w", "DEC")
-  )                                                                       %>%
-    .[, `:=` (
-      CALDAY     = ymd(CALDAY)      ,
-      MATERIAL   = LP0(MATERIAL, 18),
-      MAT_SALES  = LP0(MATERIAL, 18),
-      MAT_PLANT  = LP0(MATERIAL, 18),      
-      CUST_SALES = LP0(CUSTOMER, 10),
-      CUSTOMER   = LP0(CUSTOMER, 10)    
-      )]                                                                  %T>%
-  fwrite(
-    col.names = TRUE,
-    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
-    sep       = ";"
-  )
-
-```
 
 # Scoping
 
@@ -278,6 +155,7 @@ DD_HISTO_QTY <-
 #| label: 'Scoping',
 #| eval:   true
 
+DD_HISTO_QTY <- DD_HISTO_QTY[SALESORG %chin% c('FR30', 'NL10')]
 
 dtMATERIAL <- 
   copy(MATERIAL)                                           %>%
@@ -688,7 +566,6 @@ dtCMP <-
   .[round(DIFF,0) != 0]                                          
 ```
 
-
 ```{r}
 dtNL10 <- 
   OH_IPM002_A %>%
@@ -698,8 +575,6 @@ dtNL10 <-
     ., on = .(CUST_SALES == CUSTOMER, SALESORG)]  %>%
   .[is.na(CUST_HIE03)]
 ```
-
-
 
 ```{r}
 dtACT <-
@@ -729,8 +604,6 @@ dtACT <-
 # cols <- intersect(names(B4_SDSFRPR12_A), names(dtACT))
 ```
 
-
-
 ```{r}
 dtCMP2 <- 
   dtCMP[CALMONTH < ymd("20241101")] %>%
@@ -745,7 +618,6 @@ dtCMP2 <-
   .[DIFF != 0]
   
 ```
-
 
 ```{r}
 dtNIXTLA <- 
