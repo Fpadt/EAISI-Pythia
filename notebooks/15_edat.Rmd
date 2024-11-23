@@ -1,0 +1,751 @@
+---
+title   : EAISI - Pythia
+subtitle: Exploratory Data Analysis
+author  : "F.J. Padt"
+date    : "`r format(Sys.time(), '%B %d, %Y')`"
+output  :
+  pdf_document:
+    df_print: paged
+    toc: yes
+    toc_depth: 1      
+editor_options:
+  chunk_output_type: console
+  markdown: 
+    wrap: 80  
+---
+
+\newpage
+
+![Logo](U:/floris/GH/EAISI-Paper/images/pythia_logo_with_text.png)
+
+
+# References
+
+# Setup
+
+```{r}
+#| label: 'setup'
+#| eval:   true
+
+
+knitr::opts_chunk$set(
+  cache   = FALSE,
+  echo    = TRUE,     # include R source code in the output  
+  eval    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  results = "markup",
+  image   = TRUE,  
+  include = TRUE      # include the chunk output in the output 
+)
+
+# KnitR SetUp location
+KS <- 
+  file.path("C:", "RW", "ETRMK", "00_RProj", 
+    "00_Global", "KnitR_SetUp.R")
+
+library(reticulate)
+use_condaenv("sapyr")
+
+# public functions ---------------------------------------------------------
+invisible(source(KS))
+
+setwd("C:/RW/EAISI-Pythia/notebooks")
+if( file.exists("functions.R")){source("functions.R")}
+
+# Path to OneDrive Personal
+PDAT <- file.path(PET , "pythia", "dat")
+PWPB <- file.path(PDAT, "WPB")
+PRTP <- file.path(PWPB, "RTP")    # Actuals deliverd to RTP project
+PIPM <- file.path(PWPB, "IPM")    # Actuals for Ambient for DSCP 2018
+PDYN <- file.path(PWPB, "DYN")    # Data From Dynasys Actuals & Forecast
+
+# Path to Teams
+OEXP <- file.path(FCT , "upg"   , "data")
+PNEW <- file.path(OEXP, "WPB"   , "NEW")
+PAMB <- file.path(PNEW, "perkz_w")
+
+FLD <- file.path(IMM, "SLM")
+wbt <- "" # workbook Title
+wbc <- "" # workbook Category
+wbf <- "" # workbook FileName
+
+
+SID <- "WPB500"
+CCD <- "FR30" 
+CYR <- 
+MAT <- "10023" %>% LP0(18)
+PLT <- "FR30"
+VWK <-  ''
+
+fdiff_mnths <- function(x, y) {
+  strdate <- ymd(paste0(x, "01"))
+  enddate <- ymd(paste0(y, "01"))
+  interval(strdate, enddate) %/% months(1)
+}
+```
+
+# Export & Copy Procedure
+
+1.  AL11 - DSCP E:\USR\SAP\STAGE\DSCP\PERKZ\_W\
+2.  save on teams (use clipr below)
+3.  execute next code chunk to change Thousands Separator
+4.  execute the code chunk after wards to copy files
+
+```{r}
+#| label: 'Change Thousand separator'
+#| eval:  false
+
+fsubDOT <- 
+  function(x){
+    sub(pattern = "\\.", replacement = "", x = x)
+  }
+
+fsubCOM <- 
+  function(x){
+    sub(pattern = ",", replacement = ".", x = x)
+  }
+
+cols <- paste0("V", 6:12)    
+
+fHST <- 
+  function(PKZ){
+    rbind(
+      fread(file = file.path(PNEW , PKZ, "DD_HISTO_QTY_ALL.CSV"))     %>%
+        .[V5 < ymd("2024-01-01")],
+      fread(file = file.path(PNEW , PKZ, "DD_HISTO_QTY.CSV"))
+    )                                                                %>%
+      .[ , (cols) := lapply(.SD, FUN = fsubDOT), .SDcols = cols]     %>%
+      .[ , (cols) := lapply(.SD, FUN = fsubCOM), .SDcols = cols]     %T>%
+      fwrite(
+        col.names = FALSE, 
+        file      = file.path(PNEW , PKZ, "DEC", "DD_HISTO_QTY.CSV"), 
+        sep       = ";"
+      )
+
+    fread(file.path(PNEW , PKZ, "DEC", "DD_HISTO_QTY.CSV"))
+  }
+
+
+# system.time(TEST_t <- fHST("perkz_t"))
+system.time(TEST_w <- fHST("perkz_w"))
+
+
+```
+
+## RTP Master Data
+
+### Material
+
+#### MATERIAL
+
+```{r}
+#| label: 'MATERIAL'
+#| eval:   true
+
+pAREA <- "MATERIAL"
+MATERIAL <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    pKEY  = c(pAREA),
+    pPTH  = file.path(PNEW , "perkz_w")
+  )                                                                       %>% 
+ .[, MATERIAL:= LP0(MATERIAL, 18)]                                        %T>%
+  setcolorder("MATERIAL")                                                 %T>%
+  fwrite(
+    col.names = TRUE,
+    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
+    sep       = ";"
+  )
+```
+
+#### MAT_SALES
+
+```{r}
+#| label: 'MAT_SALES',
+#| eval:   true
+
+pAREA <- "MAT_SALES"
+MAT_SALES <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    pPTH  = file.path(PNEW , "perkz_w")
+  )                                                                       %>%
+  .[, DISTR_CHAN:= 10]                                                    %>%
+  .[, `:=` (MAT_SALES = LP0(MATERIAL, 18), MATERIAL = NULL)]              %T>%
+  setcolorder(c("MAT_SALES", "SALESORG", "DISTR_CHAN"))                   %T>%       
+  setkey("MAT_SALES", "SALESORG", "DISTR_CHAN")                           %T>%
+  fwrite(
+    col.names = TRUE,
+    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
+    sep       = ";"
+  )                                                                   
+
+```
+
+#### MAT_PLANT
+
+```{r}
+#| label: 'MAT_PLANT',
+#| eval:   true
+
+pAREA <- "MAT_PLANT"
+MAT_PLANT <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    pKEY  = c("MAT_PLANT", "PLANT"),
+    pPTH  = file.path(PNEW , "perkz_w")
+  )                                                                       %>%
+  .[, `:=` (MAT_PLANT = LP0(MAT_PLANT, 18))]                              %T>%
+  setcolorder(c("MAT_PLANT", "PLANT"))                                    %T>%       
+  setkey("MAT_PLANT", "PLANT")                                            %T>%
+  fwrite(
+    col.names = TRUE,
+    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
+    sep       = ";"
+  )                                                                     
+```
+
+### CUST_SALES
+
+```{r}
+#| label: 'CUST_SALES',
+#| eval:   true
+
+pAREA <- "SOLDTO"
+CUST_SALES <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    # pKEY  = c("MAT_PLANT", "PLANT"),
+    pPTH  = file.path(PNEW , "perkz_w")
+  )                                                                       %>%
+  .[, `:=` (
+    CUST_SALES = LP0(CUSTOMER  , 10), 
+    CUSTHIE04  = LP0(CUSTHIE04 , 10), 
+    CUST_HIE03 = LP0(CUST_HIE03, 10), 
+    CUST_HIE02 = LP0(CUST_HIE02, 10), 
+    CUST_HIE01 = LP0(CUST_HIE01, 10),     
+    DISTR_CHAN = 10, 
+    CUSTOMER   = NULL
+    )]                                                                    %T>%
+  setcolorder(c("CUST_SALES", "SALESORG", "DISTR_CHAN"))                  %T>%         
+  setkey("CUST_SALES", "SALESORG", "DISTR_CHAN")                          %T>%
+  fwrite(
+    col.names = TRUE,
+    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
+    sep       = ";"
+  )
+
+```
+
+## RTP Sales
+
+```{r}
+#| label: 'SALES',
+#| eval:   true
+
+pAREA <- "SALES"
+DD_HISTO_QTY <-  
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    pKEY = c("CALDAY", "MATERIAL", "CUSTOMER", "PLANT"),
+    pPTH  = file.path(PNEW , "perkz_w", "DEC")
+  )                                                                       %>%
+    .[, `:=` (
+      CALDAY     = ymd(CALDAY)      ,
+      MATERIAL   = LP0(MATERIAL, 18),
+      MAT_SALES  = LP0(MATERIAL, 18),
+      MAT_PLANT  = LP0(MATERIAL, 18),      
+      CUST_SALES = LP0(CUSTOMER, 10),
+      CUSTOMER   = LP0(CUSTOMER, 10)    
+      )]                                                                  %T>%
+  fwrite(
+    col.names = TRUE,
+    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
+    sep       = ";"
+  )
+
+```
+
+# Scoping
+
+```{r}
+#| label: 'Scoping',
+#| eval:   true
+
+
+dtMATERIAL <- 
+  copy(MATERIAL)                                           %>%
+  .[PRDH1 %chin% 
+      c(
+        '07', # ALTER ECO
+        '08', # BJORG
+        '10', # CLIPPER (CUPPER)
+        '15', # ZONNATURA
+        '53', # TANOSHI
+        '65'  # NATURELA
+      )
+  ]                                                        %>%
+  MAT_SALES[., on = .(MAT_SALES == MATERIAL)]              %>%
+  .[SALESORG %chin% c("FR30", "NL10")]                     %>%
+  MAT_PLANT[., on = .(MAT_PLANT == MAT_SALES)]             %>%
+  .[, `:=` (MATERIAL = MAT_PLANT, MAT_PLANT = NULL)]       %T>%
+  setcolorder(c("MATERIAL", "SALESORG", "PLANT"))          %T>%
+  setkeyv(c("MATERIAL", "SALESORG", "PLANT"))
+
+```
+
+```{r}
+
+# dtSLS <- 
+#   DD_HISTO_QTY[MATERIAL %chin% dtMATE$MATERIAL &
+#                  PLANT %chin% c("FR30", "NL60","NL63")]         %>%
+#   .[, CALMONTH:= floor_date(CALDAY, "month")]                   %>%
+#   .[, .(
+#     SLS_QT_SO  = sum(as.numeric(SLS_QT_SO) , na.rm = TRUE), 
+#     SLS_QT_RET = sum(as.numeric(SLS_QT_RET), na.rm = TRUE), 
+#     SLS_QT_FOC = sum(as.numeric(SLS_QT_FOC), na.rm = TRUE), 
+#     SLS_QT_DIR = sum(as.numeric(SLS_QT_DIR), na.rm = TRUE), 
+#     # SLS_QT_PRO = sum(as.numeric(SLS_QT_PRO), na.rm = TRUE), 
+#     SLS_QT_IC  = sum(as.numeric(SLS_QT_IC) , na.rm = TRUE), 
+#     MSQTBUO    = sum(as.numeric(MSQTBUO)   , na.rm = TRUE)
+#   ),
+#     by = .(CALMONTH, MATERIAL, SALESORG, PLANT)
+#   ]                                                             %>%
+#   .[, DEMND_QTY:= 
+#       SLS_QT_SO + 
+#       # SLS_QT_RET + 
+#       SLS_QT_FOC + 
+#       SLS_QT_DIR + 
+#       # SLS_QT_PRO + 
+#       SLS_QT_IC
+#     ]
+  
+```
+
+# Validation
+
+## Actuals
+
+### IPM
+
+#### Open Hub
+
+DSCP 2018 - actuals
+
+```{r}
+#| label:   'get_data_OH_IPM',
+#| comment: 'OH_IPM002_A: IPM data from Open Hub'
+#| eval:     false
+
+system.time({
+  
+  fLoad_Historical_Sales <- 
+    function(yr){
+      f <- 
+        file.path(PIPM, paste0("DD_HISTO_QTY_", yr, ".CSV"))
+      if(file.exists(f)){
+        fread(file = f, showProgress = TRUE)
+      } else {
+        data.table()
+      }
+    }
+  
+  OH_IPM002_A <- 
+    purrr::map(
+      c("2021", "2022", "2023", "2024"),
+      fLoad_Historical_Sales
+    )                                                                       %>%
+    rbindlist()                                                             %T>%
+    setnames(fGetOHFields("ZSOP_ASLS"))                                     %T>%
+    setnames(
+      c("MATERIAL_CODE", "SOLDTO_CODE", "PLANT_CODE", "SALESORG_CODE", "PERIOD"),
+      c("MATERIAL"     , "CUSTOMER"   , "PLANT"     , "SALESORG"     , "CALDAY")
+    )                                                                       %>%
+    .[, MATERIAL:= LP0(MATERIAL, 18)]                                       %>%
+    .[, CUSTOMER:= LP0(CUSTOMER, 10)]
+  # %>%
+  #   .[PLANT %chin% DSCP_AMB_PLANT]                                          %>%
+  #   .[CALDAY >= floor_date(today(), "year") - years(3)]                     %>%
+  #   .[!(IS_QT_SO == 0  & IS_QT_RET == 0 & IS_QT_FOC == 0 &
+  #       IS_QT_DIR == 0 & IS_QT_PRO == 0 & IS_QT_IC  == 0 & MSQTBUO == 0) ]
+  
+})
+
+```
+
+```{r}
+#| label: 'get_data_BW_IPM',
+#| eval:  false
+
+# Active Data Table for DataStore IPM00 #### 
+B4_IPM002_A <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BIC/AIPM002",
+     pOptions  = list(
+       "CALDAY GE '20240101'", "AND",
+       "PLANT   EQ 'FR30'"
+     ),
+     pFields   = list(
+        "MATERIAL"        , # Material                            X
+        "CUSTOMER"        , # Customer number                     X
+        "PLANT"           , # Plant                               X
+        "SALESORG"        , # Sales Organization                  X
+        "CALDAY"          , # Calendar day                        X
+        # "RECORDMODE"      , #
+        # "BASE_UOM"        , # Base Unit of Measure
+        "/BIC/MSQTBUO"    , # Missed sales qty (BUOM)
+        "/BIC/IS_QT_SO"   , # Issued Qty: Sales Order
+        "/BIC/IS_QT_RET"  , # Issued Qty: Returns
+        "/BIC/IS_QT_FOC"  , # Issued Qty: Free of Charge
+        "/BIC/IS_QT_EXC"  , # Issued Qty: Excess Stock
+        "/BIC/IS_QT_DIR"  , # Issued Qty: Direct
+        "/BIC/IS_QT_PRO"  , # Issued Qty: Sales Order Promo Flag
+        "/BIC/IS_QT_IC"   #, # Issued Qty: InterCompany
+        # "MAT_SALES"       , # Material (Sales)
+        # "MAT_PLANT"       , # Material Plant
+        # "CUST_SALES"      , # Customer number (sales view)
+        # "DISTR_CHAN"      , # Distribution Channel
+        # "DIVISION"          # Division
+    ),
+     pRowcount = Inf
+   )
+```
+
+### SDSFRPR1
+
+#### OpenHub
+
+pre-demand actuals snap-shots
+
+```{r}
+#| label:    'get_data_OH_SDSFRPR1',
+#| comment:  'pre-DR Actuals',
+#| eval:      false
+
+options(scipen=999)
+
+pAREA <- "SDSFRPR1"
+SDSFRPR1 <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    # pKEY = c("CALDAY", "MATERIAL", "CUSTOMER", "PLANT"),
+    pPTH  = file.path(PDYN)
+  )                                                                       %>%
+  .[, !c("PRMCP_QTY", "DMDCP_QTY")]                                       %>%
+  .[SALESORG %chin% c("FR30", "NL10")]                                    %>%
+  .[, `:=` 
+    (
+      DEMND_QTY = fSignLeft(DEMND_QTY),
+      BSELN_QTY = fSignLeft(BSELN_QTY),
+      PROMO_QTY = fSignLeft(PROMO_QTY)
+    )
+  ]
+
+# copy(SDSFRPR1) %>%
+#   .[, CHECK_QTY:= round(DEMND_QTY - BSELN_QTY - PROMO_QTY, 2)]            %T>%
+#   fOpen_as_xlsx(SDSFRPR1[ MATERIAL == LP0("10023", 18) & CHECK_QTY != 0])
+
+```
+
+```{r}
+#| label:    'get_data_BW_SDSFRPR1',
+#| comment:  'pre-DR Actuals',
+#| eval:     false
+
+# Active Data Table for DataStore SDSFRPR1 #### 
+B4_SDSFRPR12_A <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BIC/ASDSFRPR12",
+     pOptions  = list(
+       "CALMONTH     GE '202101'", "AND",
+       "CALMONTH     LE '202411'", "AND",
+       "/BIC/VERSMON EQ '202411'"
+     ),
+     pFields   = list(
+        "COMP_CODE"       , # Company code                 X
+        "SALESORG"        , # Sales Organization           X
+        "PLANT"           , # Plant                        X
+        "MATERIAL"        , # Material                     X
+        "CUST_HIE03"      , # Customer Hierarchy Level 3   X
+        "CALMONTH"        , # Calendar year/month          X
+        "VTYPE"           , # Value Type for Reporting     X
+        "/BIC/FTYPE"      , # Forecast Type                X
+        "/BIC/VERSMON"    , # Version Calendar year/month  X
+        "RECORDMODE"      , #
+        "UPD_DATE"        , # Update Date
+        "CUST_HIE02"      , # Customer Hierarchy Level 2
+        "CUST_HIE01"      , # Customer Hierarchy Level 1
+        "/BIC/DEMND_QTY"  , # Demand qty
+        "/BIC/BSELN_QTY"  , # Baseline qty
+        "/BIC/PROMO_QTY"  , # Promotion qty
+        # "/BIC/DMDCP_QTY"  , # Demand components qty
+        # "/BIC/PRMCP_QTY"  , # Promo components qty
+        "BASE_UOM"          # Base Unit of Measure
+    ),
+     pRowcount = Inf
+   )
+
+```
+
+### SDMDMFR1
+
+#### B4 Extract
+
+pre-demand actuals as-was
+
+```{r}
+#| label:   'get_data_BW_SDMDMFR12',
+#| comment: 'pre-DR Actuals As-Was',
+#| eval:    false
+
+# Active Data Table for DataStore SDMFRPR1 #### 
+B4_SDMFRPR12_A <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BIC/ASDMFRPR12",
+     pOptions  = list(
+       "SALESORG     IN ('FR30', 'NL10')"
+     ),
+     pFields   = list(
+        # "COMP_CODE"       , # Company code                  X
+        "SALESORG"        , # Sales Organization            X
+        "PLANT"           , # Plant                         X
+        "MATERIAL"        , # Material                      X
+        "CUST_HIE03"      , # Customer Hierarchy Level 3    X
+        "CALMONTH"        , # Calendar year/month           X
+        # "VTYPE"           , # Value Type for Reporting      X
+        # "/BIC/FTYPE"      , # Forecast Type                 X
+        "/BIC/VERSMON"    , # Version Calendar year/month   X
+        # "RECORDMODE"      , #
+        # "UPD_DATE"        , # Update Date
+        "CUST_SALES"      , # Customer number (sales view)
+        "MAT_PLANT"       , # Material Plant
+        "MAT_SALES"       , # Material (Sales)
+        "DISTR_CHAN"      , # Distribution Channel
+        "CUSTOMER"        , # Customer number
+        "DIVISION"        , # Division
+        # "CALYEAR"         , # Calendar year
+        # "CALMONTH2"       , # Calendar month
+        # "CUST_HIE02"      , # Customer Hierarchy Level 2
+        # "CUST_HIE01"      , # Customer Hierarchy Level 1
+        "/BIC/DEMND_QTY"  , # Demand qty
+        "/BIC/BSELN_QTY"  , # Baseline qty
+        "/BIC/PROMO_QTY"  , # Promotion qty
+        # "/BIC/DMDCP_QTY"  , # Demand components qty
+        # "/BIC/PRMCP_QTY"  , # Promo components qty
+        "BASE_UOM"          # Base Unit of Measure
+    ),
+     pRowcount = Inf
+   )
+
+```
+
+### SDSFRPR2
+
+Pre-demand Forecast Snapshots
+
+```{r}
+#| label   : 'get_data_OH_SDSFRPR2',
+#| comment : "pre-DR Forecasts",
+#| eval    : false
+
+options(scipen=999)
+
+pAREA <- "SDSFRPR2"
+SDSFRPR2 <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    # pKEY = c("CALDAY", "MATERIAL", "CUSTOMER", "PLANT"),
+    pPTH  = file.path(PDYN)
+  )                                                                       %>%
+  .[, !c("PRMCP_QTY", "DMDCP_QTY")]                                       %>%
+  .[SALESORG %chin% c("FR30", "NL10")]                                    %>%
+  .[, `:=` 
+    (
+      DEMND_QTY = fSignLeft(DEMND_QTY),
+      BSELN_QTY = fSignLeft(BSELN_QTY),
+      PROMO_QTY = fSignLeft(PROMO_QTY)
+    )
+  ]                                                                       %>%
+  .[, CHECK_QTY:= round(DEMND_QTY - BSELN_QTY - PROMO_QTY, 2)]                      
+
+fOpen_as_xlsx(SDSFRPR1[ MATERIAL == LP0("10023", 18) & CHECK_QTY != 0])
+
+
+  # .[, .(
+  #   DEMND_QTY = sum(DEMND_QTY),
+  #   BSELN_QTY = sum(BSELN_QTY),
+  #   PROMO_QTY = sum(PROMO_QTY)
+  # ), by = .(
+  #   CALMONTH, 
+  #   MATERIAL, 
+  #   SALESORG, 
+  #   PLANT,
+  #   BASE_UOM
+  # )
+  # ]
+```
+
+# TransForm
+
+```{r}
+#| label: 'transform_dtIMP',
+#| eval:  true
+
+dtIMP <- 
+  OH_IPM002_A[SALESORG %chin% c("FR30", "NL10")]                          %>%
+  CUST_SALES[., on = .(CUST_SALES == CUSTOMER, SALESORG)]                 %>%
+  .[, CALMONTH:= floor_date(CALDAY, "month")]                             %>%
+  .[, .(
+    SLS_QT_SO  = sum(as.numeric(IS_QT_SO) , na.rm = TRUE), 
+    SLS_QT_RET = sum(as.numeric(IS_QT_RET), na.rm = TRUE),
+    SLS_QT_FOC = sum(as.numeric(IS_QT_FOC), na.rm = TRUE), 
+    SLS_QT_DIR = sum(as.numeric(IS_QT_DIR), na.rm = TRUE), 
+    SLS_QT_PRO = sum(as.numeric(IS_QT_PRO), na.rm = TRUE),
+    SLS_QT_IC  = sum(as.numeric(IS_QT_IC) , na.rm = TRUE), 
+    MSQTBUO    = sum(as.numeric(MSQTBUO)  , na.rm = TRUE)
+  ), by = 
+    .(
+      MATERIAL  , 
+      CUST_HIE03,      
+      PLANT     ,
+      SALESORG  , 
+      CALMONTH
+    )
+  ]                                                                       %>%
+    .[, DEMND_QTY:= 
+        SLS_QT_SO + 
+        # SLS_QT_RET + 
+        SLS_QT_FOC + 
+        SLS_QT_DIR + 
+        # SLS_QT_PRO + 
+        SLS_QT_IC
+    ]                                                                     %>%
+  # .[, .(
+  #   CALMONTH   = CALMONTH,
+  #   MATERIAL   = RL0(MATERIAL),
+  #   CUST_HIE03 = RL0(CUST_HIE03),
+  #   SALESORG   = SALESORG,
+  #   PLANT      = PLANT,
+  #   DEMND_QTY  = DEMND_QTY
+  # )
+  # ]                                                                       %>%
+  # .[, TYPE:= 'IMP']
+```
+
+## Comparison Actuals
+
+```{r}
+#| label: 'dtCMP',
+#| eval:  true
+
+
+dtCMP <-
+  copy(B4_SDMFRPR12_A)                                                    %>%
+  # copy(SDSFRPR1)                                                          %>%
+  .[, .(
+    CALMONTH   = ymd(paste0(CALMONTH, "01")),
+    MATERIAL   = MATERIAL,
+    CUST_HIE03 = CUST_HIE03,
+    SALESORG   = SALESORG,
+    PLANT      = PLANT,
+    DEMND_QTY  = DEMND_QTY  
+  )]                                                                      %>%
+  .[, TYPE:= 'FP1']                                                       %>%
+  rbind(
+    dtIMP[CALMONTH < ymd("2024-11-01"), .(
+      CALMONTH   = CALMONTH,
+      MATERIAL   = MATERIAL,
+      CUST_HIE03 = CUST_HIE03,
+      SALESORG   = SALESORG,
+      PLANT      = PLANT,
+      DEMND_QTY  = DEMND_QTY,
+      TYPE       = 'IMP'
+    )],
+    .,
+    use.names = TRUE
+  )                                                                       %>%
+  dcast.data.table(
+    ... ~ TYPE, 
+    fun.aggregate = sum,
+    value.var     = "DEMND_QTY"
+  )                                                                       %>%
+  .[, `:=` 
+    (
+    DIFF    = IMP - FP1,
+    FP1_DEC = (as.integer(FP1) == FP1),
+    IMP_DEC = (as.integer(IMP) == IMP)
+  )
+  ]                                                                       %>%
+  .[round(DIFF,0) != 0]                                          
+```
+
+```{r}
+dtNL10 <- 
+  OH_IPM002_A %>%
+  .[SALESORG == 'NL10' &
+      CALDAY >= ymd("2024-01-01")] %>%
+  CUST_SALES[, .(CUST_SALES, SALESORG, CUST_HIE03)][
+    ., on = .(CUST_SALES == CUSTOMER, SALESORG)]  %>%
+  .[is.na(CUST_HIE03)]
+```
+
+```{r}
+dtACT <-
+  DD_HISTO_QTY[, CUSTOMER:= LP0(CUSTOMER, 10)]       %>%
+  CUST[., on = c("CUSTOMER", "SALESORG")]            %>%
+  .[, CALMONTH:= floor_date(CALDAY, "month")]        %>%
+  .[, .(
+    SLS_QT_SO  = sum(as.numeric(SLS_QT_SO) , na.rm = TRUE), 
+    SLS_QT_RET = sum(as.numeric(SLS_QT_RET), na.rm = TRUE), 
+    SLS_QT_FOC = sum(as.numeric(SLS_QT_FOC), na.rm = TRUE), 
+    SLS_QT_DIR = sum(as.numeric(SLS_QT_DIR), na.rm = TRUE), 
+    SLS_QT_PRO = sum(as.numeric(SLS_QT_PRO), na.rm = TRUE), 
+    SLS_QT_IC  = sum(as.numeric(SLS_QT_IC) , na.rm = TRUE), 
+    MSQTBUO    = sum(as.numeric(MSQTBUO)   , na.rm = TRUE)
+  ),
+    by = .(CALMONTH, MATERIAL, CUST_HIE03, SALESORG, PLANT)
+  ] %>%
+  .[, DEMND_QTY:= 
+      SLS_QT_SO + 
+      # SLS_QT_RET + 
+      SLS_QT_FOC + 
+      SLS_QT_DIR + 
+      # SLS_QT_PRO + 
+      SLS_QT_IC
+    ]
+
+# cols <- intersect(names(B4_SDSFRPR12_A), names(dtACT))
+```
+
+```{r}
+dtCMP2 <- 
+  dtCMP[CALMONTH < ymd("20241101")] %>%
+  .[, .(
+    SC_113B = sum(SC_113B),
+    SC_113E = sum(SC_113E),
+    SOURCE  = sum(SOURCE)
+    ),
+    by = .(CALMONTH, MATERIAL, SALESORG, PLANT)
+  ] %>%
+  .[, DIFF:= SOURCE - SC_113B] %>%
+  .[DIFF != 0]
+  
+```
+
+```{r}
+dtNIXTLA <- 
+  dtACT[MATERIAL == "10023" & PLANT == "FR30"] %>%
+  .[, .(y = sum(DEMND_QTY)), 
+    by = .(
+      unique_id = paste(PLANT, MATERIAL, sep = "_"), 
+      ds = CALMONTH
+      )
+    ] %T>%
+  fwrite(
+    file = file.path(PYTH, "FR30_10023.csv")
+  )
+```
