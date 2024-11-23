@@ -10,8 +10,18 @@ knitr::opts_chunk$set(
   include = FALSE      # include the chunk output in the output 
 )
 
+computer_name <- 
+  Sys.getenv(
+    ifelse(.Platform$OS.type == "windows", "COMPUTERNAME", "HOSTNAME")
+    )
+
 # folder locations
-RW   <- file.path("C:", "RW")
+RW <- 
+  switch(
+    computer_name,
+    "TREX-TOAD" = file.path("U:", "floris", "GH"),
+                  file.path("C:", "RW")
+  ) 
 PRJ  <- file.path(RW , "EAISI-Pythia")
 MOD  <- file.path(PRJ, "library")
 RAW  <- file.path(PRJ, "10_RawData")
@@ -79,7 +89,7 @@ ES4 <- es4
 invisible(source(file.path(MOD, "General.R")))
 invisible(source(file.path(MOD, "ET_Functions.R")))
 #invisible(source(file.path(MOD, "00_Global", "SAP2R_BODS.R")))
-if (R.version$major < 4){
+if (computer_name == 'TREX-TOAD'){
   # invisible(source(file.path(MOD, "00_Global", "SAP2R.R")))
 } else {
   devtools::load_all(path = "C:\\RW\\sapyr")

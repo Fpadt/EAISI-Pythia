@@ -74,6 +74,8 @@ FN_MATL<-
     ) %>% 
   normalizePath() 
 
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
 
 # Check file metadata
 # read_parquet(FFN, as_data_frame = FALSE) %T>%
@@ -107,11 +109,13 @@ system.time({
 dbDisconnect(con)
 
 # View the data.table
-View(SLS[0:100])
+View(ISLS[0:100])
+View(MATL[0:100])
 ```
 
-
 ```{r}
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
 
 # Execute the SQL query and load the result into a data.table
 system.time({
@@ -143,11 +147,13 @@ system.time({
     setDT()
 })
 
+# Disconnect from DuckDB
+dbDisconnect(con)
+
 # Check the result
 View(JOINED)
 
 ```
-
 
 # Scoping
 
