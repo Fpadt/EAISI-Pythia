@@ -28,6 +28,7 @@ library(tidyverse  , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 library(purrr      , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 
 library(data.table , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
+library(DBI        , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 
 # library(fs         , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 # library(broom      , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)

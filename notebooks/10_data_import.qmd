@@ -60,24 +60,48 @@ con <- dbConnect(duckdb::duckdb())
 #| eval:   true
 
 # Define the path to your Feather file
-FFN <- 
+FN_ISLS <- 
   file.path(
       PS02, SYS, "RTP", "IPC", 
       "DD_HISTO_QTY_GE21.arrow"
     ) %>% 
   normalizePath() 
 
+FN_MATL<- 
+  file.path(
+      PS02, SYS, "RTP", "IPC", 
+      "MD_MATERIAL.arrow"
+    ) %>% 
+  normalizePath() 
+
+
 # Check file metadata
 # read_parquet(FFN, as_data_frame = FALSE) %T>%
 #   print()
 
 # Query the file and load it into a data.table
-SLS <- 
-  dbGetQuery(
-    con, 
-    paste0("SELECT * FROM read_parquet('", FFN, "')")
-  )                                                                  %>%
-  setDT()
+system.time({
+  ISLS <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT * FROM read_parquet('", FN_ISLS, "')"
+      )
+    )                                                                  %>%
+    setDT()
+})
+
+# Query the file and load it into a data.table
+system.time({
+  MATL <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT * FROM read_parquet('", FN_MATL, "')"
+      )
+    )                                                                  %>%
+    setDT()
+})
 
 # Disconnect from DuckDB
 dbDisconnect(con)
@@ -87,206 +111,43 @@ View(SLS[0:100])
 ```
 
 
-## RTP Master Data
-
-### Material
-
-#### MATERIAL
-
 ```{r}
-#| label: 'MATERIAL'
-#| eval:   true
 
-pAREA <- "MATERIAL"
-MATERIAL <- 
-  fLoadOpenHubExport(
-    pAREA = pAREA,  
-    pKEY  = c(pAREA),
-    pPTH  = file.path(PNEW , "perkz_w")
-  )                                                                       %>% 
- .[, MATERIAL:= LP0(MATERIAL, 18)]                                        %T>%
-  setcolorder("MATERIAL")                                                 %T>%
-  fwrite(
-    col.names = TRUE,
-    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
-    sep       = ";"
-  )
+# Execute the SQL query and load the result into a data.table
+system.time({
+  JOINED <- 
+    dbGetQuery(
+      con,
+      paste0(
+        "SELECT 
+          MATL.MATERIAL, 
+          MATL.MATERIAL_TMD, 
+          DATE_TRUNC('month', ISLS.CALDAY) AS CALMONTH, 
+          SUM(CAST(ISLS.SLS_QT_SO AS DOUBLE)) AS SLS_QT_SO
+         FROM 
+          read_parquet('", FN_ISLS, "') AS ISLS
+         INNER JOIN 
+          read_parquet('", FN_MATL, "') AS MATL
+         ON 
+          ISLS.MATERIAL = MATL.MATERIAL
+         WHERE 
+          MATL.PRDH1 = '08'
+         GROUP BY 
+          MATL.MATERIAL, 
+          MATL.MATERIAL_TMD, 
+          CALMONTH
+         ORDER BY 
+          CALMONTH"
+      )
+    ) %>%
+    setDT()
+})
 
-MATERIAL <- 
-  fread(
-    file = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM])
-  )
-```
-
-#### MAT_SALES
-
-```{r}
-#| label: 'MAT_SALES',
-#| eval:   true
-
-pAREA <- "MAT_SALES"
-MAT_SALES <- 
-  fLoadOpenHubExport(
-    pAREA = pAREA,  
-    pPTH  = file.path(PNEW , "perkz_w")
-  )                                                                       %>%
-  .[, DISTR_CHAN:= 10]                                                    %>%
-  .[, `:=` (MAT_SALES = LP0(MATERIAL, 18), MATERIAL = NULL)]              %T>%
-  setcolorder(c("MAT_SALES", "SALESORG", "DISTR_CHAN"))                   %T>%       
-  setkey("MAT_SALES", "SALESORG", "DISTR_CHAN")                           %T>%
-  fwrite(
-    col.names = TRUE,
-    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
-    sep       = ";"
-  )                                                                   
-
-MAT_SALES <- 
-  fread(
-    file = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM])
-  )
-```
-
-#### MAT_PLANT
-
-```{r}
-#| label: 'MAT_PLANT',
-#| eval:   true
-
-pAREA <- "MAT_PLANT"
-MAT_PLANT <- 
-  fLoadOpenHubExport(
-    pAREA = pAREA,  
-    pKEY  = c("MAT_PLANT", "PLANT"),
-    pPTH  = file.path(PNEW , "perkz_w")
-  )                                                                       %>%
-  .[, `:=` (MAT_PLANT = LP0(MAT_PLANT, 18))]                              %T>%
-  setcolorder(c("MAT_PLANT", "PLANT"))                                    %T>%       
-  setkey("MAT_PLANT", "PLANT")                                            %T>%
-  fwrite(
-    col.names = TRUE,
-    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
-    sep       = ";"
-  ) 
-
-MAT_PLANT <- 
-  fread(
-    file = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM])
-  )
-```
-
-### Customer
-
-#### CUST_SALES
-
-```{r}
-#| label: 'CUST_SALES',
-#| eval:   true
-
-pAREA <- "SOLDTO"
-CUST_SALES <- 
-  fLoadOpenHubExport(
-    pAREA = pAREA,  
-    # pKEY  = c("MAT_PLANT", "PLANT"),
-    pPTH  = file.path(PNEW , "perkz_w")
-  )                                                                       %>%
-  .[, `:=` (
-    CUST_SALES = LP0(CUSTOMER  , 10), 
-    CUSTHIE04  = LP0(CUSTHIE04 , 10), 
-    CUST_HIE03 = LP0(CUST_HIE03, 10), 
-    CUST_HIE02 = LP0(CUST_HIE02, 10), 
-    CUST_HIE01 = LP0(CUST_HIE01, 10),     
-    DISTR_CHAN = 10, 
-    CUSTOMER   = NULL
-    )]                                                                    %T>%
-  setcolorder(c("CUST_SALES", "SALESORG", "DISTR_CHAN"))                  %T>%         
-  setkey("CUST_SALES", "SALESORG", "DISTR_CHAN")                          %T>%
-  fwrite(
-    col.names = TRUE,
-    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
-    sep       = ";"
-  )
-
-CUST_SALES <- 
-  fread(
-    file = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM])
-  )
-```
-
-### ProMo
-
-#### CL2
-
-```{r}
-#| label: 'PROMO'
-#| eval:   true
-
-# PROMONAT <- 
-#   read_xlsx(
-#     file = file.path(PPRM, "PROMONAT.xlsx"),
-#     sheet = "PROMONAT"
-#   )                                                                       %>%
-
-CR_PR_PROMO_CL2_HEADER <- 
-  fread(
-    file = file.path(PPRM, "CR_PR_PROMO_CL2_HEADER.CSV")
-  )
-
-CR_PR_PROMO_CL2_LINE <- 
-  fread(
-    file = file.path(PPRM, "CR_PR_PROMO_CL2_LINE.CSV")
-  )
-
-CR_PR_PROMO_CL3_HEADER <- 
-  fread(
-    file = file.path(PPRM, "CR_PR_PROMO_CL3_HEADER.CSV")
-  )
-
-CR_PR_PROMO_CL3_LINE <- 
-  fread(
-    file = file.path(PPRM, "CR_PR_PROMO_CL3_LINE.CSV")
-  )
-```
-
-#### CL3
-
-```{r}
+# Check the result
+View(JOINED)
 
 ```
 
-## RTP Sales
-
-```{r}
-#| label: 'SALES',
-#| eval:   true
-
-pAREA <- "SALES"
-DD_HISTO_QTY <-  
-  fLoadOpenHubExport(
-    pAREA = pAREA,  
-    pKEY = c("CALDAY", "MATERIAL", "CUSTOMER", "PLANT"),
-    pPTH  = file.path(PNEW , "perkz_w", "DEC")
-  )                                                                       %>%
-    .[, `:=` (
-      CALDAY     = ymd(CALDAY)      ,
-      MATERIAL   = LP0(MATERIAL, 18),
-      MAT_SALES  = LP0(MATERIAL, 18),
-      MAT_PLANT  = LP0(MATERIAL, 18),      
-      CUST_SALES = LP0(CUSTOMER, 10),
-      CUSTOMER   = LP0(CUSTOMER, 10)    
-      )]                                                                  %T>%
-  fwrite(
-    col.names = TRUE,
-    file      = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM]),
-    sep       = ";"
-  )
-
-DD_HISTO_QTY <- 
-  fread(
-    file = file.path(PRTP, CFG[EXP == 'NEW' & AREA == pAREA, FNM])
-  )
-
-
-```
 
 # Scoping
 

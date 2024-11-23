@@ -63,18 +63,21 @@ fLoadOpenHubExport <-
   function(
     pAREA, pCFG = CFG , pENV = 'WPB', pPERKZ = 'perkz_w', 
     pKEY , pPTH = PYTH, pEXP = 'NEW'){
-    
-   cfg <- pCFG[AREA == pAREA & EXP == pEXP, .(FNM, OHD)]
+   
+   OHD <- pCFG[AREA == pAREA & EXP == pEXP, OHD]   
+   iFN <- pCFG[AREA == pAREA & EXP == pEXP, FNM]
+   wFN <- normalizePath(file.path(pPTH, iFN))
 
     RETURN <- 
       fread(
-        file        = file.path(pPTH, cfg[, FNM]), 
+        # file        = iFN, 
         header      = FALSE, 
+        cmd         = paste("iconv -f WINDOWS-1252 -t UTF-8", shQuote(wFN)),
         colClasses  = "character", 
         strip.white = FALSE
-      )                                                                 %T>%
-      setnames(fGet_FieldNames(cfg[, OHD]))
-    
+      )                                                              %T>%
+      setnames(fGet_FieldNames(OHD))
+
     if(!missing(pKEY)){setkeyv(x = RETURN, pKEY)}
     
     RETURN
