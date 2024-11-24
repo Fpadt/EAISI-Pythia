@@ -96,6 +96,11 @@ fsubCOM <-
     sub(pattern = ",", replacement = ".", x = x)
   }
 
+fas_NUM <- 
+  function(x){
+    as.numeric(x)
+  }
+
 cols <- 
   c("SLS_QT_SO",  "SLS_QT_RET", "SLS_QT_FOC", "SLS_QT_DIR",
     "SLS_QT_PRO", "SLS_QT_IC" , "MSQTBUO"
@@ -124,11 +129,11 @@ SLS <-
     CUSTOMER   = LP0(CUSTOMER, 10)    
   )]                                                                 %>%
   .[ , (cols) := lapply(.SD, FUN = fsubDOT), .SDcols = cols]         %>%
-  .[ , (cols) := lapply(.SD, FUN = fsubCOM), .SDcols = cols]         %T>%
-
+  .[ , (cols) := lapply(.SD, FUN = fsubCOM), .SDcols = cols]         %>%
+  .[ , (cols) := lapply(.SD, FUN = fas_NUM), .SDcols = cols]         %T>%
    write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "IPC", 
+      PS02, SYS, "RTP", "ARR", 
       "DD_HISTO_QTY_GE21.arrow"
     )
   )
@@ -156,7 +161,7 @@ MATERIAL <-
   setcolorder("MATERIAL")                                                 %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "IPC", 
+      PS02, SYS, "RTP", "ARR", 
       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
     )
   )
@@ -181,7 +186,7 @@ MAT_SALES <-
   setkey("MAT_SALES", "SALESORG", "DISTR_CHAN")                           %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "IPC", 
+      PS02, SYS, "RTP", "ARR", 
       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
     )
   )                                                              
@@ -206,7 +211,7 @@ MAT_PLANT <-
   setkey("MAT_PLANT", "PLANT")                                            %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "IPC", 
+      PS02, SYS, "RTP", "ARR", 
       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
     )
   ) 
@@ -240,7 +245,7 @@ CUST_SALES <-
   setkey("CUST_SALES", "SALESORG", "DISTR_CHAN")                          %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "IPC", 
+      PS02, SYS, "RTP", "ARR", 
       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
     )
   ) 
@@ -262,7 +267,7 @@ STK <-
   setkey("CALDAY", "MATERIAL", "PLANT")                          %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "STK", "IPC",
+      PS02, SYS, "STK", "ARR",
       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
     )
   ) 
@@ -295,7 +300,7 @@ PROMONAT <-
   )                                                           %T>%
   write_parquet(
     sink = file.path(
-      PS02, "PRM", "IPC", 
+      PS02, "PRM", "ARR", 
       "PROMONAT.arrow"
     )
   )                                                     
