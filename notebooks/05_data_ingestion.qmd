@@ -134,7 +134,7 @@ SLS <-
    write_parquet(
     sink = file.path(
       PS02, SYS, "RTP", "ARR", 
-      "DD_HISTO_QTY_GE21.arrow"
+      "DD_HISTO_QTY_GE21.parquet"
     )
   )
 
@@ -162,7 +162,7 @@ MATERIAL <-
   write_parquet(
     sink = file.path(
       PS02, SYS, "RTP", "ARR", 
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   )
 
@@ -187,7 +187,7 @@ MAT_SALES <-
   write_parquet(
     sink = file.path(
       PS02, SYS, "RTP", "ARR", 
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   )                                                              
 
@@ -212,7 +212,7 @@ MAT_PLANT <-
   write_parquet(
     sink = file.path(
       PS02, SYS, "RTP", "ARR", 
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   ) 
 ```
@@ -246,7 +246,7 @@ CUST_SALES <-
   write_parquet(
     sink = file.path(
       PS02, SYS, "RTP", "ARR", 
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   ) 
 ```
@@ -268,7 +268,7 @@ STK <-
   write_parquet(
     sink = file.path(
       PS02, SYS, "STK", "ARR",
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   ) 
 
@@ -301,7 +301,7 @@ PROMONAT <-
   write_parquet(
     sink = file.path(
       PS02, "PRM", "ARR", 
-      "PROMONAT.arrow"
+      "PROMONAT.parquet"
     )
   )                                                     
 
