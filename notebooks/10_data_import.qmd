@@ -62,18 +62,24 @@ con <- dbConnect(duckdb::duckdb())
 # Define the path to your Feather file
 FN_ISLS <- 
   file.path(
-      PS02, SYS, "RTP", "IPC", 
-      "DD_HISTO_QTY_GE21.arrow"
+      PS02, SYS, "RTP", "ARR", 
+      "DD_HISTO_QTY_GE21.parquet"
     ) %>% 
   normalizePath() 
 
 FN_MATL<- 
   file.path(
-      PS02, SYS, "RTP", "IPC", 
-      "MD_MATERIAL.arrow"
+      PS02, SYS, "RTP", "ARR", 
+      "MD_MATERIAL.parquet"
     ) %>% 
   normalizePath() 
 
+FN_STCK<- 
+  file.path(
+      PS02, SYS, "STK", "ARR", 
+      "IMP03SM1_F.parquet"
+    ) %>% 
+  normalizePath() 
 
 # Check file metadata
 # read_parquet(FFN, as_data_frame = FALSE) %T>%
@@ -85,10 +91,15 @@ system.time({
     dbGetQuery(
       con, 
       paste0(
-        "SELECT * FROM read_parquet('", FN_ISLS, "')"
+        "SELECT * FROM read_parquet('", FN_ISLS, "')
+         WHERE 
+          MATERIAL = '000000000000010023'"
       )
     )                                                                  %>%
     setDT()
+  
+  # View the data.table
+  View(ISLS[0:100])
 })
 
 # Query the file and load it into a data.table
@@ -97,17 +108,41 @@ system.time({
     dbGetQuery(
       con, 
       paste0(
-        "SELECT * FROM read_parquet('", FN_MATL, "')"
+        "SELECT * FROM read_parquet('", FN_MATL, "')
+         WHERE 
+          MATERIAL = '000000000000010023'"
       )
     )                                                                  %>%
     setDT()
+  
+  # View the data.table
+  View(MATL)
+})
+
+# Query the file and load it into a data.table
+system.time({
+  STCK <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT 
+          * 
+         FROM 
+          read_parquet('", FN_STCK, "')
+         WHERE 
+          MATERIAL = '000000000000010023'"
+      )
+    )                                                                  %>%
+    setDT()
+  
+  # View the data.table
+  View(STCK[0:100])
 })
 
 # Disconnect from DuckDB
 dbDisconnect(con)
 
-# View the data.table
-View(SLS[0:100])
+
 ```
 
 

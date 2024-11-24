@@ -63,6 +63,86 @@ clipr::write_clip(normalizePath(file.path(PS01, SYS, "RTP", "CSV")))
 
 # Export & Copy Procedure
 
+## Logical File Names
+
+```{r}
+#| label:  Logical FileNames
+#| eval:   false
+
+  # Platform-Independent File Names, Cross-Client #### 
+B4_FILENAMECI <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "FILENAMECI",
+     pOptions  = list(
+       "FILEINTERN like 'Z%'"
+     ),
+     pFields   = list(
+        # "FILEINTERN"  , # Logical file name                       X
+        # "FILEEXTERN"  , # Physical file name                      
+        # "FILEFORMAT"  , # Transfer file format (upload/download)  
+        # "APPLI_TR01"  , # Application area                        
+        # "PATHINTERN"    # Logical path name                       
+    ),
+     pRowcount = Inf
+   )
+
+```
+
+## OH Destinations
+
+```{r}
+#| label:  OH Destionations
+#| eval:   false
+
+# Directory of Open Hub Destinations #### 
+B4_RSBOHDESTT <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "RSBOHDESTT",
+     pOptions  = list(
+       "LANGU   = 'E'", "AND",
+       "OBJVERS = 'A'"
+     ),
+     pFields   = list(
+        # "LANGU"     , # Language Key          X
+        "OHDEST"    , # Open Hub Destination  X
+        # "OBJVERS"   , # Object version        X
+        # "TXTSH"     , # Short description
+        "TXTLG"       # Long description
+    ),
+     pRowcount = Inf
+   )
+
+```
+
+```{r}
+#| label:  OH fieldnames Text
+#| eval:   false
+
+# Text Table for Fields of the Open Hub Destination #### 
+B4_RSBOHFIELDST <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "RSBOHFIELDST",
+     pOptions  = list(
+       "LANGU   = 'E'", "AND",
+       "OBJVERS = 'A'"       
+     ),
+     pFields   = list(
+        # "LANGU"     , # Language Key          X
+        "OHDEST"    , # Open Hub Destination  X
+        # "OBJVERS"   , # Object version        X
+        "FIELDNM"   , # Field name            X
+        # "TXTSH"     , # Short description
+        "TXTLG"       # Long description
+    ),
+     pRowcount = Inf
+   )
+
+```
+
+
 ## Pythia DTP's
 
 1.  \[15. Min\] DTP_006EIZGR39XAWPP4RBZMZCEU2 PYTHIA -\> IS PERKZ-W \[2021,
@@ -128,8 +208,8 @@ SLS <-
 
    write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "IPC", 
-      "DD_HISTO_QTY_GE21.arrow"
+      PS02, SYS, "RTP", "ARR", 
+      "DD_HISTO_QTY_GE21.parquet"
     )
   )
 
@@ -156,8 +236,8 @@ MATERIAL <-
   setcolorder("MATERIAL")                                                 %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "IPC", 
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+      PS02, SYS, "RTP", "ARR", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   )
 
@@ -181,8 +261,8 @@ MAT_SALES <-
   setkey("MAT_SALES", "SALESORG", "DISTR_CHAN")                           %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "IPC", 
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+      PS02, SYS, "RTP", "ARR", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   )                                                              
 
@@ -206,8 +286,8 @@ MAT_PLANT <-
   setkey("MAT_PLANT", "PLANT")                                            %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "IPC", 
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+      PS02, SYS, "RTP", "ARR", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   ) 
 ```
@@ -240,8 +320,8 @@ CUST_SALES <-
   setkey("CUST_SALES", "SALESORG", "DISTR_CHAN")                          %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "IPC", 
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+      PS02, SYS, "RTP", "ARR", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   ) 
 ```
@@ -258,12 +338,31 @@ STK <-
     pAREA = pAREA,  
     # pKEY  = c("MAT_PLANT", "PLANT"),
     pPTH  = file.path(PS01, SYS, "STK", "CSV")
-  )                                                              %T>%         
-  setkey("CALDAY", "MATERIAL", "PLANT")                          %T>%
+  )                                                                  %T>%         
+  setkey("CALDAY", "MATERIAL", "PLANT")                              %T>%
+  setnames(
+    old = STK_FLDNMS$KEY,
+    new = STK_FLDNMS$FIELDNM
+  )                                                                  %>%
+  .[, `:=` (
+    CALDAY = ymd(CALDAY),
+    END    = fSignLeft(END), # End Stock Qty 
+    CNS    = fSignLeft(CNS), # Qty Consignment Stock
+    RCP    = fSignLeft(RCP), # Qty Receipt into Total Stock 
+    ISS    = fSignLeft(ISS), # Qty Issued from Total Stock
+    UNR    = fSignLeft(UNR), # Qty Unrestricted Stock
+    SBC    = fSignLeft(SBC), # Qty Subcontracting Stock
+    QLI    = fSignLeft(QLI), # Qty Qual. Insp. Stock
+    TRN    = fSignLeft(TRN), # Qty Transit Stock
+    GRB    = fSignLeft(GRB), # Qty GR Blocked Stock
+    BLK    = fSignLeft(BLK), # Qty Blocked Stock
+    XI1    = fSignLeft(XI1), # External Quantity Issued from Valuated Stock (1)
+    XI2    = fSignLeft(XI2)  # External Quantity Issued from Valuated Stock (2)
+  )]                                                                 %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "STK", "IPC",
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".arrow")
+      PS02, SYS, "STK", "ARR",
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   ) 
 

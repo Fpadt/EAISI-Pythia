@@ -27,6 +27,35 @@ CFG <-
    NEW, TD  , STOCK    , IMP03SM1_F.csv           , OH_STOCK , TRUE , none" 
   ) %>%
   .[, c("BNM", "EXT") := tstrsplit(x = FNM, split = "\\.")] 
+# END = UNR + BLK + SBC
+STK_FLDNMS <- 
+  fread(text=
+    "KEY                         , FIELDNM , TXTLG
+     Q006EICO68TUM24IROL63BRG2D  , END     , End Stock Qty
+     Q006EICO68TUM24IROL63BRG2DCU, END_BUOM, Base Unit of Measure[End Stock Qty
+     Q006EICO68TUM24IROL63BRMDX  , CNS     , Qty Consignment Stock
+     Q006EICO68TUM24IROL63BRMDXCU, CNS_BUOM, Base Unit of Measure[Qty Consignment Stock]
+     Q006EICO68TUM24IROL63BRSPH  , RCP     , Qty Receipt into Total Stock
+     Q006EICO68TUM24IROL63BRSPHCU, RCP_BUOM, Base Unit of Measure[Qty Receipt into Total Stock
+     Q006EICO68TUM24IROL63BRZ11  , ISS     , Qty Issued from Total Stock
+     Q006EICO68TUM24IROL63BRZ11CU, ISS_BUOM, Base Unit of Measure[Qty Issued from Total Stock
+     Q006EICO68TUM24IROL63BSUMT  , UNR     , Qty Unrestricted Stock
+     Q006EICO68TUM24IROL63BSUMTCU, UNR_BUOM, Base Unit of Measure[Qty Unrestricted Stock]
+     Q006EICO68TUM24IROL63BT0YD  , SBC     , Qty Subcontracting Stock
+     Q006EICO68TUM24IROL63BT0YDCU, SBC_BUOM, Base Unit of Measure[Qty Subcontracting Stock]
+     Q006EICO68TUM24IROL63BT79X  , QLI     , Qty Qual. Insp. Stock
+     Q006EICO68TUM24IROL63BT79XCU, QLI_BUOM, Base Unit of Measure[Qty Qual. Insp. Stock]
+     Q006EICO68TUM24IROL63BTDLH  , TRN     , Qty Transit Stock
+     Q006EICO68TUM24IROL63BTDLHCU, TRN_BUOM, Base Unit of Measure[Qty Transit Stock]
+     Q006EICO68TUM24IROL63BTJX1  , GRB     , Qty GR Blocked Stock
+     Q006EICO68TUM24IROL63BTJX1CU, GRB_BUOM, Base Unit of Measure[Qty GR Blocked Stock]
+     Q006EICO68TUM24IROL63BTQ8L  , BLK     , Qty Blocked Stock
+     Q006EICO68TUM24IROL63BTQ8LCU, BLK_BUOM, Base Unit of Measure[Qty Blocked Stock]
+     Q006EICO68TUM24ISLA35AVVV9  , XI1     , External Quantity Issued from Valuated Stock (1)
+     Q006EICO68TUM24ISLA35AVVV9CU, XI1_BUOM, Base Unit of Measure[External Quantity Issued from Valuated
+     Q006EICO68TUM24ISLA35AW26T  , XI2     , External Quantity Issued from Valuated Stock (2)
+     Q006EICO68TUM24ISLA35AW26TCU, XI_BUOM , Base Unit of Measure[External Quantity Issued from Valuated"
+  ) 
 
 # OH_DMMG0
 # OH_FCWKF
