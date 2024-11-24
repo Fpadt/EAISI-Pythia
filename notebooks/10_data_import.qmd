@@ -81,6 +81,9 @@ FN_STCK<-
     ) %>% 
   normalizePath() 
 
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
+
 # Check file metadata
 # read_parquet(FFN, as_data_frame = FALSE) %T>%
 #   print()
