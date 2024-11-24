@@ -125,22 +125,138 @@ system.time({
     dbGetQuery(
       con, 
       paste0(
-        "SELECT * FROM read_parquet('", FN_ISLS, "')
+        "SELECT 
+          MATL.PRDH1_TMD,
+          ISLS.SALESORG,
+          DATE_TRUNC('month', CALDAY) AS CALMONTH,
+          sum(SLS_QT_SO + SLS_QT_FOC + SLS_QT_DIR) as DEMND_QTY
+         FROM 
+          read_parquet('", FN_ISLS, "') AS ISLS
+         INNER JOIN 
+          read_parquet('", FN_MATL, "') AS MATL
+         ON 
+          ISLS.MATERIAL = MATL.MATERIAL
          WHERE 
-          MATERIAL = '000000000000010023' AND
-          PLANT = 'FR30'"
+          SALESORG    IN ('FR30', 'NL10')  
+         GROUP BY 
+          MATL.PRDH1_TMD,
+          ISLS.SALESORG,
+          CALMONTH
+         ORDER BY 
+          MATL.PRDH1_TMD,
+          ISLS.SALESORG,
+          CALMONTH"
       )
     )                                                                  %>%
     setDT()
-  
+
+            # MATERIAL = '000000000000010023' AND
   # View the data.table
   View(ISLS[0:100])
 })
 
+ISLS <- 
+  ISLS[!PRDH1_TMD %chin% c(
+    'Sud Ouest Café',
+    'PATAKS',
+    'TIEN SHAN',
+    'DR.RITTER',
+    'MERZA'
+  )]
+
 # Disconnect from DuckDB
 dbDisconnect(con)
 
+```
 
+```{r}
+library(fpp3)
+library(feasts)
+library(tsibble)
+
+tsSLS <- 
+  ISLS[, CALMONTH:= yearmonth(CALMONTH)] %>%
+  as_tsibble(, index = "CALMONTH", key= c("PRDH1_TMD", "SALESORG")) 
+  
+
+# tsSLS |>
+#   features(DEMND_QTY, list(mean = mean)) |>
+#   arrange(mean)
+# 
+# tsSLS |>
+#   features(DEMND_QTY, feat_acf)
+# 
+# tsSLS |>
+#   features(DEMND_QTY, feat_stl)
+
+tsSLS |>
+  features(DEMND_QTY, feat_stl) |>
+  ggplot(
+    aes(
+      x   = trend_strength, 
+      y   = seasonal_strength_year,
+      col = PRDH1_TMD)
+    ) +
+  geom_point() +
+  geom_text(aes(label = PRDH1_TMD), vjust = -1, hjust = 0.5) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none")
+```
+
+```{r}
+
+tsSLS |>
+  features(DEMND_QTY, feat_stl) |>
+  filter(
+    seasonal_strength_year == max(seasonal_strength_year, na.rm = TRUE)
+  ) |>
+  left_join(tsSLS, by = c("PRDH1_TMD"), multiple = "all") |>
+  ggplot(aes(x = CALMONTH, y = DEMND_QTY)) +
+  geom_line() 
+
+# ISLS %>%
+#   .[PRDH1_TMD == 'CLIPPER (CUPPER)'] %>%
+#   ggplot(
+#     aes(
+#       x   = CALMONTH, 
+#       y   = DEMND_QTY
+#       ), col = "darkgreen"
+#     ) +
+#   geom_line() 
+
+ISLS %>%
+  .[, .(DEMND_QTY = sum(DEMND_QTY)), by = .(PRDH1_TMD, CALMONTH)] %>%
+  ggplot(
+    aes(
+      x   = CALMONTH, 
+      y   = DEMND_QTY
+      ), col = "darkgreen"
+    ) +
+  geom_line() +
+  facet_wrap(
+    ~PRDH1_TMD, 
+    # scales = 'fixed'
+    scales = 'free_y'
+    )
+
+
+
+```
+
+```{r}
+prdh1_features <- 
+  tsSLS |>
+  features(DEMND_QTY, feature_set(pkgs = "feasts"))
+
+tsSLS |>
+  filter(PRDH1_TMD == "CLIPPER (CUPPER)") |>
+  model(
+    STL(DEMND_QTY ~ trend(window = 7) +
+                   season(window = "periodic"),
+    robust = TRUE)) |>
+  components() |>
+  autoplot() +
+  theme(legend.position = "none")
 ```
 
 # Stock Data
