@@ -51,6 +51,51 @@ if( file.exists(lsrc)){source(lsrc)}
 
 # Establish a connection to DuckDB
 con <- dbConnect(duckdb::duckdb())
+
+# Material of Interest
+```
+
+# Material Data
+
+```{r}
+#| label: 'Material Data',
+#| eval:   true
+
+# Define the path to your Parquet file
+FN_MATL<- 
+  file.path(
+      PS02, SYS, "RTP", "ARR", 
+      "MD_MATERIAL.parquet"
+    ) %>% 
+  normalizePath() 
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
+
+# Check file metadata
+# read_parquet(FFN, as_data_frame = FALSE) %T>%
+#   print()
+
+# Query the file and load it into a data.table
+system.time({
+  MATL <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT * FROM read_parquet('", FN_MATL, "')
+         WHERE 
+          MATERIAL = '000000000000010023'"
+      )
+    )                                                                  %>%
+    setDT()
+  
+  # View the data.table
+  View(MATL)
+})
+
+# Disconnect from DuckDB
+dbDisconnect(con)
+
 ```
 
 # Sales Data
@@ -64,20 +109,6 @@ FN_ISLS <-
   file.path(
       PS02, SYS, "RTP", "ARR", 
       "DD_HISTO_QTY_GE21.parquet"
-    ) %>% 
-  normalizePath() 
-
-FN_MATL<- 
-  file.path(
-      PS02, SYS, "RTP", "ARR", 
-      "MD_MATERIAL.parquet"
-    ) %>% 
-  normalizePath() 
-
-FN_STCK<- 
-  file.path(
-      PS02, SYS, "STK", "ARR", 
-      "IMP03SM1_F.parquet"
     ) %>% 
   normalizePath() 
 
@@ -96,7 +127,8 @@ system.time({
       paste0(
         "SELECT * FROM read_parquet('", FN_ISLS, "')
          WHERE 
-          MATERIAL = '000000000000010023'"
+          MATERIAL = '000000000000010023' AND
+          PLANT = 'FR30'"
       )
     )                                                                  %>%
     setDT()
@@ -105,22 +137,34 @@ system.time({
   View(ISLS[0:100])
 })
 
+# Disconnect from DuckDB
+dbDisconnect(con)
+
+
+```
+
+# Stock Data
+
+```{r}
+#| label: 'Stock Data',
+#| eval:   true
+
+# Define the path to your Parquet file
+FN_STCK<- 
+  file.path(
+      PS02, SYS, "STK", "ARR", 
+      "IMP03SM1_F.parquet"
+    ) %>% 
+  normalizePath() 
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
+
+# Check file metadata
+# read_parquet(FFN, as_data_frame = FALSE) %T>%
+#   print()
+
 # Query the file and load it into a data.table
-system.time({
-  MATL <- 
-    dbGetQuery(
-      con, 
-      paste0(
-        "SELECT * FROM read_parquet('", FN_MATL, "')
-         WHERE 
-          MATERIAL = '000000000000010023'"
-      )
-    )                                                                  %>%
-    setDT()
-  
-  # View the data.table
-  View(MATL)
-})
 
 # Query the file and load it into a data.table
 system.time({
