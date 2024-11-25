@@ -7,12 +7,12 @@
 #library(RDCOMClient, verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 
 library(knitr      , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
-library(kableExtra , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
+# library(kableExtra , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 #library(printr     , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE) # not available for 3.2.2
 
 suppressMessages(
   library(bit64    , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE))
-library(readxl     , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE) # Still used in deployer
+# library(readxl     , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE) # Still used in deployer
 library(ggplot2    , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 # library(reshape2   , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE) #20220623
 library(stringr    , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
@@ -23,7 +23,7 @@ library(magrittr   , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 # library(fst        , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE) #20220623
 #library(RCurl      , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE) #obsolete
 library(curl       , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
-library(readr      , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
+# library(readr      , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 library(tidyverse  , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 library(purrr      , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 
@@ -33,7 +33,7 @@ library(DBI        , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 # library(fs         , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 # library(broom      , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 
-library(openxlsx   , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE) 
+# library(openxlsx   , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE) 
 library(openxlsx2  , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 
 library(arrow      , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
