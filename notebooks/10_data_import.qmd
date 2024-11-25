@@ -302,6 +302,31 @@ ggsave(
   units    = "px"
 )
 
+gp06 <- 
+IPH2 %>%
+  .[, .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(PRDH2_TMD, CALMONTH)] %>%
+  ggplot(
+    aes(
+      x   = CALMONTH, 
+      y   = DEMND_QTY
+      ), col = "darkgreen"
+    ) +
+  geom_line() +
+  facet_wrap(
+    ~PRDH2_TMD, 
+    # scales = 'fixed'
+    scales = 'free_y'
+    )
+
+ggsave(
+  filename = "ph2_sales.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  height   = 1500,
+  units    = "px"
+)
 ```
 
 
