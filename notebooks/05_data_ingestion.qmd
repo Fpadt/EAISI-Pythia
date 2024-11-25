@@ -83,6 +83,39 @@ clipr::write_clip(normalizePath(file.path(PS01, SYS, "RTP", "CSV")))
 ## RTP Sales
 
 ```{r}
+#| label: 'Concatenate sales data'
+#| eval:   true
+
+system.time({
+  SLS <- 
+    rbind(
+      fread(file = file.path(
+        PS01, SYS, "RTP", "CSV", 
+        "DD_SALES_QTY_LE23.csv")
+      )                                                              %>%
+        .[V5 < ymd("2024-01-01")],
+      fread(file = file.path(
+        PS01, SYS, "RTP", "CSV", 
+        "DD_SALES_QTY_GE24.csv")
+      )                                                              %>%
+        .[V5 >= ymd("2024-01-01")]
+    )                                                                %T>%
+    setnames(fGet_FieldNames("DSCP_TRAN"))                           %>%
+    .[, `:=` (
+      MATERIAL   = LP0(MATERIAL, 18),
+      CUSTOMER   = LP0(CUSTOMER, 10)    
+    )]                                                               %>%
+    write_parquet(
+      sink = file.path(
+        PS02, SYS, "RTP", "ARR", 
+        "DD_HISTO_QTY_GE21.parquet"
+      )
+    )
+})
+```
+
+
+```{r}
 #| label: 'Change Thousand separator'
 #| eval:   false
 
@@ -121,20 +154,20 @@ SLS <-
   )                                                                  %T>%
   setnames(fGet_FieldNames("DSCP_TRAN"))                             %>%
   .[, `:=` (
-    CALDAY     = ymd(CALDAY)      ,
+    # CALDAY     = ymd(CALDAY)      ,
     MATERIAL   = LP0(MATERIAL, 18),
-    MAT_SALES  = LP0(MATERIAL, 18),
-    MAT_PLANT  = LP0(MATERIAL, 18),      
-    CUST_SALES = LP0(CUSTOMER, 10),
+    # MAT_SALES  = LP0(MATERIAL, 18),
+    # MAT_PLANT  = LP0(MATERIAL, 18),      
+    # CUST_SALES = LP0(CUSTOMER, 10),
     CUSTOMER   = LP0(CUSTOMER, 10)    
   )]                                                                 %>%
-  .[ , (cols) := lapply(.SD, FUN = fsubDOT), .SDcols = cols]         %>%
-  .[ , (cols) := lapply(.SD, FUN = fsubCOM), .SDcols = cols]         %>%
-  .[ , (cols) := lapply(.SD, FUN = fas_NUM), .SDcols = cols]         %T>%
+  # .[ , (cols) := lapply(.SD, FUN = fsubDOT), .SDcols = cols]         %>%
+  # .[ , (cols) := lapply(.SD, FUN = fsubCOM), .SDcols = cols]         %>%
+  # .[ , (cols) := lapply(.SD, FUN = fas_NUM), .SDcols = cols]         %T>%
    write_parquet(
     sink = file.path(
       PS02, SYS, "RTP", "ARR", 
-      "DD_HISTO_QTY_GE21.parquet"
+      "_DD_HISTO_QTY_GE21.parquet"
     )
   )
 

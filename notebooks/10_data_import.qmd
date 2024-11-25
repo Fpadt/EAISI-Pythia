@@ -310,7 +310,6 @@ dbDisconnect(con)
 
 ```
 
-
 ```{r}
 
 # Execute the SQL query and load the result into a data.table
@@ -347,7 +346,6 @@ system.time({
 View(JOINED)
 
 ```
-
 
 # Scoping
 
