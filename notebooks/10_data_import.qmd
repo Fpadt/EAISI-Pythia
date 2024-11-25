@@ -126,7 +126,7 @@ system.time({
       con, 
       paste0(
         "SELECT 
-          MATL.PRDH1_TMD,
+          MATL.PRDH1_TMD, MATL.PRDH2_TMD,
           ISLS.SALESORG,
           DATE_TRUNC('month', CALDAY) AS CALMONTH,
           sum(SLS_QT_SO + SLS_QT_FOC + SLS_QT_DIR) as DEMND_QTY
@@ -140,10 +140,12 @@ system.time({
           SALESORG    IN ('FR30', 'NL10')  
          GROUP BY 
           MATL.PRDH1_TMD,
+          MATL.PRDH2_TMD,
           ISLS.SALESORG,
           CALMONTH
          ORDER BY 
           MATL.PRDH1_TMD,
+          MATL.PRDH2_TMD,
           ISLS.SALESORG,
           CALMONTH"
       )
@@ -175,8 +177,8 @@ library(feasts)
 library(tsibble)
 
 tsSLS <- 
-  ISLS[, CALMONTH:= yearmonth(CALMONTH)] %>%
-  as_tsibble(, index = "CALMONTH", key= c("PRDH1_TMD", "SALESORG")) 
+  ISLS[PRDH1_TMD == 'BJORG', CALMONTH:= yearmonth(CALMONTH)] %>%
+  as_tsibble(, index = "CALMONTH", key= c("PRDH1_TMD", "PRDH2_TMD", "SALESORG")) 
   
 
 # tsSLS |>
@@ -195,10 +197,10 @@ tsSLS |>
     aes(
       x   = trend_strength, 
       y   = seasonal_strength_year,
-      col = PRDH1_TMD)
+      col = PRDH2_TMD)
     ) +
   geom_point() +
-  geom_text(aes(label = PRDH1_TMD), vjust = -1, hjust = 0.5) +
+  geom_text(aes(label = PRDH2_TMD), vjust = -1, hjust = 0.5) +
   facet_wrap(~SALESORG) +
   theme(legend.position = "none")
 ```
@@ -236,7 +238,7 @@ ISLS %>%
   facet_wrap(
     ~PRDH1_TMD, 
     # scales = 'fixed'
-    scales = 'free_y'
+    scales = 'fixed'
     )
 
 
