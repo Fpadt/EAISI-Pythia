@@ -40,6 +40,10 @@ SID <- "WPB500"
 SYS <- substr(SID, 1, 3)
 
 library(reticulate)
+library(fpp3)
+library(feasts)
+library(tsibble)
+library(ggrepel)
 # use_condaenv("sapyr")
 
 # public functions ---------------------------------------------------------
@@ -126,7 +130,7 @@ system.time({
       con, 
       paste0(
         "SELECT 
-          MATL.PRDH1_TMD, MATL.PRDH2_TMD,
+          MATL.PRDH1, MATL.PRDH1_TMD, MATL.PRDH2_TMD,
           ISLS.SALESORG,
           DATE_TRUNC('month', CALDAY) AS CALMONTH,
           sum(SLS_QT_SO + SLS_QT_FOC + SLS_QT_DIR) as DEMND_QTY
@@ -137,13 +141,18 @@ system.time({
          ON 
           ISLS.MATERIAL = MATL.MATERIAL
          WHERE 
-          SALESORG    IN ('FR30', 'NL10')  
+          SALESORG    IN ('FR30', 'NL10') AND
+          PRDH1       IN ('07'  , '08'  , '10', 
+                          '15'  , '53'  , '65'
+                          )
          GROUP BY 
+          MATL.PRDH1,
           MATL.PRDH1_TMD,
           MATL.PRDH2_TMD,
           ISLS.SALESORG,
           CALMONTH
          ORDER BY 
+          MATL.PRDH1,
           MATL.PRDH1_TMD,
           MATL.PRDH2_TMD,
           ISLS.SALESORG,
@@ -152,6 +161,7 @@ system.time({
     )                                                                  %>%
     setDT()
 
+  
             # MATERIAL = '000000000000010023' AND
   # View the data.table
   View(ISLS[0:100])
@@ -172,12 +182,282 @@ dbDisconnect(con)
 ```
 
 ```{r}
-library(fpp3)
-library(feasts)
-library(tsibble)
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
+
+# Query the file and load it into a data.table
+system.time({
+  IALL <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT 
+          MATL.*,
+          ISLS.*,
+          DATE_TRUNC('month', CALDAY) AS CALMONTH,
+          SLS_QT_SO + SLS_QT_FOC + SLS_QT_DIR as DEMND_QTY
+         FROM 
+          read_parquet('", FN_ISLS, "') AS ISLS
+         INNER JOIN 
+          read_parquet('", FN_MATL, "') AS MATL
+         ON 
+          ISLS.MATERIAL = MATL.MATERIAL
+         WHERE 
+          SALESORG    IN ('FR30', 'NL10')"
+      )
+    )                                                                  %>%
+    setDT()
+})
+```
+
+```{r}
+#| label: PH1
+#| eval: true
+
+
+IPH1 <- 
+  IALL[PRDH1 %chin% c('07', '08', '10', '15', '53', '64', '65'),
+       .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(PRDH1_TMD, SALESORG, CALMONTH)
+  ]
 
 tsSLS <- 
-  ISLS[PRDH1_TMD == 'BJORG', CALMONTH:= yearmonth(CALMONTH)] %>%
+  IPH1[, CALMONTH:= yearmonth(CALMONTH)]                             %>%
+  as_tsibble(, index = "CALMONTH", 
+             key= c("PRDH1_TMD", "SALESORG")) 
+
+gp01 <- 
+  tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
+  ggplot(
+    aes(
+      x   = trend_strength, 
+      y   = seasonal_strength_year,
+      col = PRDH1_TMD)
+  ) +
+  geom_point() +
+  geom_text(aes(label = PRDH1_TMD), vjust = -1, hjust = 0) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "ph1_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  units    = "px"
+)
+```
+
+```{r}
+#| label: PH2
+#| eval: true
+
+
+IPH2 <- 
+  IALL[PRDH1 %chin% c('08'),
+       .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(PRDH2_TMD, SALESORG, CALMONTH)
+  ]
+
+tsSLS <- 
+  IPH2[, CALMONTH:= yearmonth(CALMONTH)]                             %>%
+  .[, label:= PRDH2_TMD ] %>%
+  as_tsibble(, index = "CALMONTH", 
+             key= c("label", "SALESORG")) 
+
+tst <- 
+  tsSLS %>%
+  features(DEMND_QTY, feat_stl)  
+
+gp02 <- 
+  tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = label,
+      col   = label)
+  ) +
+  geom_point() +
+  geom_text_repel() +
+  # geom_text(aes(label = PRDH2_TMD),
+  #           vjust = -1, hjust = 0.5,
+  #           size = 12, size.unit = "pt"
+  #           ) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "ph2_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  units    = "px"
+)
+
+```
+
+
+```{r}
+#| label: PH3
+#| eval: true
+
+
+IPH3 <- 
+  IALL[PRDH2_TMD %like% "Bread",
+       .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(PRDH3_TMD, SALESORG, CALMONTH)
+  ]
+
+tsSLS <- 
+  IPH3[, CALMONTH:= yearmonth(CALMONTH)]                             %>%
+  .[, label:= PRDH3_TMD ] %>%
+  as_tsibble(, index = "CALMONTH", 
+             key= c("label", "SALESORG")) 
+
+gp03 <- 
+  tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = label,
+      col   = label)
+  ) +
+  geom_point() +
+  geom_text_repel() +
+  # geom_text(aes(label = PRDH2_TMD),
+  #           vjust = -1, hjust = 0.5,
+  #           size = 12, size.unit = "pt"
+  #           ) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "ph3_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  height   = 1500,  
+  units    = "px"
+)
+
+```
+
+```{r}
+#| label: PH4
+#| eval: true
+
+
+IPH4 <- 
+  IALL[PRDH3_TMD %like% "Cereal Cakes",
+       .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(PRDH4_TMD, SALESORG, CALMONTH)
+  ]
+
+tsSLS <- 
+  IPH4[, CALMONTH:= yearmonth(CALMONTH)]                             %>%
+  .[, label:= PRDH4_TMD ] %>%
+  as_tsibble(, index = "CALMONTH", 
+             key= c("label", "SALESORG")) 
+
+gp04 <- 
+  tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = label,
+      col   = label)
+  ) +
+  geom_point() +
+  geom_text_repel() +
+  # geom_text(aes(label = PRDH2_TMD),
+  #           vjust = -1, hjust = 0.5,
+  #           size = 12, size.unit = "pt"
+  #           ) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "ph4_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  height   = 1500,  
+  units    = "px"
+)
+
+```
+
+
+```{r}
+#| label: MAT
+#| eval: true
+
+
+MAT <- 
+  IALL[PRDH4_TMD %like% "Rice Cakes Plain",
+       .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(MATERIAL_TMD, SALESORG, CALMONTH)
+  ]
+
+tsSLS <- 
+  MAT[, CALMONTH:= yearmonth(CALMONTH)]                             %>%
+  .[, label:= MATERIAL_TMD ] %>%
+  as_tsibble(, index = "CALMONTH", 
+             key= c("label", "SALESORG")) 
+
+gp0M <- 
+  tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = label,
+      col   = label)
+  ) +
+  geom_point() +
+  geom_text_repel() +
+  # geom_text(aes(label = PRDH2_TMD),
+  #           vjust = -1, hjust = 0.5,
+  #           size = 12, size.unit = "pt"
+  #           ) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "mat_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  height   = 1500,  
+  units    = "px"
+)
+
+```
+
+
+```{r}
+
+tsSLS <- 
+  ISLS[, CALMONTH:= yearmonth(CALMONTH)] %>%
   as_tsibble(, index = "CALMONTH", key= c("PRDH1_TMD", "PRDH2_TMD", "SALESORG")) 
   
 
@@ -191,19 +471,63 @@ tsSLS <-
 # tsSLS |>
 #   features(DEMND_QTY, feat_stl)
 
-tsSLS |>
-  features(DEMND_QTY, feat_stl) |>
+gp01 <- 
+  tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
   ggplot(
     aes(
       x   = trend_strength, 
       y   = seasonal_strength_year,
-      col = PRDH2_TMD)
-    ) +
+      col = PRDH1_TMD)
+  ) +
   geom_point() +
-  geom_text(aes(label = PRDH2_TMD), vjust = -1, hjust = 0.5) +
+  geom_text(aes(label = PRDH1_TMD), vjust = -1, hjust = 0) +
   facet_wrap(~SALESORG) +
-  theme(legend.position = "none")
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "ph1_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  units    = "px"
+)
 ```
+
+```{r}
+
+tsSLS <- 
+  ISLS[, CALMONTH:= yearmonth(CALMONTH)] %>%
+  as_tsibble(, index = "CALMONTH", key= c("PRDH1_TMD", "PRDH2_TMD", "SALESORG")) 
+  
+
+gp02 <- 
+  tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
+  ggplot(
+    aes(
+      x   = trend_strength, 
+      y   = seasonal_strength_year,
+      col = PRDH1_TMD)
+  ) +
+  geom_point() +
+  geom_text(aes(label = PRDH1_TMD), vjust = -1, hjust = 0) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "bjorg_ph2_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  units    = "px"
+)
+```
+
 
 ```{r}
 
@@ -212,9 +536,10 @@ tsSLS |>
   filter(
     seasonal_strength_year == max(seasonal_strength_year, na.rm = TRUE)
   ) |>
-  left_join(tsSLS, by = c("PRDH1_TMD"), multiple = "all") |>
+  left_join(tsSLS, by = c("PRDH1_TMD", "PRDH2_TMD"), multiple = "all") |>
   ggplot(aes(x = CALMONTH, y = DEMND_QTY)) +
-  geom_line() 
+  geom_line() +
+  labs(title = "CLIPPER (CUPPER)", subtitle = "Hot Drinks") 
 
 # ISLS %>%
 #   .[PRDH1_TMD == 'CLIPPER (CUPPER)'] %>%
