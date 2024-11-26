@@ -86,6 +86,41 @@ clipr::write_clip(normalizePath(file.path(PS01, SYS, "RTP", "CSV")))
 #| label: 'Concatenate sales data'
 #| eval:   true
 
+fReadHist <- 
+  function(yr, bsn){
+    fread(
+      file = file.path(
+        PS01, SYS, "RTP", "CSV", 
+        paste0("DD_SALES_QTY_20", yr, ".CSV")
+      )
+    )
+  }
+
+YRS <- c(yr = 21:24)
+BNM <- "DD_HISTO_QTY"
+
+system.time({
+  SLS <- 
+    map(.x = YRS, .f = fReadHist, bsn = BNM)                         %>%
+    rbindlist()                                                      %T>%
+    setnames(fGet_FieldNames("DSCP_TRAN"))                           %>%
+    .[, `:=` (
+      MATERIAL   = LP0(MATERIAL, 18),
+      CUSTOMER   = LP0(CUSTOMER, 10)    
+    )]                                                               %>%
+    write_parquet(
+      sink = file.path(
+        PS02, SYS, "RTP", "ARR", 
+        paste0(BSNM, "_", "21-24.parquet")
+      )
+    )
+})
+```
+
+```{r}
+#| label: 'Concatenate sales data'
+#| eval:   true
+
 system.time({
   SLS <- 
     rbind(
