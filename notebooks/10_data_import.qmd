@@ -18,8 +18,7 @@ editor_options:
 
 ![Logo](C:/PW\OneDrive\ET\pythia\img\pythia_logo2_no_text.png)
 
-CLIPPER NL10 -> STL
-Aggregatie
+CLIPPER NL10 -\> STL Aggregatie
 
 # Setup
 
@@ -64,22 +63,11 @@ pimg <- file.path(FCT, 'PYTHIA', 'img')
 # Material of Interest
 ```
 
-
-
-
 # Material Data
 
 ```{r}
 #| label: 'Material Data',
 #| eval:   true
-
-# Define the path to your Parquet file
-FN_MATL<- 
-  file.path(
-      PS02, SYS, "RTP", "ARR", 
-      "MD_MATERIAL.parquet"
-    ) %>% 
-  normalizePath() 
 
 # Establish a connection to DuckDB
 con <- dbConnect(duckdb::duckdb())
@@ -102,7 +90,7 @@ system.time({
     setDT()
   
   # View the data.table
-  # View(MATL)
+  View(MATL)
 })
 
 # Disconnect from DuckDB
@@ -112,27 +100,18 @@ dbDisconnect(con)
 
 # Sales Data
 
- Key    | Brand
-:-------|:------
- 07     | ALTER ECO
- 08     | BJORG
- 10     | CLIPPER (CUPPER)
- 15     | ZONNATURA
- 53     | TANOSHI
- 65     | NATURELA
-
+| Key | Brand            |
+|:----|:-----------------|
+| 07  | ALTER ECO        |
+| 08  | BJORG            |
+| 10  | CLIPPER (CUPPER) |
+| 15  | ZONNATURA        |
+| 53  | TANOSHI          |
+| 65  | NATURELA         |
 
 ```{r}
 #| label: 'Sales Data',
 #| eval:   false
-
-# Define the path to your Feather file
-FN_ISLS <- 
-  file.path(
-      PS02, SYS, "RTP", "ARR", 
-      "DD_HISTO_QTY_ALL.parquet"
-    ) %>% 
-  normalizePath() 
 
 # Establish a connection to DuckDB
 con <- dbConnect(duckdb::duckdb())
@@ -200,6 +179,7 @@ dbDisconnect(con)
 ```
 
 ## All Sales
+
 ```{r}
 #| label: 'All Sales Data',
 #| eval:   false
@@ -234,7 +214,6 @@ system.time({
 # Disconnect from DuckDB
 dbDisconnect(con)
 ```
-
 
 ```{r}
 ph1 <- c('07'  , '08'  , '10'  , '15'  , '53'  , '64'  , '65')
@@ -343,8 +322,7 @@ fBG <- function(phl, IPH){
 }
 ```
 
-
-## PH1 
+## PH1
 
 ```{r}
 #| label: PH1 - Season Trend
@@ -377,7 +355,7 @@ fMP(phl = 'ph1', IPH)
 
 ```
 
-## PH2 
+## PH2
 
 ```{r}
 #| label: PH2 - Season Trend
@@ -535,7 +513,6 @@ fBG(
 )
 ```
 
-
 ### STL
 
 ```{r}
@@ -573,7 +550,6 @@ tsTEA <-
 
 ```
 
-
 ## MAT
 
 ```{r}
@@ -605,7 +581,7 @@ fMP(phl = 'mat', IPH)
 
 ```
 
-#### Bjorg 
+#### Bjorg
 
 ```{r}
 #| label: PH2 - Bjorg
@@ -823,7 +799,6 @@ ggsave(
 
 ```
 
-
 ```{r}
 #| label: MAT
 #| eval: true
@@ -872,7 +847,6 @@ ggsave(
 )
 
 ```
-
 
 ```{r}
 
@@ -947,7 +921,6 @@ ggsave(
   units    = "px"
 )
 ```
-
 
 ```{r}
 
