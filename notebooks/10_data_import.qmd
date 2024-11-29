@@ -230,6 +230,7 @@ DD_SALES_QTY_2021_INCL_FR50.CSV
 fMP <- function(phl, IPH){
   fST(phl, IPH)
   fSL(phl, IPH)
+  fBG(phl, IPH)
 }
 
 fST <- function(phl, IPH){
@@ -299,8 +300,8 @@ fBG <- function(phl, IPH){
       aes(
         x    = CALMONTH, 
         y    = DEMND_QTY,
-        col  = label,
-        fill = label)
+        fill = label),
+      col  = "white"
     ) +
     geom_col() +
     facet_wrap(
