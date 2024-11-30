@@ -65,7 +65,7 @@ pimg <- file.path(FCT, 'PYTHIA', 'img')
 
 # Material Data
 
-## Material 
+## Material
 
 ```{r}
 #| label: 'Material Data',
@@ -130,7 +130,7 @@ dbDisconnect(con)
 
 ```
 
-## Material Plant 
+## Material Plant
 
 ```{r}
 #| label: 'Material Plant Data',
@@ -203,8 +203,6 @@ system.time({
     setDT()
 })
 ```
-
-
 
 ```{r}
 #| label: 'Sales Data',
@@ -455,7 +453,6 @@ dtSLS <-
     ., on = .(MATERIAL, SALESORG)] 
 
 ```
-
 
 ## PH1
 
