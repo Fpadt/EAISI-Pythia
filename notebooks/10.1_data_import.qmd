@@ -1,0 +1,1598 @@
+---
+title   : EAISI - Pythia
+subtitle: Data Import
+author  : "F.J. Padt"
+date    : "`r format(Sys.time(), '%B %d, %Y')`"
+output  :
+  pdf_document:
+    df_print: paged
+    toc: yes
+    toc_depth: 1      
+editor_options:
+  chunk_output_type: console
+  markdown: 
+    wrap: 80  
+---
+
+\newpage
+
+![Logo](C:/PW\OneDrive\ET\pythia\img\pythia_logo2_no_text.png)
+
+CLIPPER NL10 -\> STL Aggregatie
+
+# Setup
+
+```{r}
+#| label: 'setup'
+#| eval:   true
+
+
+knitr::opts_chunk$set(
+  cache   = FALSE,
+  echo    = TRUE,     # include R source code in the output  
+  eval    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  results = "markup",
+  image   = TRUE,  
+  include = TRUE      # include the chunk output in the output 
+)
+
+SID <- "WPB500"
+SYS <- substr(SID, 1, 3)
+
+library(reticulate)
+library(fpp3)
+library(feasts)
+library(tsibble)
+library(ggrepel)
+# use_condaenv("sapyr")
+
+# public functions ---------------------------------------------------------
+invisible(source('library/KnitR_SetUp.R'))
+
+# setwd("C:/RW/EAISI-Pythia/notebooks")
+lsrc <- "notebooks/10_data_import.R"  
+if( file.exists(lsrc)){source(lsrc)}
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
+
+pimg <- file.path(FCT, 'PYTHIA', 'img')
+
+# Material of Interest
+```
+
+# Material Data
+
+```{r}
+#| label: 'Material Data',
+#| eval:   true
+
+# Define the path to your Parquet file
+FN_MATL<- 
+  file.path(
+      PS02, SYS, "RTP", "ARR", 
+      "MD_MATERIAL.parquet"
+    ) %>% 
+  normalizePath() 
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
+
+# Check file metadata
+# read_parquet(FFN, as_data_frame = FALSE) %T>%
+#   print()
+
+# Query the file and load it into a data.table
+system.time({
+  MATL <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT * FROM read_parquet('", FN_MATL, "')
+         WHERE 
+          MATERIAL = '000000000000010023'"
+      )
+    )                                                                  %>%
+    setDT()
+  
+  # View the data.table
+  View(MATL)
+})
+
+# Disconnect from DuckDB
+dbDisconnect(con)
+
+```
+
+# Sales Data
+
+| Key | Brand            |
+|:----|:-----------------|
+| 07  | ALTER ECO        |
+| 08  | BJORG            |
+| 10  | CLIPPER (CUPPER) |
+| 15  | ZONNATURA        |
+| 53  | TANOSHI          |
+| 65  | NATURELA         |
+
+```{r}
+#| label: 'Sales Data',
+#| eval:   false
+
+# Define the path to your Feather file
+FN_ISLS <- 
+  file.path(
+      PS02, SYS, "RTP", "ARR", 
+      "DD_HISTO_QTY_ALL.parquet"
+    ) %>% 
+  normalizePath() 
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
+
+# Check file metadata
+# read_parquet(FFN, as_data_frame = FALSE) %T>%
+#   print()
+
+# Query the file and load it into a data.table
+system.time({
+  ISLS <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT 
+          MATL.PRDH1, MATL.PRDH1_TMD, MATL.PRDH2_TMD,
+          ISLS.SALESORG,
+          DATE_TRUNC('month', CALDAY) AS CALMONTH,
+          sum(SLS_QT_SO + SLS_QT_FOC + SLS_QT_DIR) as DEMND_QTY
+         FROM 
+          read_parquet('", FN_ISLS, "') AS ISLS
+         INNER JOIN 
+          read_parquet('", FN_MATL, "') AS MATL
+         ON 
+          ISLS.MATERIAL = MATL.MATERIAL
+         WHERE 
+          SALESORG    IN ('FR30', 'NL10') AND
+          PRDH1       IN ('07'  , '08'  , '10', 
+                          '15'  , '53'  , '65'
+                          )
+         GROUP BY 
+          MATL.PRDH1,
+          MATL.PRDH1_TMD,
+          MATL.PRDH2_TMD,
+          ISLS.SALESORG,
+          CALMONTH
+         ORDER BY 
+          MATL.PRDH1,
+          MATL.PRDH1_TMD,
+          MATL.PRDH2_TMD,
+          ISLS.SALESORG,
+          CALMONTH"
+      )
+    )                                                                  %>%
+    setDT()
+
+  
+            # MATERIAL = '000000000000010023' AND
+  # View the data.table
+  View(ISLS[0:100])
+})
+
+ISLS <- 
+  ISLS[!PRDH1_TMD %chin% c(
+    'Sud Ouest Café',
+    'PATAKS',
+    'TIEN SHAN',
+    'DR.RITTER',
+    'MERZA'
+  )]
+
+# Disconnect from DuckDB
+dbDisconnect(con)
+
+```
+
+## All Sales
+
+```{r}
+#| label: 'All Sales Data',
+#| eval:   false
+
+FN_ISLS <- 
+  file.path(
+      PS02, SYS, "RTP", "ARR", 
+      "DD_HISTO_QTY_21-24.parquet"
+    ) %>% 
+  normalizePath() 
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
+
+# Query the file and load it into a data.table
+system.time({
+  IALL <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT 
+          MATL.*,
+          ISLS.*,
+          DATE_TRUNC('month', CALDAY) AS CALMONTH,
+          SLS_QT_SO + SLS_QT_FOC + SLS_QT_DIR as DEMND_QTY
+         FROM 
+          read_parquet('", FN_ISLS, "') AS ISLS
+         INNER JOIN 
+          read_parquet('", FN_MATL, "') AS MATL
+         ON 
+          ISLS.MATERIAL = MATL.MATERIAL
+         WHERE 
+          SALESORG    IN ('DE20')"
+      )
+    )                                                                  %>%
+    setDT() 
+})
+
+# Disconnect from DuckDB
+dbDisconnect(con)
+```
+
+```{r}
+ph1 <- c('07'  , '08'  , '10'  , '15'  , '53'  , '64'  , '65')
+ph2 <- c('2010', '2020', '2030', '2040', '2060')
+ph3 <- c('4010', '4013', '4020', '4023', '4030', '4032', '4040', '4062', '4066')
+```
+
+DD_SALES_QTY_2021_INCL_FR50.CSV
+
+## graph Functions
+
+```{r}
+
+fMP <- function(phl, IPH){
+  fST(phl, IPH)
+  fSL(phl, IPH)
+  fBG(phl, IPH)
+}
+
+fST <- function(phl, IPH){
+  
+  tsSLS <- 
+    IPH[, CALMONTH:= yearmonth(CALMONTH)]                            %>%
+    as_tsibble(, index = "CALMONTH", 
+               key= c("label", "SALESORG")) 
+  
+  tsSLS                                                              %>%
+    features(DEMND_QTY, feat_stl)                                    %>%
+    ggplot(
+      aes(
+        x     = trend_strength, 
+        y     = seasonal_strength_year,
+        label = label,
+        col   = label)
+    ) +
+    geom_point() +
+    geom_text_repel(size = 12) +
+    facet_wrap(~SALESORG) +
+    theme(
+      legend.position = "none",
+      axis.title.x = element_text(size = 15), # X-axis title font size
+      axis.title.y = element_text(size = 15) # Y-axis title font size
+    ) +
+    scale_x_continuous(limits = c(0, 1.0)) +
+    scale_y_continuous(limits = c(0, 1.0))
+  
+  ggsave(
+    filename = paste(phl, 'season_trend.png', sep = '_'),
+    device   = "png",
+    path     = pimg,
+    width    = 5000,
+    height   = 3000,
+    units    = "px"
+  )
+
+}
+
+fSL <- function(phl, IPH){
+
+  IPH %>%
+    ggplot(
+      aes(
+        x   = CALMONTH, 
+        y   = DEMND_QTY,
+        col = SALESORG)
+    ) +
+    geom_line() +
+    facet_wrap(
+      
+      ~label, 
+      # scales = 'fixed'
+      scales = 'free_y'
+    ) +
+    theme(
+      plot.title   = element_text(size = 20), # Title font size
+      axis.title.x = element_text(size = 15), # X-axis title font size
+      axis.title.y = element_text(size = 15), # Y-axis title font size
+      axis.text.x  = element_text(size = 12), # X-axis text font size
+      axis.text.y  = element_text(size = 12), # Y-axis text font size
+      legend.title = element_text(size = 14), # Legend title font size
+      legend.text  = element_text(size = 12), # Legend text font size
+      strip.text   = element_text(size = 16)  # Adjust size as needed
+    )
+  
+  ggsave(
+    filename = paste(phl, 'sales.png', sep = '_'),
+    device   = "png",
+    path     = pimg,
+    width    = 5000,
+    height   = 3000,
+    units    = "px"
+  )
+}
+
+fBG <- function(phl, IPH){
+
+  IPH %>%
+    ggplot(
+      aes(
+        x    = CALMONTH, 
+        y    = DEMND_QTY,
+        col  = label,
+        fill = label)
+    ) +
+    geom_col() +
+    facet_wrap(
+      nrow = 1,
+      ~label, 
+      # scales = 'fixed'
+      scales = 'free_y'
+    ) +
+    theme(
+      plot.title   = element_text(size = 20), # Title font size
+      axis.title.x = element_text(size = 15), # X-axis title font size
+      axis.title.y = element_text(size = 15), # Y-axis title font size
+      axis.text.x  = element_text(size = 12), # X-axis text font size
+      axis.text.y  = element_text(size = 12), # Y-axis text font size
+      legend.title = element_text(size = 14), # Legend title font size
+      legend.text  = element_text(size = 12), # Legend text font size
+      strip.text   = element_text(size = 16)  # Adjust size as needed
+    )
+  
+  ggsave(
+    filename = paste(phl, 'bar_sales.png', sep = '_'),
+    device   = "png",
+    path     = pimg,
+    width    = 5000,
+    height   = 3000,
+    units    = "px"
+  )
+}
+```
+
+## PH1
+
+```{r}
+#| label: PH1 - Season Trend
+#| eval: true
+
+tot <-  IALL[, sum(DEMND_QTY)]
+
+ph1 <- 
+  IALL[, .(
+    Q = sum(DEMND_QTY), 
+    P = sum(DEMND_QTY)/tot
+  ), 
+  by = .(
+    PRDH1, PRDH1_TMD
+  )
+  ] %T>% setorder(-Q) %>%
+  .[, P:= cumsum(P)]  %>%
+  .[1:11]             %>%  
+  .[P < 0.97, PRDH1]       
+
+phl <- paste("ph1", sep = "_")
+
+IPH <- 
+  IALL[PRDH1 %chin% ph1,
+       .(DEMND_QTY = sum(DEMND_QTY)/1000000),
+         by = .(label = PRDH1_TMD, SALESORG, CALMONTH)
+  ]
+
+fMP(phl = 'ph1', IPH)
+
+```
+
+## PH2
+
+```{r}
+#| label: PH2 - Season Trend
+#| eval: true
+
+tot <-  IALL[, sum(DEMND_QTY)]
+
+ph2 <- 
+  IALL[, .(
+    Q = sum(DEMND_QTY), 
+    P = sum(DEMND_QTY)/tot
+  ), 
+  by = .(
+    PRDH2, PRDH2_TMD
+  )
+  ] %T>% setorder(-Q) %>%
+  .[, P:= cumsum(P)]  %>%
+  .[1:6, PRDH2]
+# %>%
+#   .[P < 0.85, PRDH2]           
+
+IPH <- 
+  IALL[PRDH2 %chin% ph2,
+       .(DEMND_QTY = sum(DEMND_QTY)/1000000),
+         by = .(label = PRDH2_TMD, SALESORG, CALMONTH)
+  ]
+
+fMP(phl = 'ph2', IPH)
+
+```
+
+## PH3
+
+```{r}
+#| label: PH3 - Season Trend
+#| eval: true
+
+tot <-  IALL[, sum(DEMND_QTY)]
+
+ph3 <- 
+  IALL[, .(
+    Q = sum(DEMND_QTY), 
+    P = sum(DEMND_QTY)/tot
+  ), 
+  by = .(
+    PRDH3, PRDH3_TMD
+  )
+  ] %T>% setorder(-Q) %>%
+  .[, P:= cumsum(P)]  %>%
+  .[1:10]             %>%
+  .[P < 0.8, PRDH3]           
+
+IPH <- 
+  IALL[PRDH3 %chin% ph3,
+       .(DEMND_QTY = sum(DEMND_QTY)/1000000),
+         by = .(label = PRDH3_TMD, SALESORG, CALMONTH)
+  ]
+
+fMP(phl = 'ph3', IPH)
+
+```
+
+## PH4
+
+```{r}
+#| label: PH4 - Season Trend
+#| eval: true
+
+tot <-  IALL[, sum(DEMND_QTY)]
+
+ph4 <- 
+  IALL[, .(
+    Q = sum(DEMND_QTY), 
+    P = sum(DEMND_QTY)/tot
+  ), 
+  by = .(
+    PRDH4, PRDH4_TMD
+  )
+  ] %T>% setorder(-Q) %>%
+  .[, P:= cumsum(P)]  %>%
+  .[1:12]             %>%
+  .[P < 0.8, PRDH4]           
+
+IPH <- 
+  IALL[PRDH4 %chin% ph4,
+       .(DEMND_QTY = sum(DEMND_QTY)/1000000),
+         by = .(label = PRDH4_TMD, SALESORG, CALMONTH)
+  ]
+
+fMP(phl = 'ph4', IPH)
+
+```
+
+### AGG
+
+```{r}
+ITEA <- 
+  IALL[PRDH4 == '00100467' & SALESORG == 'NL10']
+
+fBG(
+  phl = 'MSO', 
+  IPH = ITEA[, .(DEMND_QTY = sum(DEMND_QTY)/1000),
+             by = .(label = PRDH4_TMD, SALESORG, CALMONTH)
+  ]
+)
+
+# MATERIAL
+tot <- ITEA[, sum(DEMND_QTY)]
+mat <- 
+  ITEA[, 
+       .(
+         Q = sum(DEMND_QTY), 
+         P = sum(DEMND_QTY)/tot
+       ), 
+       by = .(
+         MATERIAL, MATERIAL_TMD
+       )
+  ]                   %T>% 
+  setorder(-Q)        %>%
+  .[, P:= cumsum(P)]  %>%
+  .[1:3, MATERIAL] 
+
+fBG(
+  phl = 'NL10_MAT', 
+  IPH = ITEA[MATERIAL %chin% mat,
+             .(DEMND_QTY = sum(DEMND_QTY)/1000),
+             by = .(label = MATERIAL_TMD, SALESORG, CALMONTH)
+  ]
+)
+
+# Customer
+IMAT <- ITEA[MATERIAL %chin% mat[1]]
+
+tot <- IMAT[, sum(DEMND_QTY)]
+cst <- 
+  IMAT[, 
+       .(
+         Q = sum(DEMND_QTY), 
+         P = sum(DEMND_QTY)/tot
+       ), 
+       by = .(
+         CUSTOMER
+       )
+  ]                   %T>% 
+  setorder(-Q)        %>%
+  .[, P:= cumsum(P)]  %>%
+  .[1:6, CUSTOMER] 
+
+fBG(
+  phl = 'NL10_Lemon_Ginger_CST', 
+  IPH = ICST[CUSTOMER %chin% cst,
+             .(DEMND_QTY = sum(DEMND_QTY)/1000),
+             by = .(label = CUSTOMER, SALESORG, CALMONTH)
+  ]
+)
+```
+
+### STL
+
+```{r}
+#| label: STL on Infusion tea
+#| eval: true
+
+
+
+ITEA <- 
+  IALL[PRDH4 == '00100467' & SALESORG == 'NL10',
+       .(DEMND_QTY = sum(DEMND_QTY)/1000),
+         by = .(label = PRDH4_TMD, CALMONTH)
+  ]
+
+tsTEA <- 
+  ITEA[, CALMONTH:= yearmonth(CALMONTH)]                            %>%
+  as_tsibble(, index = "CALMONTH", 
+             key= c("label"))                                       %>%
+  model(
+    STL(DEMND_QTY ~ trend(window = 7) +
+          season(window = "periodic"),
+        robust = TRUE)) %>%
+  components() %>%
+  autoplot() +
+  theme(legend.position = "none")
+
+  ggsave(
+    filename = paste('infusion', 'tea', 'nl10', 'stl.png', sep = '_'),
+    device   = "png",
+    path     = pimg,
+    width    = 5000,
+    height   = 3000,
+    units    = "px"
+  )
+
+```
+
+## MAT
+
+```{r}
+#| label: mat - Season Trend
+#| eval: true
+
+tot <-  IALL[, sum(DEMND_QTY)]
+
+mat <- 
+  IALL[, .(
+    Q = sum(DEMND_QTY), 
+    P = sum(DEMND_QTY)/tot
+  ), 
+  by = .(
+    MAT = MATERIAL, MAT_TMD = MATERIAL_TMD
+  )
+  ] %T>% setorder(-Q) %>%
+  .[, P:= cumsum(P)]  %>%
+  .[1:12]        %>%
+  .[P < 0.8, MAT]  
+
+IPH <- 
+  IALL[MATERIAL %chin% mat,
+       .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(label = MATERIAL_TMD, SALESORG, CALMONTH)
+  ]
+
+fMP(phl = 'mat', IPH)
+
+```
+
+#### Bjorg
+
+```{r}
+#| label: PH2 - Bjorg
+#| eval: true
+
+phl <- paste(ph1, sep = "_")
+
+IPH2 <- 
+  IALL[PRDH1 %chin% c(ph1),
+       .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(label = PRDH2_TMD, SALESORG, CALMONTH)
+  ]
+
+tsSLS <- 
+  IPH2[, CALMONTH:= yearmonth(CALMONTH)]                             %>%
+  as_tsibble(, index = "CALMONTH", 
+             key= c("label", "SALESORG")) 
+
+tsSLS                                                                %>%
+  features(DEMND_QTY, feat_stl)                                      %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = label,
+      col   = label)
+  ) +
+  geom_point() +
+  geom_text_repel() +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = file.path('img', paste0(phl, '_season_trend.png')),
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  units    = "px"
+)
+
+
+IPH2 %>%
+  .[, .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(label, CALMONTH)]                                    %>%
+  ggplot(
+    aes(
+      x = CALMONTH, 
+      y = DEMND_QTY
+      ), 
+    col = "darkgreen"
+    ) +
+  geom_line() +
+  facet_wrap(
+    ~label, 
+    # scales = 'fixed'
+    scales = 'free_y'
+    )
+
+ggsave(
+  filename = file.path('img', paste0(phl, '_sales.png')),
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  height   = 1500,
+  units    = "px"
+)
+```
+
+### Bjorg - PH3
+
+```{r}
+#| label: PH3
+#| eval: true
+
+
+IPH3 <- 
+  IALL[PRDH1 %chin% c('08') & PRDH2_TMD %like% "Bread",
+       .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(label = PRDH3_TMD, SALESORG, CALMONTH)
+  ]
+
+tsSLS <- 
+  IPH3[, CALMONTH:= yearmonth(CALMONTH)]                             %>%
+  as_tsibble(, index = "CALMONTH", 
+             key= c("label", "SALESORG")) 
+
+tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = label,
+      col   = label)
+  ) +
+  geom_point() +
+  geom_text_repel() +
+  # geom_text(aes(label = PRDH2_TMD),
+  #           vjust = -1, hjust = 0.5,
+  #           size = 12, size.unit = "pt"
+  #           ) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "ph3_08_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  height   = 1500,  
+  units    = "px"
+)
+
+```
+
+### BJORG PH4
+
+```{r}
+#| label: PH4
+#| eval: true
+
+
+IPH4 <- 
+  IALL[PRDH1 %chin% c('08') & PRDH2_TMD %like% "Bread",
+       .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(label = PRDH3_TMD, SALESORG, CALMONTH)
+  ]
+
+tsSLS <- 
+  IPH3[, CALMONTH:= yearmonth(CALMONTH)]                             %>%
+  as_tsibble(, index = "CALMONTH", 
+             key= c("label", "SALESORG")) 
+
+tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = label,
+      col   = label)
+  ) +
+  geom_point() +
+  geom_text_repel() +
+  # geom_text(aes(label = PRDH2_TMD),
+  #           vjust = -1, hjust = 0.5,
+  #           size = 12, size.unit = "pt"
+  #           ) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "ph3_08_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  height   = 1500,  
+  units    = "px"
+)
+
+```
+
+```{r}
+#| label: PH4
+#| eval: true
+
+
+IPH4 <- 
+  IALL[PRDH3_TMD %like% "Cereal Cakes",
+       .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(PRDH4_TMD, SALESORG, CALMONTH)
+  ]
+
+tsSLS <- 
+  IPH4[, CALMONTH:= yearmonth(CALMONTH)]                             %>%
+  .[, label:= PRDH4_TMD ] %>%
+  as_tsibble(, index = "CALMONTH", 
+             key= c("label", "SALESORG")) 
+
+gp04 <- 
+  tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = label,
+      col   = label)
+  ) +
+  geom_point() +
+  geom_text_repel() +
+  # geom_text(aes(label = PRDH2_TMD),
+  #           vjust = -1, hjust = 0.5,
+  #           size = 12, size.unit = "pt"
+  #           ) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "ph4_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  height   = 1500,  
+  units    = "px"
+)
+
+```
+
+```{r}
+#| label: MAT
+#| eval: true
+
+
+MAT <- 
+  IALL[PRDH4_TMD %like% "Rice Cakes Plain",
+       .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(MATERIAL_TMD, SALESORG, CALMONTH)
+  ]
+
+tsSLS <- 
+  MAT[, CALMONTH:= yearmonth(CALMONTH)]                             %>%
+  .[, label:= MATERIAL_TMD ] %>%
+  as_tsibble(, index = "CALMONTH", 
+             key= c("label", "SALESORG")) 
+
+gp0M <- 
+  tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = label,
+      col   = label)
+  ) +
+  geom_point() +
+  geom_text_repel() +
+  # geom_text(aes(label = PRDH2_TMD),
+  #           vjust = -1, hjust = 0.5,
+  #           size = 12, size.unit = "pt"
+  #           ) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "mat_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  height   = 1500,  
+  units    = "px"
+)
+
+```
+
+```{r}
+
+tsSLS <- 
+  ISLS[, CALMONTH:= yearmonth(CALMONTH)] %>%
+  as_tsibble(, index = "CALMONTH", key= c("PRDH1_TMD", "PRDH2_TMD", "SALESORG")) 
+  
+
+# tsSLS |>
+#   features(DEMND_QTY, list(mean = mean)) |>
+#   arrange(mean)
+# 
+# tsSLS |>
+#   features(DEMND_QTY, feat_acf)
+# 
+# tsSLS |>
+#   features(DEMND_QTY, feat_stl)
+
+gp01 <- 
+  tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
+  ggplot(
+    aes(
+      x   = trend_strength, 
+      y   = seasonal_strength_year,
+      col = PRDH1_TMD)
+  ) +
+  geom_point() +
+  geom_text(aes(label = PRDH1_TMD), vjust = -1, hjust = 0) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "ph1_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  units    = "px"
+)
+```
+
+```{r}
+
+tsSLS <- 
+  ISLS[, CALMONTH:= yearmonth(CALMONTH)] %>%
+  as_tsibble(, index = "CALMONTH", key= c("PRDH1_TMD", "PRDH2_TMD", "SALESORG")) 
+  
+
+gp02 <- 
+  tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
+  ggplot(
+    aes(
+      x   = trend_strength, 
+      y   = seasonal_strength_year,
+      col = PRDH1_TMD)
+  ) +
+  geom_point() +
+  geom_text(aes(label = PRDH1_TMD), vjust = -1, hjust = 0) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "bjorg_ph2_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  units    = "px"
+)
+```
+
+```{r}
+
+tsSLS |>
+  features(DEMND_QTY, feat_stl) |>
+  filter(
+    seasonal_strength_year == max(seasonal_strength_year, na.rm = TRUE)
+  ) |>
+  left_join(tsSLS, by = c("PRDH1_TMD", "PRDH2_TMD"), multiple = "all") |>
+  ggplot(aes(x = CALMONTH, y = DEMND_QTY)) +
+  geom_line() +
+  labs(title = "CLIPPER (CUPPER)", subtitle = "Hot Drinks") 
+
+# ISLS %>%
+#   .[PRDH1_TMD == 'CLIPPER (CUPPER)'] %>%
+#   ggplot(
+#     aes(
+#       x   = CALMONTH, 
+#       y   = DEMND_QTY
+#       ), col = "darkgreen"
+#     ) +
+#   geom_line() 
+
+ISLS %>%
+  .[, .(DEMND_QTY = sum(DEMND_QTY)), by = .(PRDH1_TMD, CALMONTH)] %>%
+  ggplot(
+    aes(
+      x   = CALMONTH, 
+      y   = DEMND_QTY
+      ), col = "darkgreen"
+    ) +
+  geom_line() +
+  facet_wrap(
+    ~PRDH1_TMD, 
+    # scales = 'fixed'
+    scales = 'fixed'
+    )
+
+
+
+```
+
+```{r}
+prdh1_features <- 
+  tsSLS |>
+  features(DEMND_QTY, feature_set(pkgs = "feasts"))
+
+tsSLS |>
+  filter(PRDH1_TMD == "CLIPPER (CUPPER)") |>
+  model(
+    STL(DEMND_QTY ~ trend(window = 7) +
+                   season(window = "periodic"),
+    robust = TRUE)) |>
+  components() |>
+  autoplot() +
+  theme(legend.position = "none")
+```
+
+# Stock Data
+
+```{r}
+#| label: 'Stock Data',
+#| eval:   true
+
+# Define the path to your Parquet file
+FN_STCK<- 
+  file.path(
+      PS02, SYS, "STK", "ARR", 
+      "IMP03SM1_F.parquet"
+    ) %>% 
+  normalizePath() 
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
+
+# Check file metadata
+# read_parquet(FFN, as_data_frame = FALSE) %T>%
+#   print()
+
+# Query the file and load it into a data.table
+
+# Query the file and load it into a data.table
+system.time({
+  STCK <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT 
+          * 
+         FROM 
+          read_parquet('", FN_STCK, "')
+         WHERE 
+          MATERIAL = '000000000000010023'"
+      )
+    )                                                                  %>%
+    setDT()
+  
+  # View the data.table
+  View(STCK[0:100])
+})
+
+# Disconnect from DuckDB
+dbDisconnect(con)
+
+
+```
+
+```{r}
+
+# Execute the SQL query and load the result into a data.table
+system.time({
+  JOINED <- 
+    dbGetQuery(
+      con,
+      paste0(
+        "SELECT 
+          MATL.MATERIAL, 
+          MATL.MATERIAL_TMD, 
+          DATE_TRUNC('month', ISLS.CALDAY) AS CALMONTH, 
+          SUM(CAST(ISLS.SLS_QT_SO AS DOUBLE)) AS SLS_QT_SO
+         FROM 
+          read_parquet('", FN_ISLS, "') AS ISLS
+         INNER JOIN 
+          read_parquet('", FN_MATL, "') AS MATL
+         ON 
+          ISLS.MATERIAL = MATL.MATERIAL
+         WHERE 
+          MATL.PRDH1 = '08'
+         GROUP BY 
+          MATL.MATERIAL, 
+          MATL.MATERIAL_TMD, 
+          CALMONTH
+         ORDER BY 
+          CALMONTH"
+      )
+    ) %>%
+    setDT()
+})
+
+# Check the result
+View(JOINED)
+
+```
+
+# Scoping
+
+```{r}
+#| label: 'Scoping',
+#| eval:   true
+
+DD_HISTO_QTY <- DD_HISTO_QTY[SALESORG %chin% c('FR30', 'NL10')]
+
+dtMATERIAL <- 
+  copy(MATERIAL)                                           %>%
+  .[PRDH1 %chin% 
+      c(
+        '07', # ALTER ECO
+        '08', # BJORG
+        '10', # CLIPPER (CUPPER)
+        '15', # ZONNATURA
+        '53', # TANOSHI
+        '65'  # NATURELA
+      )
+  ]                                                        %>%
+  MAT_SALES[., on = .(MAT_SALES == MATERIAL)]              %>%
+  .[SALESORG %chin% c("FR30", "NL10")]                     %>%
+  MAT_PLANT[., on = .(MAT_PLANT == MAT_SALES)]             %>%
+  .[, `:=` (MATERIAL = MAT_PLANT, MAT_PLANT = NULL)]       %T>%
+  setcolorder(c("MATERIAL", "SALESORG", "PLANT"))          %T>%
+  setkeyv(c("MATERIAL", "SALESORG", "PLANT"))
+
+```
+
+```{r}
+
+# dtSLS <- 
+#   DD_HISTO_QTY[MATERIAL %chin% dtMATE$MATERIAL &
+#                  PLANT %chin% c("FR30", "NL60","NL63")]         %>%
+#   .[, CALMONTH:= floor_date(CALDAY, "month")]                   %>%
+#   .[, .(
+#     SLS_QT_SO  = sum(as.numeric(SLS_QT_SO) , na.rm = TRUE), 
+#     SLS_QT_RET = sum(as.numeric(SLS_QT_RET), na.rm = TRUE), 
+#     SLS_QT_FOC = sum(as.numeric(SLS_QT_FOC), na.rm = TRUE), 
+#     SLS_QT_DIR = sum(as.numeric(SLS_QT_DIR), na.rm = TRUE), 
+#     # SLS_QT_PRO = sum(as.numeric(SLS_QT_PRO), na.rm = TRUE), 
+#     SLS_QT_IC  = sum(as.numeric(SLS_QT_IC) , na.rm = TRUE), 
+#     MSQTBUO    = sum(as.numeric(MSQTBUO)   , na.rm = TRUE)
+#   ),
+#     by = .(CALMONTH, MATERIAL, SALESORG, PLANT)
+#   ]                                                             %>%
+#   .[, DEMND_QTY:= 
+#       SLS_QT_SO + 
+#       # SLS_QT_RET + 
+#       SLS_QT_FOC + 
+#       SLS_QT_DIR + 
+#       # SLS_QT_PRO + 
+#       SLS_QT_IC
+#     ]
+  
+```
+
+# Validation
+
+## Actuals
+
+### IPM
+
+#### Open Hub
+
+DSCP 2018 - actuals
+
+```{r}
+#| label:   'get_data_OH_IPM',
+#| comment: 'OH_IPM002_A: IPM data from Open Hub'
+#| eval:     false
+
+system.time({
+  
+  fLoad_Historical_Sales <- 
+    function(yr){
+      f <- 
+        file.path(PIPM, paste0("DD_HISTO_QTY_", yr, ".CSV"))
+      if(file.exists(f)){
+        fread(file = f, showProgress = TRUE)
+      } else {
+        data.table()
+      }
+    }
+  
+  OH_IPM002_A <- 
+    purrr::map(
+      c("2021", "2022", "2023", "2024"),
+      fLoad_Historical_Sales
+    )                                                                       %>%
+    rbindlist()                                                             %T>%
+    setnames(fGetOHFields("ZSOP_ASLS"))                                     %T>%
+    setnames(
+      c("MATERIAL_CODE", "SOLDTO_CODE", "PLANT_CODE", "SALESORG_CODE", "PERIOD"),
+      c("MATERIAL"     , "CUSTOMER"   , "PLANT"     , "SALESORG"     , "CALDAY")
+    )                                                                       %>%
+    .[, MATERIAL:= LP0(MATERIAL, 18)]                                       %>%
+    .[, CUSTOMER:= LP0(CUSTOMER, 10)]
+  # %>%
+  #   .[PLANT %chin% DSCP_AMB_PLANT]                                          %>%
+  #   .[CALDAY >= floor_date(today(), "year") - years(3)]                     %>%
+  #   .[!(IS_QT_SO == 0  & IS_QT_RET == 0 & IS_QT_FOC == 0 &
+  #       IS_QT_DIR == 0 & IS_QT_PRO == 0 & IS_QT_IC  == 0 & MSQTBUO == 0) ]
+  
+})
+
+```
+
+```{r}
+#| label: 'get_data_BW_IPM',
+#| eval:  false
+
+# Active Data Table for DataStore IPM00 #### 
+B4_IPM002_A <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BIC/AIPM002",
+     pOptions  = list(
+       "CALDAY GE '20240101'", "AND",
+       "PLANT   EQ 'FR30'"
+     ),
+     pFields   = list(
+        "MATERIAL"        , # Material                            X
+        "CUSTOMER"        , # Customer number                     X
+        "PLANT"           , # Plant                               X
+        "SALESORG"        , # Sales Organization                  X
+        "CALDAY"          , # Calendar day                        X
+        # "RECORDMODE"      , #
+        # "BASE_UOM"        , # Base Unit of Measure
+        "/BIC/MSQTBUO"    , # Missed sales qty (BUOM)
+        "/BIC/IS_QT_SO"   , # Issued Qty: Sales Order
+        "/BIC/IS_QT_RET"  , # Issued Qty: Returns
+        "/BIC/IS_QT_FOC"  , # Issued Qty: Free of Charge
+        "/BIC/IS_QT_EXC"  , # Issued Qty: Excess Stock
+        "/BIC/IS_QT_DIR"  , # Issued Qty: Direct
+        "/BIC/IS_QT_PRO"  , # Issued Qty: Sales Order Promo Flag
+        "/BIC/IS_QT_IC"   #, # Issued Qty: InterCompany
+        # "MAT_SALES"       , # Material (Sales)
+        # "MAT_PLANT"       , # Material Plant
+        # "CUST_SALES"      , # Customer number (sales view)
+        # "DISTR_CHAN"      , # Distribution Channel
+        # "DIVISION"          # Division
+    ),
+     pRowcount = Inf
+   )
+```
+
+### SDSFRPR1
+
+#### OpenHub
+
+pre-demand actuals snap-shots
+
+```{r}
+#| label:    'get_data_OH_SDSFRPR1',
+#| comment:  'pre-DR Actuals',
+#| eval:      false
+
+options(scipen=999)
+
+pAREA <- "SDSFRPR1"
+SDSFRPR1 <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    # pKEY = c("CALDAY", "MATERIAL", "CUSTOMER", "PLANT"),
+    pPTH  = file.path(PDYN)
+  )                                                                       %>%
+  .[, !c("PRMCP_QTY", "DMDCP_QTY")]                                       %>%
+  .[SALESORG %chin% c("FR30", "NL10")]                                    %>%
+  .[, `:=` 
+    (
+      DEMND_QTY = fSignLeft(DEMND_QTY),
+      BSELN_QTY = fSignLeft(BSELN_QTY),
+      PROMO_QTY = fSignLeft(PROMO_QTY)
+    )
+  ]
+
+# copy(SDSFRPR1) %>%
+#   .[, CHECK_QTY:= round(DEMND_QTY - BSELN_QTY - PROMO_QTY, 2)]            %T>%
+#   fOpen_as_xlsx(SDSFRPR1[ MATERIAL == LP0("10023", 18) & CHECK_QTY != 0])
+
+```
+
+```{r}
+#| label:    'get_data_BW_SDSFRPR1',
+#| comment:  'pre-DR Actuals',
+#| eval:     false
+
+# Active Data Table for DataStore SDSFRPR1 #### 
+B4_SDSFRPR12_A <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BIC/ASDSFRPR12",
+     pOptions  = list(
+       "CALMONTH     GE '202101'", "AND",
+       "CALMONTH     LE '202411'", "AND",
+       "/BIC/VERSMON EQ '202411'"
+     ),
+     pFields   = list(
+        "COMP_CODE"       , # Company code                 X
+        "SALESORG"        , # Sales Organization           X
+        "PLANT"           , # Plant                        X
+        "MATERIAL"        , # Material                     X
+        "CUST_HIE03"      , # Customer Hierarchy Level 3   X
+        "CALMONTH"        , # Calendar year/month          X
+        "VTYPE"           , # Value Type for Reporting     X
+        "/BIC/FTYPE"      , # Forecast Type                X
+        "/BIC/VERSMON"    , # Version Calendar year/month  X
+        "RECORDMODE"      , #
+        "UPD_DATE"        , # Update Date
+        "CUST_HIE02"      , # Customer Hierarchy Level 2
+        "CUST_HIE01"      , # Customer Hierarchy Level 1
+        "/BIC/DEMND_QTY"  , # Demand qty
+        "/BIC/BSELN_QTY"  , # Baseline qty
+        "/BIC/PROMO_QTY"  , # Promotion qty
+        # "/BIC/DMDCP_QTY"  , # Demand components qty
+        # "/BIC/PRMCP_QTY"  , # Promo components qty
+        "BASE_UOM"          # Base Unit of Measure
+    ),
+     pRowcount = Inf
+   )
+
+```
+
+### SDMDMFR1
+
+#### B4 Extract
+
+pre-demand actuals as-was
+
+```{r}
+#| label:   'get_data_BW_SDMDMFR12',
+#| comment: 'pre-DR Actuals As-Was',
+#| eval:    false
+
+# Active Data Table for DataStore SDMFRPR1 #### 
+B4_SDMFRPR12_A <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BIC/ASDMFRPR12",
+     pOptions  = list(
+       "SALESORG     IN ('FR30', 'NL10')"
+     ),
+     pFields   = list(
+        # "COMP_CODE"       , # Company code                  X
+        "SALESORG"        , # Sales Organization            X
+        "PLANT"           , # Plant                         X
+        "MATERIAL"        , # Material                      X
+        "CUST_HIE03"      , # Customer Hierarchy Level 3    X
+        "CALMONTH"        , # Calendar year/month           X
+        # "VTYPE"           , # Value Type for Reporting      X
+        # "/BIC/FTYPE"      , # Forecast Type                 X
+        "/BIC/VERSMON"    , # Version Calendar year/month   X
+        # "RECORDMODE"      , #
+        # "UPD_DATE"        , # Update Date
+        "CUST_SALES"      , # Customer number (sales view)
+        "MAT_PLANT"       , # Material Plant
+        "MAT_SALES"       , # Material (Sales)
+        "DISTR_CHAN"      , # Distribution Channel
+        "CUSTOMER"        , # Customer number
+        "DIVISION"        , # Division
+        # "CALYEAR"         , # Calendar year
+        # "CALMONTH2"       , # Calendar month
+        # "CUST_HIE02"      , # Customer Hierarchy Level 2
+        # "CUST_HIE01"      , # Customer Hierarchy Level 1
+        "/BIC/DEMND_QTY"  , # Demand qty
+        "/BIC/BSELN_QTY"  , # Baseline qty
+        "/BIC/PROMO_QTY"  , # Promotion qty
+        # "/BIC/DMDCP_QTY"  , # Demand components qty
+        # "/BIC/PRMCP_QTY"  , # Promo components qty
+        "BASE_UOM"          # Base Unit of Measure
+    ),
+     pRowcount = Inf
+   )
+
+```
+
+### SDSFRPR2
+
+Pre-demand Forecast Snapshots
+
+```{r}
+#| label   : 'get_data_OH_SDSFRPR2',
+#| comment : "pre-DR Forecasts",
+#| eval    : false
+
+options(scipen=999)
+
+pAREA <- "SDSFRPR2"
+SDSFRPR2 <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    # pKEY = c("CALDAY", "MATERIAL", "CUSTOMER", "PLANT"),
+    pPTH  = file.path(PDYN)
+  )                                                                       %>%
+  .[, !c("PRMCP_QTY", "DMDCP_QTY")]                                       %>%
+  .[SALESORG %chin% c("FR30", "NL10")]                                    %>%
+  .[, `:=` 
+    (
+      DEMND_QTY = fSignLeft(DEMND_QTY),
+      BSELN_QTY = fSignLeft(BSELN_QTY),
+      PROMO_QTY = fSignLeft(PROMO_QTY)
+    )
+  ]                                                                       %>%
+  .[, CHECK_QTY:= round(DEMND_QTY - BSELN_QTY - PROMO_QTY, 2)]                      
+
+fOpen_as_xlsx(SDSFRPR1[ MATERIAL == LP0("10023", 18) & CHECK_QTY != 0])
+
+
+  # .[, .(
+  #   DEMND_QTY = sum(DEMND_QTY),
+  #   BSELN_QTY = sum(BSELN_QTY),
+  #   PROMO_QTY = sum(PROMO_QTY)
+  # ), by = .(
+  #   CALMONTH, 
+  #   MATERIAL, 
+  #   SALESORG, 
+  #   PLANT,
+  #   BASE_UOM
+  # )
+  # ]
+```
+
+# TransForm
+
+```{r}
+#| label: 'transform_dtIMP',
+#| eval:  true
+
+dtIMP <- 
+  OH_IPM002_A[SALESORG %chin% c("FR30", "NL10")]                          %>%
+  CUST_SALES[., on = .(CUST_SALES == CUSTOMER, SALESORG)]                 %>%
+  .[, CALMONTH:= floor_date(CALDAY, "month")]                             %>%
+  .[, .(
+    SLS_QT_SO  = sum(as.numeric(IS_QT_SO) , na.rm = TRUE), 
+    SLS_QT_RET = sum(as.numeric(IS_QT_RET), na.rm = TRUE),
+    SLS_QT_FOC = sum(as.numeric(IS_QT_FOC), na.rm = TRUE), 
+    SLS_QT_DIR = sum(as.numeric(IS_QT_DIR), na.rm = TRUE), 
+    SLS_QT_PRO = sum(as.numeric(IS_QT_PRO), na.rm = TRUE),
+    SLS_QT_IC  = sum(as.numeric(IS_QT_IC) , na.rm = TRUE), 
+    MSQTBUO    = sum(as.numeric(MSQTBUO)  , na.rm = TRUE)
+  ), by = 
+    .(
+      MATERIAL  , 
+      CUST_HIE03,      
+      PLANT     ,
+      SALESORG  , 
+      CALMONTH
+    )
+  ]                                                                       %>%
+    .[, DEMND_QTY:= 
+        SLS_QT_SO + 
+        # SLS_QT_RET + 
+        SLS_QT_FOC + 
+        SLS_QT_DIR + 
+        # SLS_QT_PRO + 
+        SLS_QT_IC
+    ]                                                                     %>%
+  # .[, .(
+  #   CALMONTH   = CALMONTH,
+  #   MATERIAL   = RL0(MATERIAL),
+  #   CUST_HIE03 = RL0(CUST_HIE03),
+  #   SALESORG   = SALESORG,
+  #   PLANT      = PLANT,
+  #   DEMND_QTY  = DEMND_QTY
+  # )
+  # ]                                                                       %>%
+  # .[, TYPE:= 'IMP']
+```
+
+## Comparison Actuals
+
+```{r}
+#| label: 'dtCMP',
+#| eval:  true
+
+
+dtCMP <-
+  copy(B4_SDMFRPR12_A)                                                    %>%
+  # copy(SDSFRPR1)                                                          %>%
+  .[, .(
+    CALMONTH   = ymd(paste0(CALMONTH, "01")),
+    MATERIAL   = MATERIAL,
+    CUST_HIE03 = CUST_HIE03,
+    SALESORG   = SALESORG,
+    PLANT      = PLANT,
+    DEMND_QTY  = DEMND_QTY  
+  )]                                                                      %>%
+  .[, TYPE:= 'FP1']                                                       %>%
+  rbind(
+    dtIMP[CALMONTH < ymd("2024-11-01"), .(
+      CALMONTH   = CALMONTH,
+      MATERIAL   = MATERIAL,
+      CUST_HIE03 = CUST_HIE03,
+      SALESORG   = SALESORG,
+      PLANT      = PLANT,
+      DEMND_QTY  = DEMND_QTY,
+      TYPE       = 'IMP'
+    )],
+    .,
+    use.names = TRUE
+  )                                                                       %>%
+  dcast.data.table(
+    ... ~ TYPE, 
+    fun.aggregate = sum,
+    value.var     = "DEMND_QTY"
+  )                                                                       %>%
+  .[, `:=` 
+    (
+    DIFF    = IMP - FP1,
+    FP1_DEC = (as.integer(FP1) == FP1),
+    IMP_DEC = (as.integer(IMP) == IMP)
+  )
+  ]                                                                       %>%
+  .[round(DIFF,0) != 0]                                          
+```
+
+```{r}
+dtNL10 <- 
+  OH_IPM002_A %>%
+  .[SALESORG == 'NL10' &
+      CALDAY >= ymd("2024-01-01")] %>%
+  CUST_SALES[, .(CUST_SALES, SALESORG, CUST_HIE03)][
+    ., on = .(CUST_SALES == CUSTOMER, SALESORG)]  %>%
+  .[is.na(CUST_HIE03)]
+```
+
+```{r}
+dtACT <-
+  DD_HISTO_QTY[, CUSTOMER:= LP0(CUSTOMER, 10)]       %>%
+  CUST[., on = c("CUSTOMER", "SALESORG")]            %>%
+  .[, CALMONTH:= floor_date(CALDAY, "month")]        %>%
+  .[, .(
+    SLS_QT_SO  = sum(as.numeric(SLS_QT_SO) , na.rm = TRUE), 
+    SLS_QT_RET = sum(as.numeric(SLS_QT_RET), na.rm = TRUE), 
+    SLS_QT_FOC = sum(as.numeric(SLS_QT_FOC), na.rm = TRUE), 
+    SLS_QT_DIR = sum(as.numeric(SLS_QT_DIR), na.rm = TRUE), 
+    SLS_QT_PRO = sum(as.numeric(SLS_QT_PRO), na.rm = TRUE), 
+    SLS_QT_IC  = sum(as.numeric(SLS_QT_IC) , na.rm = TRUE), 
+    MSQTBUO    = sum(as.numeric(MSQTBUO)   , na.rm = TRUE)
+  ),
+    by = .(CALMONTH, MATERIAL, CUST_HIE03, SALESORG, PLANT)
+  ] %>%
+  .[, DEMND_QTY:= 
+      SLS_QT_SO + 
+      # SLS_QT_RET + 
+      SLS_QT_FOC + 
+      SLS_QT_DIR + 
+      # SLS_QT_PRO + 
+      SLS_QT_IC
+    ]
+
+# cols <- intersect(names(B4_SDSFRPR12_A), names(dtACT))
+```
+
+```{r}
+dtCMP2 <- 
+  dtCMP[CALMONTH < ymd("20241101")] %>%
+  .[, .(
+    SC_113B = sum(SC_113B),
+    SC_113E = sum(SC_113E),
+    SOURCE  = sum(SOURCE)
+    ),
+    by = .(CALMONTH, MATERIAL, SALESORG, PLANT)
+  ] %>%
+  .[, DIFF:= SOURCE - SC_113B] %>%
+  .[DIFF != 0]
+  
+```
+
+```{r}
+dtNIXTLA <- 
+  dtACT[MATERIAL == "10023" & PLANT == "FR30"] %>%
+  .[, .(y = sum(DEMND_QTY)), 
+    by = .(
+      unique_id = paste(PLANT, MATERIAL, sep = "_"), 
+      ds = CALMONTH
+      )
+    ] %T>%
+  fwrite(
+    file = file.path(PYTH, "FR30_10023.csv")
+  )
+```

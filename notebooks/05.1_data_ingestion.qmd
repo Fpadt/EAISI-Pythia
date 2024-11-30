@@ -1,0 +1,311 @@
+---
+title   : EAISI - Pythia
+subtitle: Data Ingestion
+author  : "F.J. Padt"
+date    : "`r format(Sys.time(), '%B %d, %Y')`"
+output  :
+  pdf_document:
+    df_print: paged
+    toc: yes
+    toc_depth: 1      
+editor_options:
+  chunk_output_type: console
+  markdown: 
+    wrap: 80  
+---
+
+\newpage
+
+![Logo](C:/PW\OneDrive\ET\pythia\img\pythia_logo2_no_text.png)
+
+# Purpose
+
+Refresh data sets for the Pythia project from BW OpenHub to Pythia on PET. The
+data sets are used to validate the Pythia model.
+
+This code needs to run in Ecotone Network and SAP should be available
+
+# Setup
+
+```{r}
+#| label:  setup
+#| eval:   true
+
+knitr::opts_chunk$set(
+  cache   = FALSE,
+  echo    = TRUE,     # include R source code in the output  
+  eval    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  results = "markup",
+  image   = TRUE,  
+  include = TRUE      # include the chunk output in the output 
+)
+
+SID <- "WPB500"
+SYS <- substr(SID, 1, 3)
+
+# SAP Access
+library(reticulate)
+use_condaenv("sapyr")
+
+# public functions ---------------------------------------------------------
+invisible(source('library/KnitR_SetUp.R'))
+
+lsrc <- "notebooks/05_data_ingestion.R"  
+if( file.exists(lsrc)){source(lsrc)}
+
+```
+
+```{r}
+clipr::write_clip(normalizePath(file.path(PS01, SYS, "RTP", "CSV")))
+```
+
+# Export & Copy Procedure
+
+## Pythia DTP's
+
+| Seq. | DTP | Description | Time |
+|----|----|----|----|
+| 0 | DTP_006EIZGR39XAWQANS1LNUZF2Y | Pythia's Advice -\> IS PERKZ-W \[2021\] Incl.FR50 | 15 min. |
+| 0 | DTP_006EIZGR39XAWQANYOZZI4HSQ | Pythia's Advice -\> IS PERKZ-W \[2022\] Incl.FR50 |  |
+| 0 | DTP_006EIZGR39XAWQANZ3O0NUFIY | Pythia's Advice -\> IS PERKZ-W \[2023\] Incl.FR50 |  |
+| 1 | DTP_006EIZGR39XAWQANZFHWJ64UY |  |  |
+| 2 | DTP_006EIZGR39XAWPP4O3JPT9E6Y | PYTHIA -\> IS PERKZ-W \[\>=2024\] | 05 min |
+| 3 | DTP_006EIZGR39XAWPP4SWFV127TM | OS PERKZ-W \[\>=SY-DATE - 60\] | 02 min |
+
+## Export
+
+1.  \[15. Min\] RSPC: LC_DYN_PERKZ_W
+2.  \[05. Min\] DTP_006EIZGR39XAWPP4O3JPT9E6Y PYTHIA -\> IS PERKZ-W \[\>=2024\]
+3.  AL11 - DSCP E:\USR\SAP\STAGE\DSCP\PERKZ\_W\
+4.  save PRTP
+    1.  TMP execute next code chunk to change Thousands Separator
+5.  
+
+## RTP Sales
+
+```{r}
+#| label: 'Concatenate sales data'
+#| eval:   true
+
+fReadHist <- 
+  function(yr, bsn){
+    fread(
+      file = file.path(
+        PS01, SYS, "RTP", "CSV", 
+        paste0("DD_SALES_QTY_20", yr, ".CSV")
+      )
+    )
+  }
+
+YRS <- c(yr = 24:24)
+BNM <- "DD_HISTO_QTY"
+SAV <- FALSE
+
+system.time({
+  SLS <- 
+    map(.x = YRS, .f = fReadHist, bsn = BNM)                         %>%
+    rbindlist()                                                      %T>%
+    setnames(fGet_FieldNames("DSCP_TRAN"))                           %>%
+    .[, `:=` (
+      MATERIAL   = LP0(MATERIAL, 18),
+      CUSTOMER   = LP0(CUSTOMER, 10)    
+    )]  
+  
+    if(SAV == TRUE){
+    write_parquet(
+      SLS,
+      sink = file.path(
+        PS02, SYS, "RTP", "ARR", 
+        paste0("DD_HISTO_QTY_", min(YRS), "-", max(YRS), ".parquet")
+      )
+    )}
+})
+```
+
+## RTP Master Data
+
+### Material
+
+#### MATERIAL
+
+```{r}
+#| label: 'MATERIAL'
+#| eval:   true
+
+pAREA <- "MATERIAL"
+MATERIAL <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    pKEY  = c(pAREA),
+    pPTH  = file.path(PS01, SYS, "RTP", "CSV")
+  )                                                                       %>% 
+ .[, MATERIAL:= LP0(MATERIAL, 18)]                                        %T>%
+  setcolorder("MATERIAL")                                                 %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "RTP", "ARR", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+    )
+  )
+
+```
+
+#### MAT_SALES
+
+```{r}
+#| label: 'MAT_SALES',
+#| eval:   true
+
+pAREA <- "MAT_SALES"
+MAT_SALES <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    pPTH  = file.path(PS01, SYS, "RTP", "CSV")
+  )                                                                       %>%
+  .[, DISTR_CHAN:= 10]                                                    %>%
+  .[, `:=` (MAT_SALES = LP0(MATERIAL, 18), MATERIAL = NULL)]              %T>%
+  setcolorder(c("MAT_SALES", "SALESORG", "DISTR_CHAN"))                   %T>%       
+  setkey("MAT_SALES", "SALESORG", "DISTR_CHAN")                           %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "RTP", "ARR", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+    )
+  )                                                              
+
+```
+
+#### MAT_PLANT
+
+```{r}
+#| label: 'MAT_PLANT',
+#| eval:   true
+
+pAREA <- "MAT_PLANT"
+MAT_PLANT <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    pKEY  = c("MAT_PLANT", "PLANT"),
+    pPTH  = file.path(PS01, SYS, "RTP", "CSV")
+  )                                                                       %>%
+  .[, `:=` (MAT_PLANT = LP0(MAT_PLANT, 18))]                              %T>%
+  setcolorder(c("MAT_PLANT", "PLANT"))                                    %T>%       
+  setkey("MAT_PLANT", "PLANT")                                            %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "RTP", "ARR", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+    )
+  ) 
+```
+
+### Customer
+
+#### CUST_SALES
+
+```{r}
+#| label: 'CUST_SALES',
+#| eval:   true
+
+pAREA <- "SOLDTO"
+CUST_SALES <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    # pKEY  = c("MAT_PLANT", "PLANT"),
+    pPTH  = file.path(PS01, SYS, "RTP", "CSV")
+  )                                                                       %>%
+  .[, `:=` (
+    CUST_SALES = LP0(CUSTOMER  , 10), 
+    CUSTHIE04  = LP0(CUSTHIE04 , 10), 
+    CUST_HIE03 = LP0(CUST_HIE03, 10), 
+    CUST_HIE02 = LP0(CUST_HIE02, 10), 
+    CUST_HIE01 = LP0(CUST_HIE01, 10),     
+    DISTR_CHAN = 10, 
+    CUSTOMER   = NULL
+    )]                                                                    %T>%
+  setcolorder(c("CUST_SALES", "SALESORG", "DISTR_CHAN"))                  %T>%         
+  setkey("CUST_SALES", "SALESORG", "DISTR_CHAN")                          %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "RTP", "ARR", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+    )
+  ) 
+```
+
+### Stock
+
+```{r}
+#| label: 'Stock'
+#| eval:   true
+
+pAREA <- "STOCK"
+STK <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    # pKEY  = c("MAT_PLANT", "PLANT"),
+    pPTH  = file.path(PS01, SYS, "STK", "CSV")
+  )                                                              %T>%         
+  setkey("CALDAY", "MATERIAL", "PLANT")                          %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "STK", "ARR",
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+    )
+  ) 
+
+```
+
+### Promotions
+
+#### PromoNat
+
+```{r}
+#| label: 'PROMO'
+#| eval:   true
+
+REL_FLDS <- 
+  wb_to_df(
+    file  = file.path(PS01, "PRM", "PROMONAT.xlsx"),
+    sheet = "FIELDS",
+    cols  = c(2, 4, 5)
+  )                         %>%
+  setDT()                   %>%
+  .[RELEVANT == "YES", COL] %>%
+  sort()
+
+PROMONAT <-
+  wb_to_df(
+    file  = file.path(PS01, "PRM", "PROMONAT.xlsx"),
+    sheet = "PROMONAT",
+    cols  = REL_FLDS
+  )                                                           %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, "PRM", "ARR", 
+      "PROMONAT.parquet"
+    )
+  )                                                     
+
+CR_PR_PROMO_CL2_HEADER <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL2_HEADER.CSV")
+  )
+
+CR_PR_PROMO_CL2_LINE <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL2_LINE.CSV")
+  )
+
+CR_PR_PROMO_CL3_HEADER <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL3_HEADER.CSV")
+  )
+
+CR_PR_PROMO_CL3_LINE <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL3_LINE.CSV")
+  )
+```
