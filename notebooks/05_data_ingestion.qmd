@@ -46,8 +46,8 @@ SID <- "WPB500"
 SYS <- substr(SID, 1, 3)
 
 # SAP Access
-library(reticulate)
-use_condaenv("sapyr")
+# library(reticulate)
+# use_condaenv("sapyr")
 
 # public functions ---------------------------------------------------------
 invisible(source('library/KnitR_SetUp.R'))
@@ -81,6 +81,522 @@ clipr::write_clip(normalizePath(file.path(PS01, SYS, "RTP", "CSV")))
 5.  
 
 ## RTP Sales
+
+```{r}
+#| label: 'get Header DD_SALES_QTY'
+#| eval:   false
+#| 
+# HDR <- fread(
+#   file = file.path(PS01, SYS, "RTP", "CSV", paste0("S_DD_SALES_QTY.CSV")),
+#   header = TRUE, skip=5
+#   )
+```
+
+```{r}
+#| label: 'DuckDB test'
+#| eval:   false
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb(), dbdir = ":memory:")
+
+yr  <- 21
+FFNS <- 
+  file.path(
+    PS01, SYS, "RTP", "CSV", 
+    paste0("DD_SALES_QTY_20", yr, ".CSV")
+  )
+
+FFNT <- 
+  file.path(
+    PS02, SYS, "RTP", "ARR", 
+    paste0("DD_SALES_QTY_20", yr, ".parquet")
+  )
+
+# Define the Source CSV definition
+SLS_CSV <- glue_sql("
+  read_csv({FFNS},
+    delim      = ';',
+    header     = false,
+    dateformat = '%Y-%m-%d',
+    columns = {{
+      'MATERIAL'  : 'VARCHAR',
+      'CUSTOMER'  : 'VARCHAR',
+      'PLANT'     : 'VARCHAR',
+      'SALESORG'  : 'VARCHAR',
+      'CALDAY'    : 'DATE',
+      'SLS_QT_SO' : 'FLOAT',
+      'SLS_QT_RET': 'FLOAT',
+      'SLS_QT_FOC': 'FLOAT',
+      'SLS_QT_DIR': 'FLOAT',
+      'SLS_QT_PRO': 'FLOAT',
+      'SLS_QT_IC' : 'FLOAT',
+      'MSQTBUO'   : 'FLOAT'
+    }}
+  )", .con = con)
+
+# Use the Source CSV parameter in the main SQL query
+sql_01_get_data <- glue_sql("
+  SELECT
+  *
+  FROM
+  {SLS_CSV}
+  ", .con = con)
+
+
+# sql_01_get_data <-
+#   paste0("
+# SELECT
+# *
+# FROM
+# read_csv('", FFNS, "',
+# delim      = ';',
+# header     = false,
+# dateformat = '%Y-%m-%d',
+# columns = {
+# 'MATERIAL'  : 'VARCHAR',
+# 'CUSTOMER'  : 'VARCHAR',
+# 'PLANT'     : 'VARCHAR',
+# 'SALESORG'  : 'VARCHAR',
+# 'CALDAY'    : 'DATE'   ,
+# 'SLS_QT_SO' : 'FLOAT'  ,
+# 'SLS_QT_RET': 'FLOAT'  ,
+# 'SLS_QT_FOC': 'FLOAT'  ,
+# 'SLS_QT_DIR': 'FLOAT'  ,
+# 'SLS_QT_PRO': 'FLOAT'  ,
+# 'SLS_QT_IC' : 'FLOAT'  ,
+# 'MSQTBUO'   : 'FLOAT'
+# })
+# ")
+
+
+
+sql_02_transform_data <- 
+  paste0(
+    "SELECT 
+      lpad(MATERIAL, 18, '0')     as MATERIAL  ,
+      lpad(CUSTOMER, 10, '0')     as CUSTOMER  ,
+      PLANT                       as PLANT     ,
+      SALESORG                    as SALESORG  ,
+      CALDAY                      as CALDAY    ,
+      DATE_TRUNC('month', CALDAY) as CALMONTH,
+      SLS_QT_SO                   as SLS_QT_SO ,
+      SLS_QT_RET                  as SLS_QT_RET,
+      SLS_QT_FOC                  as SLS_QT_FOC,
+      SLS_QT_DIR                  as SLS_QT_DIR,
+      SLS_QT_PRO                  as SLS_QT_PRO,
+      SLS_QT_IC                   as SLS_QT_IC ,
+      MSQTBUO                     as MSQTBUO
+    FROM 
+     (", sql_01_get_data, ")"
+  )
+
+sql_22_transform_data <- glue_sql("
+  SELECT 
+    lpad(MATERIAL, 18, '0')     as MATERIAL,
+    lpad(CUSTOMER, 10, '0')     as CUSTOMER,
+    PLANT                       as PLANT,
+    SALESORG                    as SALESORG,
+    CALDAY                      as CALDAY,
+    DATE_TRUNC('month', CALDAY) as CALMONTH,
+    SLS_QT_SO                   as SLS_QT_SO,
+    SLS_QT_RET                  as SLS_QT_RET,
+    SLS_QT_FOC                  as SLS_QT_FOC,
+    SLS_QT_DIR                  as SLS_QT_DIR,
+    SLS_QT_PRO                  as SLS_QT_PRO,
+    SLS_QT_IC                   as SLS_QT_IC,
+    MSQTBUO                     as MSQTBUO
+  FROM 
+    ({sql_01_get_data})
+  ", .con = con)
+
+sql_03_write_data <- 
+  paste0(
+    "COPY (", 
+    sql_02_transform_data,
+    ") TO '",
+    FFNT, 
+    "'
+    (FORMAT 'parquet', CODEC 'uncompressed')"
+  )
+
+# # Use glue_sql to build the SQL statement
+# sql_33_write_data <- glue_sql("
+#   COPY ({sql_02_transform_data})
+#   TO {FFNT}
+#   (FORMAT 'parquet', CODEC 'uncompressed')
+#   ", .con = con)
+
+# Construct the COPY command using glue_sql
+sql_33_write_data <- glue_sql("
+  COPY (
+    {sql_02_transform_data}
+  ) TO {FFNT}
+  (FORMAT 'parquet', CODEC 'uncompressed')
+  ", .con = con)
+
+sql_33_write_data <- glue("
+  COPY (
+    {sql_02_transform_data}
+  ) TO '{FFNT}'
+  (FORMAT 'parquet', CODEC 'uncompressed')
+  ")
+
+system.time({
+dbExecute(con, sql_33_write_data)
+
+dbGetQuery(con, paste0("DESCRIBE SELECT * FROM '", FFNT,  "';"))
+})
+
+# Disconnect from DuckDB
+dbDisconnect(con, shutdown = TRUE)
+
+```
+
+```{r}
+#| label: 'DuckDB working'
+#| eval:   false
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb(), dbdir = ":memory:")
+
+
+yr  <- 21
+FFNS <- 
+  file.path(
+    PS01, SYS, "RTP", "CSV", 
+    paste0("DD_SALES_QTY_20", yr, ".CSV")
+  )
+
+FFNT <- 
+  file.path(
+    PS02, SYS, "RTP", "ARR", 
+    paste0("DD_SALES_QTY_20", yr, ".parquet")
+  )
+
+# Constants
+DELIM <- ';'
+HEADER <- FALSE
+DATE_FORMAT <- '%Y-%m-%d'
+
+# Define the Source CSV definition
+SLS_CSV <- glue_sql("
+  read_csv({FFNS},
+    delim      = {DELIM},
+    header     = {HEADER},
+    dateformat = {DATE_FORMAT},
+    columns = {{
+      'MATERIAL'  : 'VARCHAR',
+      'CUSTOMER'  : 'VARCHAR',
+      'PLANT'     : 'VARCHAR',
+      'SALESORG'  : 'VARCHAR',
+      'CALDAY'    : 'DATE',
+      'SLS_QT_SO' : 'FLOAT',
+      'SLS_QT_RET': 'FLOAT',
+      'SLS_QT_FOC': 'FLOAT',
+      'SLS_QT_DIR': 'FLOAT',
+      'SLS_QT_PRO': 'FLOAT',
+      'SLS_QT_IC' : 'FLOAT',
+      'MSQTBUO'   : 'FLOAT'
+    }}
+  )", .con = con)
+
+# Use the Source CSV parameter in the main SQL query
+sql_31_get_data <- glue_sql("
+  SELECT
+  *
+  FROM
+  {SLS_CSV}
+  ", .con = con)
+
+sql_32_transform_data <- glue_sql("
+  SELECT 
+    lpad(MATERIAL, 18, '0')     as MATERIAL,
+    lpad(CUSTOMER, 10, '0')     as CUSTOMER,
+    PLANT                       as PLANT,
+    SALESORG                    as SALESORG,
+    CALDAY                      as CALDAY,
+    DATE_TRUNC('month', CALDAY) as CALMONTH,
+    SLS_QT_SO                   as SLS_QT_SO,
+    SLS_QT_RET                  as SLS_QT_RET,
+    SLS_QT_FOC                  as SLS_QT_FOC,
+    SLS_QT_DIR                  as SLS_QT_DIR,
+    SLS_QT_PRO                  as SLS_QT_PRO,
+    SLS_QT_IC                   as SLS_QT_IC,
+    MSQTBUO                     as MSQTBUO
+  FROM 
+    ({sql_31_get_data})
+  ", .con = con)
+
+sql_33_write_data <- glue("
+  COPY (
+    {sql_32_transform_data}
+  ) TO '{FFNT}'
+  (FORMAT 'parquet', CODEC 'uncompressed')
+  ")
+
+system.time({
+dbExecute(con, sql_33_write_data)
+
+dbGetQuery(con, paste0("DESCRIBE SELECT * FROM '", FFNT,  "';"))
+})
+
+# Disconnect from DuckDB
+dbDisconnect(con, shutdown = TRUE)
+
+```
+
+```{r}
+#|label: 'working duckDB'
+#|eval:   true
+
+
+library(glue) 
+library(DBI) 
+
+# Constants
+DELIM <- ';'
+HEADER <- FALSE
+DATE_FORMAT <- '%Y-%m-%d'
+
+# Column definitions as a constant
+COLUMN_DEFINITIONS <- list(
+  MATERIAL  = 'VARCHAR',
+  CUSTOMER  = 'VARCHAR',
+  PLANT     = 'VARCHAR',
+  SALESORG  = 'VARCHAR',
+  CALDAY    = 'DATE',
+  SLS_QT_SO = 'FLOAT',
+  SLS_QT_RET = 'FLOAT',
+  SLS_QT_FOC = 'FLOAT',
+  SLS_QT_DIR = 'FLOAT',
+  SLS_QT_PRO = 'FLOAT',
+  SLS_QT_IC  = 'FLOAT',
+  MSQTBUO    = 'FLOAT'
+)
+
+# Define file paths
+yr <- 21
+FFNS <- file.path(PS01, SYS, "RTP", "CSV", paste0("DD_SALES_QTY_20", yr, ".CSV"))
+FFNT <- file.path(PS02, SYS, "RTP", "ARR", paste0("DD_SALES_QTY_20", yr, ".parquet"))
+
+# Generate formatted_columns
+formatted_columns <- paste(
+  sapply(
+    names(COLUMN_DEFINITIONS), 
+    function(col) {
+      glue("'{col}'  : '{COLUMN_DEFINITIONS[[col]]}'")
+    }),
+  collapse = ",\n    "
+)
+
+# Define the Source CSV definition using glue
+SLS_CSV <- glue("
+  read_csv('{FFNS}',
+    delim      = '{DELIM}',
+    header     = {HEADER},
+    dateformat = '{DATE_FORMAT}',
+    columns = {{
+      {formatted_columns}
+    }}
+  )
+")
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb(), dbdir = ":memory:")
+
+
+# Use the Source CSV parameter in the main SQL query
+sql_get_data <- glue_sql("
+  SELECT *
+  FROM {DBI::SQL(SLS_CSV)}
+  ", .con = con)
+
+# Transform data
+sql_transform_data <- glue_sql("
+  SELECT 
+    lpad(MATERIAL, 18, '0')     as MATERIAL,
+    lpad(CUSTOMER, 10, '0')     as CUSTOMER,
+    PLANT                       as PLANT,
+    SALESORG                    as SALESORG,
+    CALDAY                      as CALDAY,
+    DATE_TRUNC('month', CALDAY) as CALMONTH,
+    SLS_QT_SO                   as SLS_QT_SO,
+    SLS_QT_RET                  as SLS_QT_RET,
+    SLS_QT_FOC                  as SLS_QT_FOC,
+    SLS_QT_DIR                  as SLS_QT_DIR,
+    SLS_QT_PRO                  as SLS_QT_PRO,
+    SLS_QT_IC                   as SLS_QT_IC,
+    MSQTBUO                     as MSQTBUO
+  FROM ({DBI::SQL(sql_get_data)})
+  ", .con = con)
+
+# Write data to Parquet
+sql_write_data <- glue("
+  COPY ({sql_transform_data})
+  TO '{FFNT}'
+  (FORMAT 'parquet', CODEC 'uncompressed')
+  ")
+
+# Execute the SQL statements
+system.time({
+  dbExecute(con, sql_write_data)
+  dbGetQuery(con, paste0("DESCRIBE SELECT * FROM '", FFNT, "';"))
+})
+
+# Disconnect from the database
+dbDisconnect(con)
+```
+
+
+```{r}
+# # Load required libraries
+library(glue)
+library(DBI)
+library(duckdb)
+
+# Configuration parameters
+config <- list(
+  DELIM = ';',
+  HEADER = FALSE,
+  DATE_FORMAT = '%Y-%m-%d',
+  COLUMN_DEFINITIONS = list(
+    MATERIAL   = 'VARCHAR',
+    CUSTOMER   = 'VARCHAR',
+    PLANT      = 'VARCHAR',
+    SALESORG   = 'VARCHAR',
+    CALDAY     = 'DATE',
+    SLS_QT_SO  = 'FLOAT',
+    SLS_QT_RET = 'FLOAT',
+    SLS_QT_FOC = 'FLOAT',
+    SLS_QT_DIR = 'FLOAT',
+    SLS_QT_PRO = 'FLOAT',
+    SLS_QT_IC  = 'FLOAT',
+    MSQTBUO    = 'FLOAT'
+  )
+)
+
+# Function to generate formatted columns
+generate_formatted_columns <- function(column_definitions) {
+  paste(
+    sapply(
+      names(column_definitions),
+      function(col) {
+        glue("'{col}'  : '{column_definitions[[col]]}'")
+      }
+    ),
+    collapse = ",\n    "
+  )
+}
+
+# Function to generate the read_csv SQL snippet
+generate_sls_csv <- function(ffns, delim, header, date_format, formatted_columns) {
+  glue("
+    read_csv('{ffns}',
+      delim      = '{delim}',
+      header     = {header},
+      dateformat = '{date_format}',
+      columns = {{
+        {formatted_columns}
+      }}
+    )
+  ")
+}
+
+# Function to perform data transformation
+transform_data_sql <- function(sls_csv_sql, con) {
+  # Use glue_sql to construct SQL query
+  sql_get_data <- glue_sql("
+    SELECT *
+    FROM {DBI::SQL(sls_csv_sql)}
+    ", .con = con)
+  
+  sql_transform_data <- glue_sql("
+    SELECT 
+      lpad(MATERIAL, 18, '0')     AS MATERIAL,
+      lpad(CUSTOMER, 10, '0')     AS CUSTOMER,
+      PLANT                       AS PLANT,
+      SALESORG                    AS SALESORG,
+      CALDAY                      AS CALDAY,
+      DATE_TRUNC('month', CALDAY) AS CALMONTH,
+      SLS_QT_SO                   AS SLS_QT_SO,
+      SLS_QT_RET                  AS SLS_QT_RET,
+      SLS_QT_FOC                  AS SLS_QT_FOC,
+      SLS_QT_DIR                  AS SLS_QT_DIR,
+      SLS_QT_PRO                  AS SLS_QT_PRO,
+      SLS_QT_IC                   AS SLS_QT_IC,
+      MSQTBUO                     AS MSQTBUO
+    FROM ({DBI::SQL(sql_get_data)})
+    ", .con = con)
+  
+  return(sql_transform_data)
+}
+
+# Function to write data to Parquet
+write_data_to_parquet <- function(sql_transform_data, output_file) {
+  sql_write_data <- glue("
+    COPY ({sql_transform_data})
+    TO '{output_file}'
+    (FORMAT 'parquet', CODEC 'uncompressed')
+    ")
+  
+  return(sql_write_data)
+}
+
+# Main function to process data
+process_data <- function(yr, input_base_path, output_base_path, sys_value) {
+  # Define file paths
+  input_csv_file <- file.path(input_base_path, sys_value, "RTP", "CSV", paste0("DD_SALES_QTY_20", yr, ".CSV"))
+  output_parquet_file <- file.path(output_base_path, sys_value, "RTP", "ARR", paste0("DD_SALES_QTY_20", yr, ".parquet"))
+  
+  # Check if input file exists
+  if (!file.exists(input_csv_file)) {
+    stop(glue("Input CSV file does not exist: {input_csv_file}"))
+  }
+  
+  # Generate formatted columns
+  formatted_columns <- generate_formatted_columns(config$COLUMN_DEFINITIONS)
+  
+  # Generate SLS_CSV
+  sls_csv <- generate_sls_csv(
+    ffns = input_csv_file,
+    delim = config$DELIM,
+    header = config$HEADER,
+    date_format = config$DATE_FORMAT,
+    formatted_columns = formatted_columns
+  )
+  
+  # Establish a connection to DuckDB
+  con <- dbConnect(duckdb(), dbdir = ":memory:")
+  
+  # Ensure the connection is closed when the function exits
+  on.exit(dbDisconnect(con), add = TRUE)
+  
+  # Generate SQL for data transformation
+  sql_transform_data <- transform_data_sql(sls_csv_sql = sls_csv, con = con)
+  
+  # Generate SQL for writing data
+  sql_write_data <- write_data_to_parquet(sql_transform_data, output_parquet_file)
+  
+  # Execute the SQL statements
+  tryCatch({
+    system.time({
+      dbExecute(con, sql_write_data)
+      message(glue("Data successfully written to {output_parquet_file}"))
+    })
+  }, error = function(e) {
+    message(glue("An error occurred: {e$message}"))
+  })
+}
+
+```
+
+```{r}
+yr <- 21                    # Year parameter
+
+# Run the main function
+process_data(yr, PS01, PS02, SYS)
+```
+
 
 ```{r}
 #| label: 'Concatenate sales data'
@@ -148,7 +664,6 @@ system.time({
     )
 })
 ```
-
 
 ```{r}
 #| label: 'Change Thousand separator'

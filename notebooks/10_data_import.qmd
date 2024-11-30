@@ -65,6 +65,8 @@ pimg <- file.path(FCT, 'PYTHIA', 'img')
 
 # Material Data
 
+## Material 
+
 ```{r}
 #| label: 'Material Data',
 #| eval:   true
@@ -72,25 +74,88 @@ pimg <- file.path(FCT, 'PYTHIA', 'img')
 # Establish a connection to DuckDB
 con <- dbConnect(duckdb::duckdb())
 
-# Check file metadata
-# read_parquet(FFN, as_data_frame = FALSE) %T>%
-#   print()
-
 # Query the file and load it into a data.table
 system.time({
   MATL <- 
     dbGetQuery(
       con, 
       paste0(
-        "SELECT * FROM read_parquet('", FN_MATL, "')
-         WHERE 
-          MATERIAL = '000000000000010023'"
+        "SELECT 
+          * 
+         FROM read_parquet('", FN_MATL, "')
+         "
       )
     )                                                                  %>%
     setDT()
   
   # View the data.table
   View(MATL)
+})
+
+# Disconnect from DuckDB
+dbDisconnect(con)
+
+```
+
+## Material Sales
+
+```{r}
+#| label: 'Material Sales Data',
+#| eval:   true
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
+
+# Query the file and load it into a data.table
+system.time({
+  MATS <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT 
+          * 
+         FROM 
+          read_parquet('", FN_MATS, "')
+        "
+      )
+    )                                                                  %>%
+    setDT()
+  
+  # View the data.table
+  View(MATS)
+})
+
+# Disconnect from DuckDB
+dbDisconnect(con)
+
+```
+
+## Material Plant 
+
+```{r}
+#| label: 'Material Plant Data',
+#| eval:   true
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb::duckdb())
+
+# Query the file and load it into a data.table
+system.time({
+  MATP <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT 
+          * 
+         FROM 
+          read_parquet('", FN_MATP, "')
+        "
+      )
+    )                                                                  %>%
+    setDT()
+  
+  # View the data.table
+  View(MATP)
 })
 
 # Disconnect from DuckDB
@@ -108,6 +173,38 @@ dbDisconnect(con)
 | 15  | ZONNATURA        |
 | 53  | TANOSHI          |
 | 65  | NATURELA         |
+
+```{r}
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb(), dbdir = ":memory:")
+
+FFNG <- file.path(PS02, SYS, "RTP", "ARR", paste0("DD_SALES_QTY_20*")  ) 
+
+system.time({
+  ISLS <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT 
+          SALESORG,
+          CALMONTH,
+          sum(SLS_QT_SO + SLS_QT_FOC) as DEMND_QTY
+         FROM 
+          read_parquet('", FFNG, "')
+         WHERE 
+          SALESORG    IN ('FR30', 'NL10')
+         GROUP BY 
+          ALL
+         ORDER BY 
+          SALESORG,
+          CALMONTH"
+      )
+    )                                                                  %>%
+    setDT()
+})
+```
+
+
 
 ```{r}
 #| label: 'Sales Data',
@@ -181,7 +278,7 @@ dbDisconnect(con)
 ## All Sales
 
 ```{r}
-#| label: 'All Sales Data',
+#| label: 'All Sales Data per Month',
 #| eval:   false
 #| 
 # Establish a connection to DuckDB
@@ -194,18 +291,22 @@ system.time({
       con, 
       paste0(
         "SELECT 
-          MATL.*,
-          ISLS.*,
+          MATERIAL,
+          CUSTOMER,
+          PLANT,
+          SALESORG,
           DATE_TRUNC('month', CALDAY) AS CALMONTH,
-          SLS_QT_SO + SLS_QT_FOC + SLS_QT_DIR as DEMND_QTY
+          sum(SLS_QT_SO + SLS_QT_FOC) as Q
          FROM 
           read_parquet('", FN_ISLS, "') AS ISLS
-         INNER JOIN 
-          read_parquet('", FN_MATL, "') AS MATL
-         ON 
-          ISLS.MATERIAL = MATL.MATERIAL
          WHERE 
-          SALESORG    IN ('FR30', 'NL10')"
+          SALESORG    IN ('FR30', 'NL10')
+         GROUP BY
+          MATERIAL,
+          CUSTOMER,
+          PLANT,
+          SALESORG,
+          CALMONTH"
       )
     )                                                                  %>%
     setDT() 
@@ -213,15 +314,19 @@ system.time({
 
 # Disconnect from DuckDB
 dbDisconnect(con)
+          # MATL.*,
+         # INNER JOIN 
+         #  read_parquet('", FN_MATL, "') AS MATL
+         # ON 
+         #  ISLS.MATERIAL = MATL.MATERIAL
+
 ```
 
 ```{r}
-ph1 <- c('07'  , '08'  , '10'  , '15'  , '53'  , '64'  , '65')
-ph2 <- c('2010', '2020', '2030', '2040', '2060')
-ph3 <- c('4010', '4013', '4020', '4023', '4030', '4032', '4040', '4062', '4066')
+# ph1 <- c('07'  , '08'  , '10'  , '15'  , '53'  , '64'  , '65')
+# ph2 <- c('2010', '2020', '2030', '2040', '2060')
+# ph3 <- c('4010', '4013', '4020', '4023', '4030', '4032', '4040', '4062', '4066')
 ```
-
-DD_SALES_QTY_2021_INCL_FR50.CSV
 
 ## graph Functions
 
@@ -241,7 +346,7 @@ fST <- function(phl, IPH){
                key= c("label", "SALESORG")) 
   
   tsSLS                                                              %>%
-    features(DEMND_QTY, feat_stl)                                    %>%
+    features(Q, feat_stl)                                            %>%
     ggplot(
       aes(
         x     = trend_strength, 
@@ -273,7 +378,7 @@ fSL <- function(phl, IPH){
     ggplot(
       aes(
         x   = CALMONTH, 
-        y   = DEMND_QTY,
+        y   = Q,
         col = SALESORG)
     ) +
     geom_line() +
@@ -296,32 +401,61 @@ fSL <- function(phl, IPH){
 fBG <- function(phl, IPH){
 
   IPH %>%
+    .[, PROMO:= factor(PROMO, levels = c("0", "1"))] %>%
     ggplot(
       aes(
-        x    = CALMONTH, 
-        y    = DEMND_QTY,
-        fill = label),
-      col  = "white"
+        x     = CALMONTH, 
+        y     = Q,
+        fill  = PROMO
+        # ,
+        # col   = PROMO
+        )
+      ,
+      col  = "white",
+      size = 0.1
     ) +
     geom_col() +
     facet_wrap(
-      nrow = 1,
+      # nrow = 1,
       ~label, 
       # scales = 'fixed'
       scales = 'free_y'
     ) +
-    theme(legend.position = "top") # Move legend to the top
+    theme(legend.position = "top") + # Move legend to the top +
+    scale_fill_manual(values  = c("0" = ET_CG, "1" = ET_YL))   
+  # +
+  #   scale_color_manual(values = c("0" = ET_CG, "1" = ET_YL)) 
   
   ggsave(
     filename = paste(phl, 'bar_sales.png', sep = '_'),
     device   = "png",
     path     = pimg,
     width    = 5000,
-    height   = 1000,
+    height   = 3000,
     units    = "px"
   )
 }
 ```
+
+## Transform
+
+```{r}
+#| label: Transform
+#| eval: true
+
+dtSLS <- 
+  MATL[, .(MATERIAL, 
+           PRDH1, PRDH1_TMD,
+           PRDH2, PRDH2_TMD,
+           PRDH3, PRDH3_TMD,
+           PRDH4, PRDH4_TMD)
+       ]                                                             %>%
+  .[IALL, on = .(MATERIAL)]                                          %>%
+  MATS[, .(MATERIAL = MAT_SALES, SALESORG, PROMO = PRAT7)][          
+    ., on = .(MATERIAL, SALESORG)] 
+
+```
+
 
 ## PH1
 
@@ -329,17 +463,18 @@ fBG <- function(phl, IPH){
 #| label: PH1 - Season Trend
 #| eval: true
 
-tot <-  IALL[, sum(DEMND_QTY)]
+tot <-  dtSLS[, sum(Q)]
 
 ph1 <- 
-  IALL[, .(
-    Q = sum(DEMND_QTY), 
-    P = sum(DEMND_QTY)/tot
+  dtSLS[, .(
+    Q = sum(Q), 
+    P = sum(Q)/tot
   ), 
   by = .(
     PRDH1, PRDH1_TMD
   )
-  ] %T>% setorder(-Q) %>%
+  ]                   %T>% 
+  setorder(-Q)        %>%
   .[, P:= cumsum(P)]  %>%
   .[1:11]             %>%  
   .[P < 0.97, PRDH1]       
@@ -347,12 +482,12 @@ ph1 <-
 phl <- paste("ph1", sep = "_")
 
 IPH <- 
-  IALL[PRDH1 %chin% ph1,
-       .(DEMND_QTY = sum(DEMND_QTY)/1000000),
-         by = .(label = PRDH1_TMD, SALESORG, CALMONTH)
+  dtSLS[PRDH1 %chin% ph1,
+       .(Q = sum(Q)/1000000),
+         by = .(label = PRDH1_TMD, SALESORG, PROMO, CALMONTH)
   ]
 
-fMP(phl = 'ph1', IPH)
+fBG(phl = 'ph1', IPH)
 
 ```
 
