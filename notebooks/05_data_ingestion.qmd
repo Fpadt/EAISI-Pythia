@@ -253,7 +253,7 @@ dbDisconnect(con, shutdown = TRUE)
 ```
 
 ```{r}
-#| label: 'DuckDB working'
+#| label: 'DuckDB old'
 #| eval:   false
 
 # Establish a connection to DuckDB
@@ -346,8 +346,8 @@ dbDisconnect(con, shutdown = TRUE)
 ```
 
 ```{r}
-#|label: 'working duckDB'
-#|eval:   true
+#|label: 'working duckDB legacy'
+#|eval:   false
 
 
 library(glue) 
@@ -449,16 +449,14 @@ dbDisconnect(con)
 
 
 ```{r}
-# # Load required libraries
-library(glue)
-library(DBI)
-library(duckdb)
+#| label: 'Data Ingestion to Silver storage S2S using DuckDB'
+#| eval:   true
 
 # Configuration parameters
 config <- list(
-  DELIM = ';',
-  HEADER = FALSE,
-  DATE_FORMAT = '%Y-%m-%d',
+  DELIM        = ';',
+  HEADER       = FALSE,
+  DATE_FORMAT  = '%Y-%m-%d',
   COLUMN_DEFINITIONS = list(
     MATERIAL   = 'VARCHAR',
     CUSTOMER   = 'VARCHAR',
@@ -543,10 +541,24 @@ write_data_to_parquet <- function(sql_transform_data, output_file) {
 }
 
 # Main function to process data
-process_data <- function(yr, input_base_path, output_base_path, sys_value) {
+process_data <- function(
+    yr, 
+    input_base_path, 
+    output_base_path, 
+    sys_value, 
+    verbose = FALSE) {
+
   # Define file paths
-  input_csv_file <- file.path(input_base_path, sys_value, "RTP", "CSV", paste0("DD_SALES_QTY_20", yr, ".CSV"))
-  output_parquet_file <- file.path(output_base_path, sys_value, "RTP", "ARR", paste0("DD_SALES_QTY_20", yr, ".parquet"))
+  input_csv_file  <- 
+    file.path(
+      input_base_path , sys_value, "RTP", "CSV", 
+      paste0("DD_SALES_QTY_20", yr, ".CSV")
+    )
+  output_pqt_file <- 
+    file.path(
+      output_base_path, sys_value, "RTP", "ARR", 
+      paste0("DD_SALES_QTY_20", yr, ".parquet")
+    )
   
   # Check if input file exists
   if (!file.exists(input_csv_file)) {
@@ -575,13 +587,18 @@ process_data <- function(yr, input_base_path, output_base_path, sys_value) {
   sql_transform_data <- transform_data_sql(sls_csv_sql = sls_csv, con = con)
   
   # Generate SQL for writing data
-  sql_write_data <- write_data_to_parquet(sql_transform_data, output_parquet_file)
+  sql_write_data <- write_data_to_parquet(sql_transform_data, output_pqt_file)
   
   # Execute the SQL statements
   tryCatch({
     system.time({
       dbExecute(con, sql_write_data)
-      message(glue("Data successfully written to {output_parquet_file}"))
+      if (verbose == TRUE){
+        print(
+          dbGetQuery(con, glue("DESCRIBE SELECT * FROM '{output_pqt_file}';"))
+        )
+      }
+      message(glue("Data successfully written to {output_pqt_file}"))
     })
   }, error = function(e) {
     message(glue("An error occurred: {e$message}"))
@@ -591,10 +608,14 @@ process_data <- function(yr, input_base_path, output_base_path, sys_value) {
 ```
 
 ```{r}
-yr <- 21                    # Year parameter
+#| label: 'Run the main function'
+#| eval:   true
+
+yrs <- 24:24                    # Year parameter
 
 # Run the main function
-process_data(yr, PS01, PS02, SYS)
+purrr::walk(yrs, process_data, PS01, PS02, SYS, verbose = TRUE)
+
 ```
 
 
