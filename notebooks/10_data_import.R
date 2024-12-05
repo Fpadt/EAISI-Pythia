@@ -4,7 +4,7 @@
 
 # Define the path to your Parquet file
 
-PARR <- file.path(PS02, SYS, "RTP", "ARR")
+PARR <- file.path(PS02, SYS, "RTP")
 
 # Material 
 FN_MATL <- 

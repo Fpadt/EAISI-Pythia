@@ -1,0 +1,111 @@
+---
+title   : EAISI - Pythia
+subtitle: Initialization
+author  : "F.J. Padt"
+date    : "`r format(Sys.time(), '%B %d, %Y')`"
+output  :
+  pdf_document:
+    df_print: paged
+    toc: yes
+    toc_depth: 1      
+editor_options:
+  chunk_output_type: console
+  markdown: 
+    wrap: 80  
+---
+
+\newpage
+
+![Logo](C:/PW\OneDrive\ET\pythia\img\pythia_logo2_no_text.png)
+
+# Purpose
+
+Get all meta data needed from SAP to run locally
+
+# Setup
+
+```{r}
+#| label:  setup
+#| eval:   true
+
+knitr::opts_chunk$set(
+  cache   = FALSE,
+  echo    = TRUE,     # include R source code in the output  
+  eval    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  results = "markup",
+  image   = TRUE,  
+  include = TRUE      # include the chunk output in the output 
+)
+
+SID <- "WTB500"
+SYS <- substr(SID, 1, 3)
+
+# SAP Access
+library(reticulate)
+use_condaenv("sapyr")
+
+# public functions ---------------------------------------------------------
+invisible(source('library/KnitR_SetUp.R'))
+
+lsrc <- "notebooks/05_data_ingestion.R"  
+if( file.exists(lsrc)){source(lsrc)}
+
+```
+
+```{r}
+#| label:  SAP
+#| eval:   true
+
+# DataSource - Segment Fields #### 
+B4_RSDSSEGFD <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WTB500",
+     pTable    = "RSDSSEGFD",
+     pOptions  = list(
+       "OBJVERS = 'A'"
+     ),
+     pFields   = list(
+        "DATASOURCE"   , # DataSource (OSOA/OSOD)                               X
+        "LOGSYS"       , # Source system                                        X
+        "OBJVERS"      , # Object version                                       X
+        "SEGID"        , # Segment                                              X
+        "POSIT"        , # Position of the Field in the Structure / Table       X
+        "FIELDNM"      , # Field name
+        "DTELNM"       , # Data Element
+        "DATATYPE"     , # Data type
+        "LENG"         , # Length (No. of Characters)
+        "CONVEXIT"     , # Conversion Routines in BW
+        "DECIMALS"     , # Number of Decimal Places
+        "UNIFIELDNM"   , # Name of Referenced Currency Field / Unit Field
+        "CONSTANT"     , # Fixed Value of DataSource Field
+        "DOMANM"       , # Domain
+        "KEYFIELD"     , # Key Field
+        "SELECTION"    , # Selection
+        "SELOPTS"      , # Selection Options
+        "SELDIRECT"    , # Selection Field for Direct Access
+        "LOWERCASE"    , # Lowercase letters allowed/not allowed
+        "OUTPUTLEN"    , # Output Length
+        "IOBJNM"       , # Template InfoObject for DataSource Field
+        "CONVEXITSRC"  , # Conversion Routine in Source System (Outside of BW)
+        "CONVTYPE"     , # Data Input Format (Internal/External)
+        "TRANSFER"     , # Field Will Be Transferred (In PSA and Structures)
+        "CONTOBJECT"   , # Object Name in Object Directory
+        "ORIGIN"         # Switch Assignment of a DataSource Field
+    ),
+     pRowcount = Inf
+   )
+
+```
+
+```{r}
+#| label:  Write_metadata 
+#| label:  true 
+
+fwrite(
+  x = B4_RSDSSEGFD,
+  file = file.path(PS01, SYS, "B4", "B4_RSDSSEGFD.csv"),
+)
+```
+

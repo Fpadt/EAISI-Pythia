@@ -66,7 +66,7 @@ clipr::write_clip(normalizePath(file.path(PS01, SYS, "RTP", "CSV")))
 ## Pythia DTP's
 
 | Seq. | DTP | Description | Time |
-|-------|--------------------------------|----------------------------------------|--------------------|
+|------------------|------------------|-------------------|-------------------------|
 | 0 | DTP_006EIZGR39XAWQANS1LNUZF2Y | Pythia's Advice -\> IS PERKZ-W \[2021\] Incl.FR50 | 15 min. |
 | 0 | DTP_006EIZGR39XAWQANYOZZI4HSQ | Pythia's Advice -\> IS PERKZ-W \[2022\] Incl.FR50 |  |
 | 0 | DTP_006EIZGR39XAWQANZ3O0NUFIY | Pythia's Advice -\> IS PERKZ-W \[2023\] Incl.FR50 |  |
@@ -83,7 +83,7 @@ clipr::write_clip(normalizePath(file.path(PS01, SYS, "RTP", "CSV")))
     1.  TMP execute next code chunk to change Thousands Separator
 5.  
 
-## RTP Sales
+## RTP
 
 ```{r}
 #| label: 'get Header DD_SALES_QTY'
@@ -95,7 +95,7 @@ clipr::write_clip(normalizePath(file.path(PS01, SYS, "RTP", "CSV")))
 #   )
 ```
 
-## Ingestion Functions
+### Ingestion Functions
 
 ```{r}
 #| label: 'Data Ingestion Functions'
@@ -200,12 +200,12 @@ process_data <- function(
   # Define file paths
   input_csv_file  <- 
     file.path(
-      input_base_path , sys_value, "RTP", "CSV", 
+      input_base_path , sys_value, "RTP",  
       paste0("DD_SALES_QTY_20", yr, ".CSV")
     )
   output_pqt_file <- 
     file.path(
-      output_base_path, sys_value, "RTP", "ARR", 
+      output_base_path, sys_value, "RTP", 
       paste0("DD_SALES_QTY_20", yr, ".parquet")
     )
   
@@ -219,9 +219,9 @@ process_data <- function(
   
   # Generate SLS_CSV
   sls_csv <- generate_sls_csv(
-    ffns = input_csv_file,
-    delim = config$DELIM,
-    header = config$HEADER,
+    ffns        = input_csv_file,
+    delim       = config$DELIM,
+    header      = config$HEADER,
     date_format = config$DATE_FORMAT,
     formatted_columns = formatted_columns
   )
@@ -256,16 +256,50 @@ process_data <- function(
 
 ```
 
-### Ingestion execution
+### RTP Outbound
 
 ```{r}
 #| label: 'Data Ingestion Execution from Bronze (S1B) to Silver (S2S)'
 #| eval:   true
 
-yrs <- 24:24                    # Year parameter
+yrs <- 24:24  # Year parameter
 
 # Run the main function
 purrr::walk(yrs, process_data, PS01, PS02, SYS, verbose = TRUE)
+
+```
+
+### RTP Inbound
+
+```{r}
+#| label: 'functions'
+#| eval:  true
+
+getHeaderDataSource <-
+  function(x){
+    fread(file = file.path(PS01, SYS, "B4", "B4_RSDSSEGFD.csv"))     %T>%
+    setorder(DATASOURCE, POSIT)                                       %>%
+    .[DATASOURCE == x, FIELDNM]
+}
+
+```
+
+```{r}
+#| label: 'Data Ingestion Execution'
+#| eval:   true
+
+files_Inbound <- 
+  list.files(file.path(PS01, SYS, "RTP", "IB"), pattern = "*.CSV", full.names = TRUE)
+
+PRE_A <-  fread(
+  cmd = paste0("iconv -f UTF-16 -t UTF-8 '", files_Inbound[1], "'")
+) %T>%
+setnames(getHeaderDataSource("PRE_A")) 
+
+
+empty_unit <- PRE_A[BASEUNITOFMEASURE_CODE == ""]
+neg_baseln <- PRE_A[BASE_LINE_QTY < 0]
+
 
 ```
 
@@ -290,7 +324,7 @@ MATERIAL <-
   setcolorder("MATERIAL")                                                 %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "ARR", 
+      PS02, SYS, "RTP",  
       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   )
@@ -315,7 +349,7 @@ MAT_SALES <-
   setkey("MAT_SALES", "SALESORG", "DISTR_CHAN")                           %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "ARR", 
+      PS02, SYS, "RTP", 
       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   )                                                              
@@ -340,7 +374,7 @@ MAT_PLANT <-
   setkey("MAT_PLANT", "PLANT")                                            %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "ARR", 
+      PS02, SYS, "RTP", 
       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   ) 
@@ -374,7 +408,7 @@ CUST_SALES <-
   setkey("CUST_SALES", "SALESORG", "DISTR_CHAN")                          %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "RTP", "ARR", 
+      PS02, SYS, "RTP",  
       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   ) 
@@ -396,7 +430,7 @@ STK <-
   setkey("CALDAY", "MATERIAL", "PLANT")                          %T>%
   write_parquet(
     sink = file.path(
-      PS02, SYS, "STK", "ARR",
+      PS02, SYS, "STK", 
       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   ) 
@@ -429,7 +463,7 @@ PROMONAT <-
   )                                                           %T>%
   write_parquet(
     sink = file.path(
-      PS02, "PRM", "ARR", 
+      PS02, "PRM", 
       "PROMONAT.parquet"
     )
   )                                                     

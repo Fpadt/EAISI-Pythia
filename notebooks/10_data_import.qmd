@@ -174,11 +174,50 @@ dbDisconnect(con)
 | 53  | TANOSHI          |
 | 65  | NATURELA         |
 
+
 ```{r}
+#| label: 'Sales Data ALL',
+#| eval:   true
+
+
 # Establish a connection to DuckDB
 con <- dbConnect(duckdb(), dbdir = ":memory:")
 
-FFNG <- file.path(PS02, SYS, "RTP", "ARR", paste0("DD_SALES_QTY_20*")  ) 
+FFNG <- file.path(PS02, SYS, "RTP", paste0("DD_SALES_QTY_20*")  ) 
+
+system.time({
+  ISLS <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT 
+          *,
+          sum(SLS_QT_SO + SLS_QT_FOC) as DEMND_QTY
+         FROM 
+          read_parquet('", FFNG, "')
+         WHERE 
+          SALESORG    IN ('FR30', 'NL10') 
+         GROUP BY 
+          ALL
+         ORDER BY 
+          SALESORG,
+          CALMONTH"
+      )
+    )                                                                  %>%
+    setDT()
+  
+})
+```
+
+```{r}
+#| label: 'Sales Data',
+#| eval:   true
+
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb(), dbdir = ":memory:")
+
+FFNG <- file.path(PS02, SYS, "RTP", paste0("DD_SALES_QTY_20*")  ) 
 
 system.time({
   ISLS <- 
@@ -192,7 +231,8 @@ system.time({
          FROM 
           read_parquet('", FFNG, "')
          WHERE 
-          SALESORG    IN ('FR30', 'NL10')
+          SALESORG    IN ('FR30', 'NL10') AND
+          MATERIAL    IN ('000000000003021952')
          GROUP BY 
           ALL
          ORDER BY 
@@ -201,6 +241,47 @@ system.time({
       )
     )                                                                  %>%
     setDT()
+  
+  View(ISLS)
+})
+```
+
+
+```{r}
+#| label: 'Sales Data Material',
+#| eval:   true
+
+
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb(), dbdir = ":memory:")
+
+FFNG <- file.path(PS02, SYS, "RTP", paste0("DD_SALES_QTY_20*")  ) 
+
+system.time({
+  ISLS <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT
+          SALESORG,
+          MATERIAL,
+          CALMONTH,
+          sum(SLS_QT_SO + SLS_QT_FOC) as DEMND_QTY
+         FROM 
+          read_parquet('", FFNG, "')
+         WHERE 
+          SALESORG    IN ('FR30', 'NL10') AND
+          MATERIAL    IN ('000000000000010023')
+         GROUP BY 
+          ALL
+         ORDER BY 
+          SALESORG,
+          CALMONTH"
+      )
+    )                                                                  %>%
+    setDT()
+  
+  View(ISLS)
 })
 ```
 
