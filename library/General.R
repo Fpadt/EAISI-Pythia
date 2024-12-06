@@ -9,6 +9,7 @@
 library(knitr      , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 # library(kableExtra , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 #library(printr     , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE) # not available for 3.2.2
+library("crayon"    , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 
 suppressMessages(
   library(bit64    , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE))

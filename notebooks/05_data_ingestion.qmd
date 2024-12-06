@@ -311,10 +311,14 @@ process_data <-
             dbGetQuery(con, glue("DESCRIBE SELECT * FROM '{output_pqt_file}';"))
           )
         }
-        message(glue("Data successfully written to {output_pqt_file}"))
+        message(
+          cat(white$bgGreen$bold(glue("Data successfully written to {output_pqt_file}")))
+        )
       })
     }, error = function(e) {
-      message(glue("An error occurred: {e$message}"))
+      message(
+        cat(white$bgRed$bold(glue("An error occurred: {e$message}")))
+      )
     })
   }
 
@@ -523,10 +527,14 @@ process_data2 <-
             dbGetQuery(con, glue("DESCRIBE SELECT * FROM '{output_pqt_file}';"))
           )
         }
-        message(glue("Data successfully written to {output_pqt_file}"))
+          message(
+            cat(white$bgGreen$bold(glue("Data successfully written to {output_pqt_file}")))
+            )
       })
     }, error = function(e) {
-      message(glue("An error occurred: {e$message}"))
+        message(
+          cat(white$bgRed$bold(glue("An error occurred: {e$message}")))
+          )
     })
   }
 
