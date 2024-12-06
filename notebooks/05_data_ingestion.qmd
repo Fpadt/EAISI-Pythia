@@ -68,7 +68,7 @@ clipr::write_clip(
 ## Pythia DTP's
 
 | Seq. | DTP | Description | Time |
-|------------------|------------------|-------------------|-------------------------|
+|-------------------|-------------------|-------------------|------------------------|
 | 0 | DTP_006EIZGR39XAWQANS1LNUZF2Y | Pythia's Advice -\> IS PERKZ-W \[2021\] Incl.FR50 | 15 min. |
 | 0 | DTP_006EIZGR39XAWQANYOZZI4HSQ | Pythia's Advice -\> IS PERKZ-W \[2022\] Incl.FR50 |  |
 | 0 | DTP_006EIZGR39XAWQANZ3O0NUFIY | Pythia's Advice -\> IS PERKZ-W \[2023\] Incl.FR50 |  |
@@ -127,28 +127,29 @@ DSCP_TRAN <- list(
   )
 )
 
-transformation_columns <- 
-  "lpad(MATERIAL, 18, '0')     AS MATERIAL,
-   lpad(CUSTOMER, 10, '0')     AS CUSTOMER,
-   PLANT                       AS PLANT,
-   SALESORG                    AS SALESORG,
-   CALDAY                      AS CALDAY,
-   DATE_TRUNC('month', CALDAY) AS CALMONTH,
-   SLS_QT_SO                   AS SLS_QT_SO,
-   SLS_QT_RET                  AS SLS_QT_RET,
-   SLS_QT_FOC                  AS SLS_QT_FOC,
-   SLS_QT_DIR                  AS SLS_QT_DIR,
-   SLS_QT_PRO                  AS SLS_QT_PRO,
-   SLS_QT_IC                   AS SLS_QT_IC,
-   MSQTBUO                     AS MSQTBUO"
+transformation_columns <- c(
+  "lpad(MATERIAL, 18, '0') AS MATERIAL",
+  "lpad(CUSTOMER, 10, '0') AS CUSTOMER",
+  "PLANT AS PLANT",
+  "SALESORG AS SALESORG",
+  "CALDAY AS CALDAY",
+  "DATE_TRUNC('month', CALDAY) AS CALMONTH",
+  "SLS_QT_SO AS SLS_QT_SO",
+  "SLS_QT_RET AS SLS_QT_RET",
+  "SLS_QT_FOC AS SLS_QT_FOC",
+  "SLS_QT_DIR AS SLS_QT_DIR",
+  "SLS_QT_PRO AS SLS_QT_PRO",
+  "SLS_QT_IC AS SLS_QT_IC",
+  "MSQTBUO AS MSQTBUO"
+)
 
 # Function to generate formatted columns
-generate_formatted_columns <- 
+generate_formatted_columns <-
   function(column_definitions) {
     # pad space to get same length
-    nms <- names(column_definitions) 
+    nms <- names(column_definitions)
     mxl <- nms %>% nchar() %>% max()
-    
+
     paste(
       sapply(
         names(column_definitions) ,
@@ -178,26 +179,61 @@ generate_duckdb_read_csv <-
   }
 
 # Function to perform data transformation
-transform_data_sql <- 
-  function(duckdb_read_csv_sql, transformation, con) {
-    
-    # Use glue_sql to construct SQL query
-    sql_get_data <- 
-      glue_sql("
-        SELECT 
-         *
-        FROM {DBI::SQL(duckdb_read_csv_sql)}
-        ", .con = con)
-    
-    sql_transform_data <- 
-      glue_sql("
-        SELECT 
-        {transformation}
-        FROM ({DBI::SQL(sql_get_data)})
-        ", .con = con)
-    
-    return(sql_transform_data)
-  }
+# transform_data_sql3 <-
+#   function(duckdb_read_csv_sql, transformation,con) {
+# 
+#     # Use glue_sql to construct SQL query
+#     sql_get_data <-
+#       glue_sql("
+#         SELECT
+#          *
+#         FROM {DBI::SQL(duckdb_read_csv_sql)}
+#         ", .con = con)
+# 
+#     sql_transform_data <-
+#       glue_sql("
+#         SELECT
+#           lpad(MATERIAL, 18, '0')     AS MATERIAL,
+#           lpad(CUSTOMER, 10, '0')     AS CUSTOMER,
+#           PLANT                       AS PLANT,
+#           SALESORG                    AS SALESORG,
+#           CALDAY                      AS CALDAY,
+#           DATE_TRUNC('month', CALDAY) AS CALMONTH,
+#           SLS_QT_SO                   AS SLS_QT_SO,
+#           SLS_QT_RET                  AS SLS_QT_RET,
+#           SLS_QT_FOC                  AS SLS_QT_FOC,
+#           SLS_QT_DIR                  AS SLS_QT_DIR,
+#           SLS_QT_PRO                  AS SLS_QT_PRO,
+#           SLS_QT_IC                   AS SLS_QT_IC,
+#           MSQTBUO                     AS MSQTBUO
+#         FROM ({DBI::SQL(sql_get_data)})
+#         ", .con = con)
+# 
+#     return(sql_transform_data)
+#   }
+
+transform_data_sql <- function(duckdb_read_csv_sql, transformation, con) {
+  # Use glue_sql to construct SQL query
+  sql_get_data <- 
+    glue_sql("
+      SELECT 
+       *
+      FROM {DBI::SQL(duckdb_read_csv_sql)}
+      ", .con = con)
+  
+  # Create the SELECT statement dynamically
+  select_statement <- paste(transformation, collapse = ",\n          ")
+  
+  sql_transform_data <- 
+    glue_sql("
+      SELECT 
+        {DBI::SQL(select_statement)}
+      FROM ({DBI::SQL(sql_get_data)})
+      ", .con = con)
+  
+  return(sql_transform_data)
+}
+
 
 # Function to write data to Parquet
 write_data_to_parquet <- function(sql_transform_data, output_file) {
@@ -222,12 +258,12 @@ process_data <-
     # Define file paths
     input_csv_file  <- 
       file.path(
-        input_base_path , sys_value, "RTP",  
+        input_base_path , sys_value, "RTP", "OB",  
         paste0("DD_SALES_QTY_20", yr, ".CSV")
       )
     output_pqt_file <- 
       file.path(
-        output_base_path, sys_value, "RTP", 
+        output_base_path, sys_value, "RTP", "OB",
         paste0("DD_SALES_QTY_20", yr, ".parquet")
       )
     
@@ -355,18 +391,18 @@ transformation_columns <-
    BASEUNITOFMEASURE_CODE AS BASEUNITOFMEASURE_CODE"
 
 # # Function to generate formatted columns
-# generate_formatted_columns <- 
-#   function(column_definitions) {
-#     paste(
-#       sapply(
-#         names(column_definitions),
-#         function(col) {
-#           glue("'{col}'  : '{column_definitions[[col]]}'")
-#         }
-#       ),
-#       collapse = ",\n    "
-#     )
-#   }
+generate_formatted_columns <-
+  function(column_definitions) {
+    paste(
+      sapply(
+        names(column_definitions),
+        function(col) {
+          glue("'{col}'  : '{column_definitions[[col]]}'")
+        }
+      ),
+      collapse = ",\n    "
+    )
+  }
 
 # # Function to generate the read_csv SQL snippet
 # generate_sls_csv <- function(ffns, delim, header, date_format, formatted_columns) {
@@ -383,33 +419,33 @@ transformation_columns <-
 # }
 
 # # Function to perform data transformation
-# transform_data_sql <- function(sls_csv_sql, con) {
-#   # Use glue_sql to construct SQL query
-#   sql_get_data <- glue_sql("
-#     SELECT *
-#     FROM {DBI::SQL(sls_csv_sql)}
-#     ", .con = con)
-#   
-#   sql_transform_data <- glue_sql("
-#     SELECT 
-#       lpad(MATERIAL, 18, '0')     AS MATERIAL,
-#       lpad(CUSTOMER, 10, '0')     AS CUSTOMER,
-#       PLANT                       AS PLANT,
-#       SALESORG                    AS SALESORG,
-#       CALDAY                      AS CALDAY,
-#       DATE_TRUNC('month', CALDAY) AS CALMONTH,
-#       SLS_QT_SO                   AS SLS_QT_SO,
-#       SLS_QT_RET                  AS SLS_QT_RET,
-#       SLS_QT_FOC                  AS SLS_QT_FOC,
-#       SLS_QT_DIR                  AS SLS_QT_DIR,
-#       SLS_QT_PRO                  AS SLS_QT_PRO,
-#       SLS_QT_IC                   AS SLS_QT_IC,
-#       MSQTBUO                     AS MSQTBUO
-#     FROM ({DBI::SQL(sql_get_data)})
-#     ", .con = con)
-#   
-#   return(sql_transform_data)
-# }
+transform_data_sql2 <- function(sls_csv_sql, con) {
+  # Use glue_sql to construct SQL query
+  sql_get_data <- glue_sql("
+    SELECT *
+    FROM {DBI::SQL(sls_csv_sql)}
+    ", .con = con)
+
+  sql_transform_data <- glue_sql("
+    SELECT
+      lpad(MATERIAL, 18, '0')     AS MATERIAL,
+      lpad(CUSTOMER, 10, '0')     AS CUSTOMER,
+      PLANT                       AS PLANT,
+      SALESORG                    AS SALESORG,
+      CALDAY                      AS CALDAY,
+      DATE_TRUNC('month', CALDAY) AS CALMONTH,
+      SLS_QT_SO                   AS SLS_QT_SO,
+      SLS_QT_RET                  AS SLS_QT_RET,
+      SLS_QT_FOC                  AS SLS_QT_FOC,
+      SLS_QT_DIR                  AS SLS_QT_DIR,
+      SLS_QT_PRO                  AS SLS_QT_PRO,
+      SLS_QT_IC                   AS SLS_QT_IC,
+      MSQTBUO                     AS MSQTBUO
+    FROM ({DBI::SQL(sql_get_data)})
+    ", .con = con)
+
+  return(sql_transform_data)
+}
 # 
 # # Function to write data to Parquet
 # write_data_to_parquet <- function(sql_transform_data, output_file) {
@@ -469,7 +505,7 @@ process_data2 <-
     
     # Generate SQL for data transformation
     sql_transform_data <- 
-      transform_data_sql(
+      transform_data_sql2(
         duckdb_read_csv_sql = duckdb_read_csv,
         transformation      = transformation_columns,
         con                 = con
@@ -509,7 +545,6 @@ process_data2 <-
 process_data2(PS01, PS02, "WTB", verbose = TRUE)
 
 ```
-
 
 ```{r}
 #| label: 'functions'

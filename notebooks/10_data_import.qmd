@@ -174,7 +174,6 @@ dbDisconnect(con)
 | 53  | TANOSHI          |
 | 65  | NATURELA         |
 
-
 ```{r}
 #| label: 'Sales Data ALL',
 #| eval:   true
@@ -183,7 +182,8 @@ dbDisconnect(con)
 # Establish a connection to DuckDB
 con <- dbConnect(duckdb(), dbdir = ":memory:")
 
-FFNG <- file.path(PS02, SYS, "RTP", paste0("DD_SALES_QTY_20*")  ) 
+FFNG <- file.path(PS02, SYS, "RTP", "OB", paste0("DD_SALES_QTY_20*")  ) 
+FFNG <- file.path(PS02, SYS, "RTP", "OB", paste0("DD_SALES_QTY_2024*")  )
 
 system.time({
   ISLS <- 
@@ -245,7 +245,6 @@ system.time({
   View(ISLS)
 })
 ```
-
 
 ```{r}
 #| label: 'Sales Data Material',
