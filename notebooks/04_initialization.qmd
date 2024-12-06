@@ -61,7 +61,7 @@ if( file.exists(lsrc)){source(lsrc)}
 # DataSource - Segment Fields #### 
 B4_RSDSSEGFD <- 
    fRead_and_Union(
-     pSIDCLNT  = "WTB500",
+     pSIDCLNT  = "WQB500",
      pTable    = "RSDSSEGFD",
      pOptions  = list(
        "OBJVERS = 'A'"
@@ -97,7 +97,56 @@ B4_RSDSSEGFD <-
      pRowcount = Inf
    )
 
+# Fields of the Open Hub Destination #### 
+B4_RSBOHFIELDS <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "RSBOHFIELDS",
+     pOptions  = list(
+       "OBJVERS = 'A'"
+     ),
+     pFields   = list(
+        "OHDEST"      , # Open Hub Destination                            X
+        "OBJVERS"     , # Object version                                  X
+        "FIELDNM"     , # Field name                                      X
+        "POSIT"       , # Position of the Field in the Structure / Table
+        "TEMPIOBJNM"  , # InfoObject
+        "KEYFLAG"     , # Open Hub: Indicator for Semantic Key
+        "DATATYPE"    , # Data Type
+        "INTLEN"      , # Internal Length in Bytes
+        "LENG"        , # Length (No. of Characters)
+        "OUTPUTLEN"   , # Output Length
+        "INTTYPE"     , # ABAP data type (C,D,N,...)
+        "CONVEXIT"    , # Conversion Routine
+        "DECIMALS"    , # Number of Decimal Places
+        "OUTFORMAT"   , # Data Input Format (Internal/External)
+        "EXT_DTYPE"   , # Data Type
+        "EXT_LENGHT"  , # Output Length
+        "UNIFIELDNM"  , # Name of the relevant unit field
+        "DTELNM"        # Data Element (Semantic Domain)
+    ),
+     pRowcount = Inf
+   ) 
+
+# Platform-Independent File Names, Cross-Client #### 
+B4_FILENAMECI <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "FILENAMECI",
+     pOptions  = list(),
+     pFields   = list(
+        # "FILEINTERN"  , # Logical file name                       X
+        # "FILEEXTERN"  , # Physical file name                      
+        # "FILEFORMAT"  , # Transfer file format (upload/download)  
+        # "APPLI_TR01"  , # Application area                        
+        # "PATHINTERN"    # Logical path name                       
+    ),
+     pRowcount = Inf
+   )
+
 ```
+
+
 
 ```{r}
 #| label:  Write_metadata 
@@ -106,6 +155,16 @@ B4_RSDSSEGFD <-
 fwrite(
   x = B4_RSDSSEGFD,
   file = file.path(PS01, SYS, "B4", "B4_RSDSSEGFD.csv"),
+)
+
+fwrite(
+  x = B4_RSBOHFIELDS,
+  file = file.path(PS01, SYS, "B4", "B4_RSBOHFIELDS"),
+)
+
+fwrite(
+  x = B4_FILENAMECI,
+  file = file.path(PS01, SYS, "B4", "B4_FILENAMECI"),
 )
 ```
 
