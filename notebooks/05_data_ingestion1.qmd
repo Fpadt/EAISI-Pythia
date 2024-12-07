@@ -1,0 +1,509 @@
+---
+title   : EAISI - Pythia
+subtitle: Data Ingestion
+author  : "F.J. Padt"
+date    : "`r format(Sys.time(), '%B %d, %Y')`"
+output  :
+  pdf_document:
+    df_print: paged
+    toc: yes
+    toc_depth: 1      
+editor_options:
+  chunk_output_type: console
+  markdown: 
+    wrap: 80  
+---
+
+\newpage
+
+![Logo](C:/PW\OneDrive\ET\pythia\img\pythia_logo2_no_text.png)
+
+# Purpose
+
+Refresh data sets for the Pythia project from BW OpenHub to Pythia on PET. The
+data sets are used to validate the Pythia model.
+
+This code needs to run in Ecotone Network and SAP should be available
+
+# Setup
+
+```{r}
+#| label:  setup
+#| eval:   true
+
+knitr::opts_chunk$set(
+  cache   = FALSE,
+  echo    = TRUE,     # include R source code in the output  
+  eval    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  results = "markup",
+  image   = TRUE,  
+  include = TRUE      # include the chunk output in the output 
+)
+
+SID <- "WPB500"
+SYS <- substr(SID, 1, 3)
+
+# SAP Access
+# library(reticulate)
+# use_condaenv("sapyr")
+
+# public functions ---------------------------------------------------------
+invisible(source('library/KnitR_SetUp.R'))
+
+lsrc <- "notebooks/05_data_ingestion.R"  
+if( file.exists(lsrc)){source(lsrc)}
+
+```
+
+```{r}
+clipr::write_clip(normalizePath(file.path(PS01, SYS, "RTP", "CSV")))
+```
+
+# Export & Copy Procedure
+
+## Pythia DTP's
+
+| Seq. | DTP | Description | Time |
+|-------|--------------------------------|----------------------------------------|--------------------|
+| 0 | DTP_006EIZGR39XAWQANS1LNUZF2Y | Pythia's Advice -\> IS PERKZ-W \[2021\] Incl.FR50 | 15 min. |
+| 0 | DTP_006EIZGR39XAWQANYOZZI4HSQ | Pythia's Advice -\> IS PERKZ-W \[2022\] Incl.FR50 |  |
+| 0 | DTP_006EIZGR39XAWQANZ3O0NUFIY | Pythia's Advice -\> IS PERKZ-W \[2023\] Incl.FR50 |  |
+| 1 | DTP_006EIZGR39XAWQANZFHWJ64UY |  |  |
+| 2 | DTP_006EIZGR39XAWPP4O3JPT9E6Y | PYTHIA -\> IS PERKZ-W \[\>=2024\] | 05 min |
+| 3 | DTP_006EIZGR39XAWPP4SWFV127TM | OS PERKZ-W \[\>=SY-DATE - 60\] | 02 min |
+
+## Export
+
+1.  \[15. Min\] RSPC: LC_DYN_PERKZ_W
+2.  \[05. Min\] DTP_006EIZGR39XAWPP4O3JPT9E6Y PYTHIA -\> IS PERKZ-W \[\>=2024\]
+3.  AL11 - DSCP E:\USR\SAP\STAGE\DSCP\PERKZ\_W\
+4.  save PRTP
+    1.  TMP execute next code chunk to change Thousands Separator
+5.  
+
+## RTP Sales
+
+```{r}
+#| label: 'get Header DD_SALES_QTY'
+#| eval:   false
+
+generate_config <- 
+  function(
+    file_path
+    ){
+    
+  HDR <- 
+    fread( 
+      file = file_path, #S_DD_SALES_QTY 
+      header = TRUE, skip=5
+    ) %>%
+    .[, FIELDNAME:= sub("/BIC/" , "", FIELDNAME)]    %>%
+    .[TYPE      == "DEC"        , TYPE := "FLOAT"]   %>%
+    .[TYPE      == "CHAR"       , TYPE := "VARCHAR"] %>%
+    .[TYPE      == "DATS"       , TYPE := "DATE"]    %>%
+    .[TYPE      == "UNIT"       , TYPE := "VARCHAR"] %>%
+    .[FIELDNAME == 'CALDAY'     , TYPE := 'DATE']    %>%
+    .[FIELDNAME == 'MSQTBUO'    , TYPE := 'FLOAT']   %>%
+    .[FIELDNAME %like% 'SLS_QT' , TYPE := 'FLOAT'] 
+
+  config <- list(
+    DELIM        = ';',
+    HEADER       = FALSE,
+    DATE_FORMAT  = '%Y-%m-%d',
+    COLUMN_DEF   = as.list(HDR$TYPE) %>% setNames(HDR$FIELDNAME)
+  )
+
+  return(config)
+}
+```
+
+## Ingestion Functions
+
+```{r}
+#| label: 'Data Ingestion Functions'
+#| eval:   true
+
+# Configuration parameters
+# sls_cfg <- list(
+#   DELIM        = ';',
+#   HEADER       = FALSE,
+#   DATE_FORMAT  = '%Y-%m-%d',
+#   COLUMN_DEF   = list(
+#     MATERIAL   = 'VARCHAR',
+#     CUSTOMER   = 'VARCHAR',
+#     PLANT      = 'VARCHAR',
+#     SALESORG   = 'VARCHAR',
+#     CALDAY     = 'DATE',
+#     SLS_QT_SO  = 'FLOAT',
+#     SLS_QT_RET = 'FLOAT',
+#     SLS_QT_FOC = 'FLOAT',
+#     SLS_QT_DIR = 'FLOAT',
+#     SLS_QT_PRO = 'FLOAT',
+#     SLS_QT_IC  = 'FLOAT',
+#     MSQTBUO    = 'FLOAT'
+#   )
+# )
+
+# Function to generate formatted columns
+generate_formatted_columns <- 
+  function(column_definitions) {
+    paste(
+      sapply(
+        names(column_definitions),
+        function(col) {
+          glue("'{col}'  : '{column_definitions[[col]]}'")
+        }
+      ),
+      collapse = ",\n    "
+    )
+  }
+
+# Function to generate the read_csv SQL snippet
+generate_read_csv_sql <- 
+  function(
+    ffns, 
+    delim, 
+    header, 
+    date_format, 
+    formatted_columns) {
+    glue("
+      read_csv('{ffns}',
+        delim      = '{delim}',
+        header     = {header},
+        dateformat = '{date_format}',
+        columns = {{
+          {formatted_columns}
+        }}
+      )
+    ")
+}
+
+# Function to perform data transformation
+transform_data_sql <- 
+  function(
+    read_csv_sql, 
+    con) {
+    
+  # Use glue_sql to construct SQL query
+  sql_get_data <- glue_sql("
+    SELECT *
+    FROM {DBI::SQL(read_csv_sql)}
+    ", .con = con)
+  
+  sql_transform_data <- glue_sql("
+    SELECT 
+      lpad(MATERIAL, 18, '0')     AS MATERIAL,
+      lpad(CUSTOMER, 10, '0')     AS CUSTOMER,
+      PLANT                       AS PLANT,
+      SALESORG                    AS SALESORG,
+      CALDAY                      AS CALDAY,
+      DATE_TRUNC('month', CALDAY) AS CALMONTH,
+      SLS_QT_SO                   AS SLS_QT_SO,
+      SLS_QT_RET                  AS SLS_QT_RET,
+      SLS_QT_FOC                  AS SLS_QT_FOC,
+      SLS_QT_DIR                  AS SLS_QT_DIR,
+      SLS_QT_PRO                  AS SLS_QT_PRO,
+      SLS_QT_IC                   AS SLS_QT_IC,
+      MSQTBUO                     AS MSQTBUO
+    FROM ({DBI::SQL(sql_get_data)})
+    ", .con = con)
+  
+  return(sql_transform_data)
+}
+
+# Function to write data to Parquet
+write_data_to_parquet <- 
+  function(
+    sql_transform_data, 
+    output_file) {
+      sql_write_data <- glue("
+        COPY ({sql_transform_data})
+        TO '{output_file}'
+        (FORMAT 'parquet', CODEC 'uncompressed')
+        ")
+  
+  return(sql_write_data)
+}
+
+# Main function to process data
+process_data <- function(
+    csv_file_name, 
+    yr,
+    source_base_path, 
+    target_base_path, 
+    sys_value, 
+    area,
+    verbose = FALSE) {
+  
+  if(yr != ""){yr <- paste0("_", yr)}
+  
+  # Define file paths
+  source_csv_file  <- 
+    file.path(
+      source_base_path , sys_value, area,  
+      paste0(csv_file_name, yr, ".CSV")
+    )
+  target_pqt_file <- 
+    file.path(
+      target_base_path, sys_value, area,  
+      paste0(csv_file_name, yr, ".parquet")
+    )
+  
+  # Check if input file exists
+  if (!file.exists(source_csv_file)) {
+    stop(glue("Input CSV file does not exist: {source_csv_file}"))
+  }
+  
+  config <- 
+    generate_config(
+      file_path = file.path(
+        source_base_path, sys_value, area,  
+        paste0("S_", paste0(csv_file_name, ".CSV"))
+      )
+    )
+  
+  # Generate formatted columns
+  formatted_columns <- generate_formatted_columns(config$COLUMN_DEF)
+  
+  # Generate SLS_CSV
+  read_csv_sql <- generate_read_csv_sql(
+    ffns              = source_csv_file,
+    delim             = config$DELIM,
+    header            = config$HEADER,
+    date_format       = config$DATE_FORMAT,
+    formatted_columns = formatted_columns
+  )
+  
+  # Establish a connection to DuckDB
+  con <- dbConnect(duckdb(), dbdir = ":memory:")
+  
+  # Ensure the connection is closed when the function exits
+  on.exit(dbDisconnect(con), add = TRUE)
+  
+  # Generate SQL for data transformation
+  sql_transform_data <- 
+    transform_data_sql(read_csv_sql = read_csv_sql, con = con)
+  
+  # Generate SQL for writing data
+  sql_write_data <- write_data_to_parquet(sql_transform_data, target_pqt_file)
+  
+  # Execute the SQL statements
+  tryCatch({
+    system.time({
+      dbExecute(con, sql_write_data)
+      if (verbose == TRUE){
+        print(
+          dbGetQuery(con, glue("DESCRIBE SELECT * FROM '{target_pqt_file}';"))
+        )
+      }
+      message(glue("Data successfully written to {target_pqt_file}"))
+    })
+  }, error = function(e) {
+    message(glue("An error occurred: {e$message}"))
+  })
+}
+
+```
+
+### Ingestion execution
+
+```{r}
+#| label: 'Data Ingestion Execution from Bronze (S1B) to Silver (S2S)'
+#| eval:   true
+
+yrs <- 24:24                    # Year parameter
+
+# Run the main function
+purrr::walk(yrs, process_data, PS01, PS02, SYS, "RTP", verbose = TRUE)
+
+process_data("DD_SALES_QTY", "2024", PS01, PS02, SYS, "RTP", verbose = TRUE)
+process_data("MD_MATERIAL" , ""    , PS01, PS02, SYS, "RTP", verbose = TRUE)
+```
+
+## RTP Master Data
+
+### Material
+
+#### MATERIAL
+
+```{r}
+#| label: 'MATERIAL'
+#| eval:   true
+
+pAREA <- "MATERIAL"
+MATERIAL <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    pKEY  = c(pAREA),
+    pPTH  = file.path(PS01, SYS, "RTP", "CSV")
+  )                                                                       %>% 
+ .[, MATERIAL:= LP0(MATERIAL, 18)]                                        %T>%
+  setcolorder("MATERIAL")                                                 %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "RTP", "ARR", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+    )
+  )
+
+```
+
+#### MAT_SALES
+
+```{r}
+#| label: 'MAT_SALES',
+#| eval:   true
+
+pAREA <- "MAT_SALES"
+MAT_SALES <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    pPTH  = file.path(PS01, SYS, "RTP", "CSV")
+  )                                                                       %>%
+  .[, DISTR_CHAN:= 10]                                                    %>%
+  .[, `:=` (MAT_SALES = LP0(MATERIAL, 18), MATERIAL = NULL)]              %T>%
+  setcolorder(c("MAT_SALES", "SALESORG", "DISTR_CHAN"))                   %T>%       
+  setkey("MAT_SALES", "SALESORG", "DISTR_CHAN")                           %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "RTP", "ARR", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+    )
+  )                                                              
+
+```
+
+#### MAT_PLANT
+
+```{r}
+#| label: 'MAT_PLANT',
+#| eval:   true
+
+pAREA <- "MAT_PLANT"
+MAT_PLANT <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    pKEY  = c("MAT_PLANT", "PLANT"),
+    pPTH  = file.path(PS01, SYS, "RTP", "CSV")
+  )                                                                       %>%
+  .[, `:=` (MAT_PLANT = LP0(MAT_PLANT, 18))]                              %T>%
+  setcolorder(c("MAT_PLANT", "PLANT"))                                    %T>%       
+  setkey("MAT_PLANT", "PLANT")                                            %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "RTP", "ARR", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+    )
+  ) 
+```
+
+### Customer
+
+#### CUST_SALES
+
+```{r}
+#| label: 'CUST_SALES',
+#| eval:   true
+
+pAREA <- "SOLDTO"
+CUST_SALES <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    # pKEY  = c("MAT_PLANT", "PLANT"),
+    pPTH  = file.path(PS01, SYS, "RTP", "CSV")
+  )                                                                       %>%
+  .[, `:=` (
+    CUST_SALES = LP0(CUSTOMER  , 10), 
+    CUSTHIE04  = LP0(CUSTHIE04 , 10), 
+    CUST_HIE03 = LP0(CUST_HIE03, 10), 
+    CUST_HIE02 = LP0(CUST_HIE02, 10), 
+    CUST_HIE01 = LP0(CUST_HIE01, 10),     
+    DISTR_CHAN = 10, 
+    CUSTOMER   = NULL
+    )]                                                                    %T>%
+  setcolorder(c("CUST_SALES", "SALESORG", "DISTR_CHAN"))                  %T>%         
+  setkey("CUST_SALES", "SALESORG", "DISTR_CHAN")                          %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "RTP", "ARR", 
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+    )
+  ) 
+```
+
+### Stock
+
+```{r}
+#| label: 'Stock'
+#| eval:   true
+
+pAREA <- "STOCK"
+STK <- 
+  fLoadOpenHubExport(
+    pAREA = pAREA,  
+    # pKEY  = c("MAT_PLANT", "PLANT"),
+    pPTH  = file.path(PS01, SYS, "STK", "CSV")
+  )                                                              %T>%         
+  setkey("CALDAY", "MATERIAL", "PLANT")                          %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, SYS, "STK", "ARR",
+      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+    )
+  ) 
+
+```
+
+### Promotions
+
+#### PromoNat
+
+```{r}
+#| label: 'PROMO'
+#| eval:   true
+
+REL_FLDS <- 
+  wb_to_df(
+    file  = file.path(PS01, "PRM", "PROMONAT.xlsx"),
+    sheet = "FIELDS",
+    cols  = c(2, 4, 5)
+  )                         %>%
+  setDT()                   %>%
+  .[RELEVANT == "YES", COL] %>%
+  sort()
+
+PROMONAT <-
+  wb_to_df(
+    file  = file.path(PS01, "PRM", "PROMONAT.xlsx"),
+    sheet = "PROMONAT",
+    cols  = REL_FLDS
+  )                                                           %T>%
+  write_parquet(
+    sink = file.path(
+      PS02, "PRM", "ARR", 
+      "PROMONAT.parquet"
+    )
+  )                                                     
+
+CR_PR_PROMO_CL2_HEADER <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL2_HEADER.CSV")
+  )
+
+CR_PR_PROMO_CL2_LINE <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL2_LINE.CSV")
+  )
+
+CR_PR_PROMO_CL3_HEADER <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL3_HEADER.CSV")
+  )
+
+CR_PR_PROMO_CL3_LINE <- 
+  fread(
+    file = file.path(PPRM, "CR_PR_PROMO_CL3_LINE.CSV")
+  )
+```
