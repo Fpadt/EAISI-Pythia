@@ -55,6 +55,14 @@ invisible(source('library/KnitR_SetUp.R'))
 lsrc <- "notebooks/05_data_ingestion.R"  
 if( file.exists(lsrc)){source(lsrc)}
 
+# B4_RSDSSEGFD <- 
+#   fread(file = file.path(PS01, SYS, "B4", "B4_RSDSSEGFD.csv"))
+# 
+# B4_RSBOHFIELDS <- 
+#   fread(file = file.path(PS01, SYS, "B4", "B4_RSBOHFIELDS.csv"))
+# 
+# B4_FILENAMECI <- 
+#   fread(file = file.path(PS01, SYS, "B4", "B4_FILENAMECI"))
 ```
 
 ```{r}
@@ -109,272 +117,32 @@ clipr::write_clip(
 #| label: 'Outbound - Data Ingestion Functions'
 #| eval:   true
 
-dtDSCP_TRAN <- 
-  fread(text = "
-        FIELDNM   , FIELDTP, FIELDLEN, DECIMALS, KEYFLAG, TEXT          , DATATYPE
-        MATERIAL  , VARCHAR, 18      ,        0,       X, Material      , CHAR
-        CUSTOMER  , VARCHAR, 10      ,        0,       X, Customer      , CHAR
-        PLANT     , VARCHAR,  4      ,        0,       X, Plant         , CHAR
-        SALESORG  , VARCHAR,  4      ,        0,       X, SalesOrg      , CHAR
-        CALDAY    , DATE   ,  8      ,        0,       X, CalDay        , DATS
-        SLS_QT_SO , FLOAT  ,  8      ,        0,       X, Sales         , QUAN
-        SLS_QT_RET, FLOAT  ,  8      ,        0,       X, Returns       , QUAN
-        SLS_QT_FOC, FLOAT  ,  8      ,        0,       X, Free-of-Charge, QUAN
-        SLS_QT_DIR, FLOAT  ,  8      ,        0,       X, Direct        , QUAN
-        SLS_QT_PRO, FLOAT  ,  8      ,        0,       X, Promotion     , QUAN
-        SLS_QT_IC , FLOAT  ,  8      ,        0,       X, Intercompany  , QUAN
-        MSQTBUO   , FLOAT  ,  8      ,        0,       X, MSQTBUO       , QUAN"
-  ) 
-
-generate_input_columns_definition <- 
-  function(x) {
-    # Calculate the maximum length of FIELDNM for alignment
-    x[, no_spc := max(nchar(FIELDNM)) - nchar(FIELDNM) + 3]
-    
-    # Generate the formatted string using glue_data
-    result <- x[, glue_data(.SD, 
-                            "'{FIELDNM}'{strrep(' ', no_spc)}: '{FIELDTP}',"
-    )]
-    
-    # Collapse the vector into a single string
-    result <- paste0(result, collapse = "\n")
-    
-    return(result)
-  }
-
-
-# COLUMN_DEF   <-  list(
-#   MATERIAL   = 'VARCHAR',
-#   CUSTOMER   = 'VARCHAR',
-#   PLANT      = 'VARCHAR',
-#   SALESORG   = 'VARCHAR',
-#   CALDAY     = 'DATE',
-#   SLS_QT_SO  = 'FLOAT',
-#   SLS_QT_RET = 'FLOAT',
-#   SLS_QT_FOC = 'FLOAT',
-#   SLS_QT_DIR = 'FLOAT',
-#   SLS_QT_PRO = 'FLOAT',
-#   SLS_QT_IC  = 'FLOAT',
-#   MSQTBUO    = 'FLOAT'
-# )
-
 # Configuration parameters of Open Hub DSCP_TRAN
-DSCP_TRAN <- list(
-  DELIM        = ';',
-  HEADER       = FALSE,
-  DATE_FORMAT  = '%Y-%m-%d'
-  # ,
-  # COLUMN_DEF   = list(
-  #   MATERIAL   = 'VARCHAR',
-  #   CUSTOMER   = 'VARCHAR',
-  #   PLANT      = 'VARCHAR',
-  #   SALESORG   = 'VARCHAR',
-  #   CALDAY     = 'DATE',
-  #   SLS_QT_SO  = 'FLOAT',
-  #   SLS_QT_RET = 'FLOAT',
-  #   SLS_QT_FOC = 'FLOAT',
-  #   SLS_QT_DIR = 'FLOAT',
-  #   SLS_QT_PRO = 'FLOAT',
-  #   SLS_QT_IC  = 'FLOAT',
-  #   MSQTBUO    = 'FLOAT'
-  # )
-)
+FILE_SPEC <- 
+  list(
+    DELIM        = ';',
+    HEADER       = FALSE,
+    DATE_FORMAT  = '%Y-%m-%d'
+  )
 
-transformation_columns <- c(
-  "lpad(MATERIAL, 18, '0') AS MATERIAL",
-  "lpad(CUSTOMER, 10, '0') AS CUSTOMER",
-  "PLANT AS PLANT",
-  "SALESORG AS SALESORG",
-  "CALDAY AS CALDAY",
-  "DATE_TRUNC('month', CALDAY) AS CALMONTH",
-  "SLS_QT_SO AS SLS_QT_SO",
-  "SLS_QT_RET AS SLS_QT_RET",
-  "SLS_QT_FOC AS SLS_QT_FOC",
-  "SLS_QT_DIR AS SLS_QT_DIR",
-  "SLS_QT_PRO AS SLS_QT_PRO",
-  "SLS_QT_IC AS SLS_QT_IC",
-  "MSQTBUO AS MSQTBUO"
-)
-
-# Function to generate formatted columns
-# generate_formatted_columns <-
-#   function(column_definitions) {
-#     # pad space to get same length
-#     nms <- names(column_definitions)
-#     mxl <- nms %>% nchar() %>% max()
-# 
-#     paste(
-#       sapply(
-#         names(column_definitions) ,
-#         function(col) {
-#           lng <- mxl + 2 - nchar(col)
-#           cln <- str_pad(": ", lng, side = "left", pad = " ")
-#           glue("'{col}'{cln}'{column_definitions[[col]]}'")
-#         }
-#       ),
-#       collapse = ",\n      "
-#     )
-#   }
-
-# Function to generate the read_csv SQL snippet
-generate_duckdb_read_csv <- 
-  function(ffns, delim, header, date_format, formatted_columns) {
-    glue("
-    read_csv('{ffns}',
-      delim      = '{delim}',
-      header     = {header},
-      dateformat = '{date_format}',
-      columns = {{
-        {formatted_columns}
-      }}
-    )
-  ")
-  }
-
-# Function to perform data transformation
-# transform_data_sql3 <-
-#   function(duckdb_read_csv_sql, transformation,con) {
-# 
-#     # Use glue_sql to construct SQL query
-#     sql_get_data <-
-#       glue_sql("
-#         SELECT
-#          *
-#         FROM {DBI::SQL(duckdb_read_csv_sql)}
-#         ", .con = con)
-# 
-#     sql_transform_data <-
-#       glue_sql("
-#         SELECT
-#           lpad(MATERIAL, 18, '0')     AS MATERIAL,
-#           lpad(CUSTOMER, 10, '0')     AS CUSTOMER,
-#           PLANT                       AS PLANT,
-#           SALESORG                    AS SALESORG,
-#           CALDAY                      AS CALDAY,
-#           DATE_TRUNC('month', CALDAY) AS CALMONTH,
-#           SLS_QT_SO                   AS SLS_QT_SO,
-#           SLS_QT_RET                  AS SLS_QT_RET,
-#           SLS_QT_FOC                  AS SLS_QT_FOC,
-#           SLS_QT_DIR                  AS SLS_QT_DIR,
-#           SLS_QT_PRO                  AS SLS_QT_PRO,
-#           SLS_QT_IC                   AS SLS_QT_IC,
-#           MSQTBUO                     AS MSQTBUO
-#         FROM ({DBI::SQL(sql_get_data)})
-#         ", .con = con)
-# 
-#     return(sql_transform_data)
-#   }
-
-transform_data_sql <- function(duckdb_read_csv_sql, transformation, con) {
-  # Use glue_sql to construct SQL query
-  sql_get_data <- 
-    glue_sql("
-      SELECT 
-       *
-      FROM {DBI::SQL(duckdb_read_csv_sql)}
-      ", .con = con)
-  
-  # Create the SELECT statement dynamically
-  select_statement <- paste(transformation, collapse = ",\n          ")
-  
-  sql_transform_data <- 
-    glue_sql("
-      SELECT 
-        {DBI::SQL(select_statement)}
-      FROM ({DBI::SQL(sql_get_data)})
-      ", .con = con)
-  
-  return(sql_transform_data)
-}
-
-
-# Function to write data to Parquet
-write_data_to_parquet <- function(sql_transform_data, output_file) {
-  sql_write_data <- glue("
-    COPY ({sql_transform_data})
-    TO '{output_file}'
-    (FORMAT 'parquet', CODEC 'uncompressed')
-    ")
-  
-  return(sql_write_data)
-}
-
-# Main function to process data
-process_data <- 
-  function(
-    yr, 
-    input_base_path, 
-    output_base_path, 
-    sys_value, 
-    verbose = FALSE) {
-    
-    # Define file paths
-    input_csv_file  <- 
-      file.path(
-        input_base_path , sys_value, "RTP", "OB",  
-        paste0("DD_SALES_QTY_20", yr, ".CSV")
-      )
-    output_pqt_file <- 
-      file.path(
-        output_base_path, sys_value, "RTP", "OB",
-        paste0("DD_SALES_QTY_20", yr, ".parquet")
-      )
-    
-    # Check if input file exists
-    if (!file.exists(input_csv_file)) {
-      stop(glue("Input CSV file does not exist: {input_csv_file}"))
-    }
-    
-    # Generate formatted columns
-    formatted_columns <- generate_input_columns_definition(dtDSCP_TRAN)
-    #generate_formatted_columns(DSCP_TRAN$COLUMN_DEF)
-    
-    # Generate SLS_CSV
-    duckdb_read_csv <- 
-      generate_duckdb_read_csv(
-        ffns              = input_csv_file,
-        delim             = DSCP_TRAN$DELIM,
-        header            = DSCP_TRAN$HEADER,
-        date_format       = DSCP_TRAN$DATE_FORMAT,
-        formatted_columns = formatted_columns
-      )
-    
-    # Establish a connection to DuckDB
-    con <- dbConnect(duckdb(), dbdir = ":memory:")
-    
-    # Ensure the connection is closed when the function exits
-    on.exit(dbDisconnect(con), add = TRUE)
-    
-    # Generate SQL for data transformation
-    sql_transform_data <- 
-      transform_data_sql(
-        duckdb_read_csv_sql = duckdb_read_csv,
-        transformation      = transformation_columns,
-        con                 = con
-      )
-    
-    # Generate SQL for writing data
-    sql_write_data <- write_data_to_parquet(sql_transform_data, output_pqt_file)
-    
-    # Execute the SQL statements
-    tryCatch({
-      system.time({
-        dbExecute(con, sql_write_data)
-        if (verbose == TRUE){
-          print(
-            dbGetQuery(con, glue("DESCRIBE SELECT * FROM '{output_pqt_file}';"))
-          )
-        }
-        message(
-          cat(white$bgGreen$bold(glue("Data successfully written to {output_pqt_file}")))
-        )
-      })
-    }, error = function(e) {
-      message(
-        cat(white$bgRed$bold(glue("An error occurred: {e$message}")))
-      )
-    })
-  }
+DSCP_OUT_PIPE_LINE <- 
+  fread(text = "
+        FLDNM_IN  | FIELDTP| TRNSFRM                     | FLDNM_OUT
+        MATERIAL  | VARCHAR| lpad(MATERIAL, 18, '0')     | MATERIAL
+        CUSTOMER  | VARCHAR| lpad(CUSTOMER, 10, '0')     | SOLDTO
+        PLANT     | VARCHAR| PLANT                       | PLANT
+        SALESORG  | VARCHAR| SALESORG                    | SALESORG
+        CALDAY    | DATE   | CALDAY                      | CALDAY
+                  |        | DATE_TRUNC('month', CALDAY) | CALMONTH
+        SLS_QT_SO | FLOAT  | SLS_QT_SO                   | SLS_QT_SO
+        SLS_QT_RET| FLOAT  | SLS_QT_RET                  | SLS_QT_RET
+        SLS_QT_FOC| FLOAT  | SLS_QT_FOC                  | SLS_QT_FOC
+        SLS_QT_DIR| FLOAT  | SLS_QT_DIR                  | SLS_QT_DIR
+        SLS_QT_PRO| FLOAT  | SLS_QT_PRO                  | SLS_QT_PRO
+        SLS_QT_IC | FLOAT  | SLS_QT_IC                   | SLS_QT_IC
+        MSQTBUO   | FLOAT  | MSQTBUO                     | MSQTBUO",
+        sep = "|"  
+  ) 
 
 ```
 
@@ -384,10 +152,21 @@ process_data <-
 #| label: 'Data Ingestion Execution from Bronze (S1B) to Silver (S2S)'
 #| eval:   true
 
-yrs <- 24:24  # Year parameter
+# generate file names per year
+fls <- 
+  23:24                         %>%  
+  paste0("DD_SALES_QTY_20", .)
+
+# Define file paths
+farea_path  <- file.path(SYS, "RTP", "OB")
+input_path  <- file.path(PS01, farea_path)
+output_path <- file.path(PS02, farea_path)
 
 # Run the main function
-purrr::walk(yrs, process_data, PS01, PS02, SYS, verbose = TRUE)
+purrr::walk(
+  fls, transform_csv_to_parquet, input_path, output_path, 
+  FILE_SPEC, DSCP_OUT_PIPE_LINE, verbose = TRUE
+)
 
 ```
 
@@ -399,199 +178,60 @@ purrr::walk(yrs, process_data, PS01, PS02, SYS, verbose = TRUE)
 #| label: 'Inbound - Data Ingestion Functions'
 #| eval:   true
 
-# Configuration parameters of DataSources:
-# - BEFOREDR_ACTUALS
-# - BEFOREDR_FORECASTS
-# - AFTERDR_ACTUALS
-# - AFTERDR_FORECASTS
-
 # Configuration parameters of Open Hub DSCP_TRAN
-DSCP_INBOUND <- list(
-  DELIM        = ';',
-  HEADER       = FALSE,
-  DATE_FORMAT  = '%Y-%m-%d',
-  COLUMN_DEFINITIONS = list(
-    CREATION_DATE          = 'DATE',
-    DFU_CODE               = 'VARCHAR',
-    MATERIAL_CODE          = 'VARCHAR',
-    CUSTOMERL3_CODE        = 'VARCHAR',
-    CL3_CODE               = 'VARCHAR',
-    CL2_CODE               = 'VARCHAR',
-    CL1_CODE               = 'VARCHAR',
-    PLANT_CODE             = 'VARCHAR',
-    SALESORG_CODE          = 'VARCHAR',
-    PERIOD_CODE            = 'VARCHAR',
-    TOTAL_DEMAND_QTY       = 'FLOAT',
-    BASE_LINE_QTY          = 'FLOAT',
-    PROMO_QTY              = 'FLOAT',
-    TOTAL_DEMAND_COMP_QTY  = 'FLOAT',
-    PROMO_COMP_QTY         = 'FLOAT',
-    BASEUNITOFMEASURE_CODE = 'VARCHAR'
+FILE_SPEC <- 
+  list(
+    DELIM        = ';',
+    HEADER       = FALSE,
+    DATE_FORMAT  = '%Y-%m-%d'
   )
-)
 
-transformation_columns <- 
-  "CREATION_DATE          AS CREATION_DATE,
-   DFU_CODE               AS DFU_CODE,
-   MATERIAL_CODE          AS MATERIAL_CODE,
-   CUSTOMERL3_CODE        AS CUSTOMERL3_CODE,
-   CL3_CODE               AS CL3_CODE,
-   CL2_CODE               AS CL2_CODE,
-   CL1_CODE               AS CL1_CODE,
-   PLANT_CODE             AS PLANT_CODE,
-   SALESORG_CODE          AS SALESORG_CODE,
-   PERIOD_CODE            AS PERIOD_CODE,
-   TOTAL_DEMAND_QTY       AS TOTAL_DEMAND_QTY,
-   BASE_LINE_QTY          AS BASE_LINE_QTY,
-   PROMO_QTY              AS PROMO_QTY,
-   TOTAL_DEMAND_COMP_QTY  AS TOTAL_DEMAND_COMP_QTY,
-   PROMO_COMP_QTY         AS PROMO_COMP_QTY,
-   BASEUNITOFMEASURE_CODE AS BASEUNITOFMEASURE_CODE"
+# DSCP_IN_PIPE_LINE <- 
+#   fread(text = "
+#         FLDNM_IN              | FIELDTP | TRNSFRM                | FLDNM_OUT
+#         CREATION_DATE         | VARCHAR    | CREATION_DATE          | UPDATE_DATE
+#         DFU_CODE              | VARCHAR | DFU_CODE               | 
+#         MATERIAL_CODE         | VARCHAR | MATERIAL_CODE          | MATERIAL_CODE
+#         CUSTOMERL3_CODE       | VARCHAR | CUSTOMERL3_CODE        | 
+#         CL3_CODE              | VARCHAR | CL3_CODE               | CL3_CODE
+#         CL2_CODE              | VARCHAR | CL2_CODE               | CL2_CODE
+#         CL1_CODE              | VARCHAR | CL1_CODE               | CL1_CODE
+#         PLANT_CODE            | VARCHAR | PLANT_CODE             | PLANT_CODE
+#         SALESORG_CODE         | VARCHAR | SALESORG_CODE          | SALESORG_CODE
+#         PERIOD_CODE           | VARCHAR | PERIOD_CODE            | PERIOD_CODE
+#         TOTAL_DEMAND_QTY      | VARCHAR   | TOTAL_DEMAND_QTY       | TOTAL_DEMAND_QTY
+#         BASE_LINE_QTY         | VARCHAR   | BASE_LINE_QTY          | BASE_LINE_QTY
+#         PROMO_QTY             | VARCHAR   | PROMO_QTY              | PROMO_QTY
+#         TOTAL_DEMAND_COMP_QTY | VARCHAR   | TOTAL_DEMAND_COMP_QTY  | TOTAL_DEMAND_COMP_QTY
+#         PROMO_COMP_QTY        | VARCHAR   | PROMO_COMP_QTY         | PROMO_COMP_QTY
+#         BASEUNITOFMEASURE_CODE| VARCHAR | BASEUNITOFMEASURE_CODE | BASEUNITOFMEASURE_CODE",
+#         sep = "|"  
+#   ) 
 
-# # Function to generate formatted columns
-generate_formatted_columns <-
-  function(column_definitions) {
-    paste(
-      sapply(
-        names(column_definitions),
-        function(col) {
-          glue("'{col}'  : '{column_definitions[[col]]}'")
-        }
-      ),
-      collapse = ",\n    "
-    )
-  }
-
-# # Function to generate the read_csv SQL snippet
-# generate_sls_csv <- function(ffns, delim, header, date_format, formatted_columns) {
-#   glue("
-#     read_csv('{ffns}',
-#       delim      = '{delim}',
-#       header     = {header},
-#       dateformat = '{date_format}',
-#       columns = {{
-#         {formatted_columns}
-#       }}
-#     )
-#   ")
-# }
-
-# # Function to perform data transformation
-transform_data_sql2 <- function(sls_csv_sql, con) {
-  # Use glue_sql to construct SQL query
-  sql_get_data <- glue_sql("
-    SELECT *
-    FROM {DBI::SQL(sls_csv_sql)}
-    ", .con = con)
-
-  sql_transform_data <- glue_sql("
-    SELECT
-      lpad(MATERIAL, 18, '0')     AS MATERIAL,
-      lpad(CUSTOMER, 10, '0')     AS CUSTOMER,
-      PLANT                       AS PLANT,
-      SALESORG                    AS SALESORG,
-      CALDAY                      AS CALDAY,
-      DATE_TRUNC('month', CALDAY) AS CALMONTH,
-      SLS_QT_SO                   AS SLS_QT_SO,
-      SLS_QT_RET                  AS SLS_QT_RET,
-      SLS_QT_FOC                  AS SLS_QT_FOC,
-      SLS_QT_DIR                  AS SLS_QT_DIR,
-      SLS_QT_PRO                  AS SLS_QT_PRO,
-      SLS_QT_IC                   AS SLS_QT_IC,
-      MSQTBUO                     AS MSQTBUO
-    FROM ({DBI::SQL(sql_get_data)})
-    ", .con = con)
-
-  return(sql_transform_data)
-}
-# 
-# # Function to write data to Parquet
-# write_data_to_parquet <- function(sql_transform_data, output_file) {
-#   sql_write_data <- glue("
-#     COPY ({sql_transform_data})
-#     TO '{output_file}'
-#     (FORMAT 'parquet', CODEC 'uncompressed')
-#     ")
-#   
-#   return(sql_write_data)
-# }
-
-# Main function to process data
-process_data2 <- 
-  function(
-    input_base_path, 
-    output_base_path, 
-    sys_value = "WTB", 
-    verbose = FALSE) {
-    
-    # Define file paths
-    input_csv_file  <- 
-      file.path(
-        input_base_path , sys_value, "RTP", "IB",
-        paste0("OUT_BI_DATA_PREDR_ACTUALS.CSV")
-      )
-    output_pqt_file <- 
-      file.path(
-        output_base_path, sys_value, "RTP", "IB",
-        paste0("OUT_BI_DATA_PREDR_ACTUALS.parquet")
-      )
-    
-    # Check if input file exists
-    if (!file.exists(input_csv_file)) {
-      stop(glue("Input CSV file does not exist: {input_csv_file}"))
-    }
-    
-    # Generate formatted columns
-    formatted_columns <- 
-      generate_formatted_columns(DSCP_INBOUND$COLUMN_DEF)
-    
-    # Generate SLS_CSV
-    duckdb_read_csv <- 
-      generate_duckdb_read_csv(
-        ffns              = input_csv_file,
-        delim             = DSCP_INBOUND$DELIM,
-        header            = DSCP_INBOUND$HEADER,
-        date_format       = DSCP_INBOUND$DATE_FORMAT,
-        formatted_columns = formatted_columns
-      )
-    
-    # Establish a connection to DuckDB
-    con <- dbConnect(duckdb(), dbdir = ":memory:")
-    
-    # Ensure the connection is closed when the function exits
-    on.exit(dbDisconnect(con), add = TRUE)
-    
-    # Generate SQL for data transformation
-    sql_transform_data <- 
-      transform_data_sql2(
-        duckdb_read_csv_sql = duckdb_read_csv,
-        transformation      = transformation_columns,
-        con                 = con
-      )
-    
-    # Generate SQL for writing data
-    sql_write_data <- write_data_to_parquet(sql_transform_data, output_pqt_file)
-    
-    # Execute the SQL statements
-    tryCatch({
-      system.time({
-        dbExecute(con, sql_write_data)
-        if (verbose == TRUE){
-          print(
-            dbGetQuery(con, glue("DESCRIBE SELECT * FROM '{output_pqt_file}';"))
-          )
-        }
-          message(
-            cat(white$bgGreen$bold(glue("Data successfully written to {output_pqt_file}")))
-            )
-      })
-    }, error = function(e) {
-        message(
-          cat(white$bgRed$bold(glue("An error occurred: {e$message}")))
-          )
-    })
-  }
-
+FRPR_IN_PIPE_LINE <- 
+  fread(text = "
+          FLDNM_IN              | FIELDTP    | TRNSFRM                | FLDNM_OUT
+          COMP_CODE             | VARCHAR    | COMP_CODE              | COMP_CODE
+          SALESORG              | VARCHAR    | SALESORG               | SALESORG
+          PLANT                 | VARCHAR    | PLANT                  | PLANT 
+          MATERIAL              | VARCHAR    | MATERIAL               | MATERIAL 
+          CUST_HIE03            | VARCHAR    | CUST_HIE03             | CUST_HIE03
+          CALMONTH              | VARCHAR    | CALMONTH               | CALMONTH
+          VTYPE                 | VARCHAR    | VTYPE                  | VTYPE 
+          FTYPE                 | VARCHAR    | FTYPE                  | FTYPE
+          VERSMON               | VARCHAR    | VERSMON                | VERSMON 
+          RECORDMODE            | VARCHAR    | RECORDMODE             | RECORDMODE 
+          UPD_DATE              | VARCHAR    | UPD_DATE               | UPD_DATE
+          CUST_HIE02            | VARCHAR    | CUST_HIE02             | CUST_HIE02 
+          CUST_HIE01            | VARCHAR    | CUST_HIE01             | CUST_HIE01 
+          DEMND_QTY             | VARCHAR    | DEMND_QTY              | DEMND_QTY 
+          BSELN_QTY             | VARCHAR    | BSELN_QTY              | BSELN_QTY 
+          PROMO_QTY             | VARCHAR    | PROMO_QTY              | PROMO_QTY 
+          DMDCP_QTY             | VARCHAR    | DMDCP_QTY              | DMDCP_QTY 
+          PRMCP_QTY             | VARCHAR    | PRMCP_QTY              | PRMCP_QTY
+          BASE_UOM              | VARCHAR    | BASE_UOM               | BASE_UOM",
+        sep = "|"
+  )
 ```
 
 #### Execution
@@ -600,11 +240,29 @@ process_data2 <-
 #| label: 'Data Ingestion Execution from Bronze (S1B) to Silver (S2S)'
 #| eval:   true
 
-# yrs <- 24:24  # Year parameter
+# Configuration parameters of DataSources:
+# - BEFOREDR_ACTUALS
+# - BEFOREDR_FORECASTS
+# - AFTERDR_ACTUALS
+# - AFTERDR_FORECASTS
+
+# generate file names per year
+fls <- 
+  c(
+    "SDSFRPR1_12",
+    "SDSFRPR3_12"
+  )
+
+# Define file paths
+farea_path  <- file.path(SYS, "DYN")
+input_path  <- file.path(PS01, farea_path)
+output_path <- file.path(PS02, farea_path)
 
 # Run the main function
-# purrr::walk(yrs, process_data, PS01, PS02, SYS, verbose = TRUE)
-process_data2(PS01, PS02, "WTB", verbose = TRUE)
+purrr::walk(
+  fls, transform_csv_to_parquet, input_path, output_path, 
+  FILE_SPEC, FRPR_IN_PIPE_LINE, verbose = TRUE
+)
 
 ```
 

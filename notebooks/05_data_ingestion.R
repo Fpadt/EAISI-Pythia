@@ -165,3 +165,198 @@ fSignLeft <-
       as.numeric()
   }
 
+# DuckDB ####
+
+helper_for_pipe_line <- 
+  function(x){
+    
+    res <- 
+      fread(file = file.path(PS01, SYS, "B4", "B4_RSBOHFIELDS.csv")) %>%
+      .[OHDEST == x, .(
+        FIELDNM = sub("/BIC/", "", FIELDNM), 
+        DATATYPE, POSIT)]                                            %T>%
+      setorder(POSIT)
+      
+
+    # Calculate the maximum length of FLDNM_IN for alignment
+    res[, no_spc := max(nchar(FIELDNM)) - nchar(FIELDNM) + 3]
+        
+    res <- 
+      res[, glue_data(.SD, 
+                  "{FIELDNM}{strrep(' ', no_spc)}| {DATATYPE} | "
+    )]
+    
+    # Collapse the vector into a single string
+    result <- 
+      paste0(res, collapse = "\n") 
+    
+    clipr::write_clip(result)
+    cat(result) 
+  }
+
+# generate a formatted field PIPE_LINE with field types
+generate_field_spec <- 
+  function(x) {
+    
+    # remove unnamed fields
+    x <- x[FLDNM_IN != ""]
+    
+    # Calculate the maximum length of FLDNM_IN for alignment
+    x[, no_spc := max(nchar(FLDNM_IN)) - nchar(FLDNM_IN) + 3]
+    
+    # Generate the formatted string using glue_data
+    result <- x[, glue_data(.SD, 
+                            "'{FLDNM_IN}'{strrep(' ', no_spc)}: '{FIELDTP}',"
+    )]
+    
+    # Collapse the vector into a single string
+    result <- 
+      paste0(result, collapse = "\n") %>%
+      substr(1, nchar(.) - 1)
+    
+    return(result)
+  }
+
+# generate a formatted field PIPE_LINE with field types
+generate_transformation_spec <- 
+  function(x) {
+    
+    # remove unnamed fields
+    x <- x[FLDNM_OUT != ""]
+    
+    # Calculate the maximum length of TRNSFRM for alignment
+    x[, no_spc := max(nchar(TRNSFRM)) - nchar(TRNSFRM) + 3]
+    
+    # Generate the formatted string using glue_data
+    result <- x[, glue_data(.SD, 
+                            "{TRNSFRM}{strrep(' ', no_spc)}AS {FLDNM_OUT},"
+    )]
+    
+    # Collapse the vector into a single string
+    result <- paste0(result, collapse = "\n") %>%
+      substr(1, nchar(.) - 1)
+    
+    return(result)
+  }
+
+# generate the read_csv SQL snippet
+gen_sql_to_read_csv <- 
+  function(ffns, delim, header, date_format, field_spec) {
+    glue("
+    read_csv('{ffns}',
+      delim      = '{delim}',
+      header     = {header},
+      dateformat = '{date_format}',
+      columns = {{
+        {field_spec}
+      }}
+    )
+  ")
+  }
+
+gen_sql_to_transform_data <- 
+  function(sql_read_csv, pipe_line, con) {
+    # Use glue_sql to construct SQL query
+    sql_get_data <- 
+      glue_sql("
+      SELECT 
+       *
+      FROM {DBI::SQL(sql_read_csv)}
+      ", .con = con)
+    
+    # Create the SELECT statement dynamically
+    select_statement <- 
+      generate_transformation_spec(pipe_line)
+    
+    sql_transform_data <- 
+      glue_sql("
+      SELECT 
+        {DBI::SQL(select_statement)}
+      FROM ({DBI::SQL(sql_get_data)})
+      ", .con = con)
+    
+    return(sql_transform_data)
+  }
+
+# Function to write data to Parquet
+gen_sql_to_write_data_to_parquet <- 
+  function(sql_transform_data, output_file) {
+    sql_write_data <- glue("
+      COPY ({sql_transform_data})
+      TO '{output_file}'
+      (FORMAT 'parquet', CODEC 'uncompressed')
+      ")
+    
+    return(sql_write_data)
+  }
+
+# Main function to transform_csv_to_parquet
+# read csv > transform > write parquet
+transform_csv_to_parquet <- 
+  function(
+    file_name  , 
+    input_path , 
+    output_path, 
+    file_spec  ,
+    pipe_line  ,
+    verbose      = FALSE) {
+    
+    input_csv_file  <- file.path(input_path , paste0(file_name, ".csv"))
+    output_pqt_file <- file.path(output_path, paste0(file_name, ".parquet"))
+    
+    # Check if input file exists
+    if (!file.exists(input_csv_file)) {
+      stop(glue("Input CSV file does not exist: {input_csv_file}"))
+    }
+    
+    # Check if the output path exists
+    if (!dir.exists(output_path)) {
+      # Create the output path
+      dir.create(output_path, recursive = TRUE)
+    }
+    
+    # Establish a connection to DuckDB
+    con <- dbConnect(duckdb(), dbdir = ":memory:")
+    
+    # Ensure the connection is closed when the function exits
+    on.exit(dbDisconnect(con), add = TRUE)
+    
+    # Generate duckdb SQL to transform_csv_to_parquet
+    sql_transform_csv_to_parquet <- 
+      # Generate duckdb SQL for reading CSV
+      gen_sql_to_read_csv(
+        ffns              = input_csv_file,
+        delim             = file_spec$DELIM,
+        header            = file_spec$HEADER,
+        date_format       = file_spec$DATE_FORMAT,
+        field_spec        = generate_field_spec(pipe_line)
+      ) %>%
+      # Generate duckdb SQL for data transformation
+      gen_sql_to_transform_data(
+        pipe_line         = pipe_line,
+        con               = con
+      ) %>% 
+      # Generate duckdb SQL for writing data as parquet
+      gen_sql_to_write_data_to_parquet(
+        output_pqt_file
+      )
+    
+    # Execute the SQL to transform_csv_to_parquet
+    tryCatch({
+      system.time({
+        dbExecute(con, sql_transform_csv_to_parquet)
+        if (verbose == TRUE){
+          print(
+            dbGetQuery(con, glue("DESCRIBE SELECT * FROM '{output_pqt_file}';"))
+          )
+        }
+        message(
+          cat(white$bgGreen$bold(glue("Data successfully written to {output_pqt_file}")))
+        )
+      })
+    }, error = function(e) {
+      message(
+        cat(white$bgRed$bold(glue("An error occurred: {e$message}")))
+      )
+    })
+  }

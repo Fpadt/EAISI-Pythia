@@ -146,8 +146,6 @@ B4_FILENAMECI <-
 
 ```
 
-
-
 ```{r}
 #| label:  Write_metadata 
 #| label:  true 
@@ -159,12 +157,11 @@ fwrite(
 
 fwrite(
   x = B4_RSBOHFIELDS,
-  file = file.path(PS01, SYS, "B4", "B4_RSBOHFIELDS"),
+  file = file.path(PS01, SYS, "B4", "B4_RSBOHFIELDS.csv"),
 )
 
 fwrite(
   x = B4_FILENAMECI,
-  file = file.path(PS01, SYS, "B4", "B4_FILENAMECI"),
+  file = file.path(PS01, SYS, "B4", "B4_FILENAMECI.csv"),
 )
 ```
-
