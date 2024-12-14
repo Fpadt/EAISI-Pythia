@@ -39,7 +39,7 @@ knitr::opts_chunk$set(
   include = TRUE      # include the chunk output in the output 
 )
 
-SID <- "WTB500"
+SID <- "WPB500"
 SYS <- substr(SID, 1, 3)
 
 # SAP Access
@@ -160,8 +160,25 @@ fwrite(
   file = file.path(PS01, SYS, "B4", "B4_RSBOHFIELDS.csv"),
 )
 
+
 fwrite(
   x = B4_FILENAMECI,
   file = file.path(PS01, SYS, "B4", "B4_FILENAMECI.csv"),
 )
+
+B4_RSBOHFIELDS[, .(
+  PYTHIA = ''                , 
+  OHDEST                     , 
+  POSIT = paste0(POSIT, '00'),
+  DATATYPE                   ,    
+  FLDNM_IN  = FIELDNM        ,
+  FIELDTP   = 'VARCHAR'      ,
+  TRNSFRM   = FIELDNM        ,
+  FLDNM_OUT = FIELDNM
+)] %T>%
+  setorder(OHDEST, POSIT) %T>%
+  fwrite(
+    file = file.path(PS01, SYS, "B4", "B4_PIPELINE.csv")
+    )
+
 ```

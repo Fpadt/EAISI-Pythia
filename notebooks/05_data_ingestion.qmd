@@ -79,7 +79,7 @@ clipr::write_clip(
 ## Pythia DTP's
 
 | Seq. | DTP | Description | Time |
-|-------------------|-------------------|-------------------|-----------------------|
+|--------------------|--------------------|--------------------|----------------------|
 | 0 | DTP_006EIZGR39XAWQANS1LNUZF2Y | Pythia's Advice -\> IS PERKZ-W \[2021\] Incl.FR50 | 15 min. |
 | 0 | DTP_006EIZGR39XAWQANYOZZI4HSQ | Pythia's Advice -\> IS PERKZ-W \[2022\] Incl.FR50 |  |
 | 0 | DTP_006EIZGR39XAWQANZ3O0NUFIY | Pythia's Advice -\> IS PERKZ-W \[2023\] Incl.FR50 |  |
@@ -111,10 +111,10 @@ clipr::write_clip(
 
 ### Outbound
 
-#### Functions
+#### Specification
 
 ```{r}
-#| label: 'Outbound - Data Ingestion Functions'
+#| label: 'File Spec for CSV'
 #| eval:   true
 
 # Configuration parameters of Open Hub DSCP_TRAN
@@ -125,32 +125,15 @@ FILE_SPEC <-
     DATE_FORMAT  = '%Y-%m-%d'
   )
 
-DSCP_OUT_PIPE_LINE <- 
-  fread(text = "
-        FLDNM_IN  | FIELDTP| TRNSFRM                     | FLDNM_OUT
-        MATERIAL  | VARCHAR| lpad(MATERIAL, 18, '0')     | MATERIAL
-        CUSTOMER  | VARCHAR| lpad(CUSTOMER, 10, '0')     | SOLDTO
-        PLANT     | VARCHAR| PLANT                       | PLANT
-        SALESORG  | VARCHAR| SALESORG                    | SALESORG
-        CALDAY    | DATE   | CALDAY                      | CALDAY
-                  |        | DATE_TRUNC('month', CALDAY) | CALMONTH
-        SLS_QT_SO | FLOAT  | SLS_QT_SO                   | SLS_QT_SO
-        SLS_QT_RET| FLOAT  | SLS_QT_RET                  | SLS_QT_RET
-        SLS_QT_FOC| FLOAT  | SLS_QT_FOC                  | SLS_QT_FOC
-        SLS_QT_DIR| FLOAT  | SLS_QT_DIR                  | SLS_QT_DIR
-        SLS_QT_PRO| FLOAT  | SLS_QT_PRO                  | SLS_QT_PRO
-        SLS_QT_IC | FLOAT  | SLS_QT_IC                   | SLS_QT_IC
-        MSQTBUO   | FLOAT  | MSQTBUO                     | MSQTBUO",
-        sep = "|"  
-  ) 
-
 ```
 
-#### Execution
+#### Sales 
 
 ```{r}
-#| label: 'Data Ingestion Execution from Bronze (S1B) to Silver (S2S)'
+#| label: 'Sales Ingestion from Bronze (S1B) to Silver (S2S)'
 #| eval:   true
+
+SALES_PIPE_LINE <- fGetPipeLine("SALES")
 
 # generate file names per year
 fls <- 
@@ -164,10 +147,45 @@ output_path <- file.path(PS02, farea_path)
 
 # Run the main function
 purrr::walk(
-  fls, transform_csv_to_parquet, input_path, output_path, 
-  FILE_SPEC, DSCP_OUT_PIPE_LINE, verbose = TRUE
-)
+  fls, 
+  transform_csv_to_parquet, 
+  input_path, 
+  output_path, 
+  FILE_SPEC, 
+  SALES_PIPE_LINE, 
+  verbose = TRUE
+) 
 
+```
+
+#### Stock
+
+```{r}
+#| label: 'Stock Ingestion from Bronze (S1B) to Silver (S2S)' 
+#| eval:   true  
+
+STOCK_PIPE_LINE <- fGetPipeLine("STOCK")
+
+# generate file names per year
+fls <- 
+  ''                         %>%  
+  paste0("IMP03SM1", .)
+
+# Define file paths
+farea_path  <- file.path(SYS, "STK", "OB")
+input_path  <- file.path(PS01, farea_path)
+output_path <- file.path(PS02, farea_path)
+
+# Run the main function
+purrr::walk(
+  fls, 
+  transform_csv_to_parquet, 
+  input_path, 
+  output_path, 
+  FILE_SPEC, 
+  STOCK_PIPE_LINE, 
+  verbose = TRUE
+)  
 ```
 
 ### Inbound
@@ -407,29 +425,6 @@ CUST_SALES <-
       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
     )
   ) 
-```
-
-### Stock
-
-```{r}
-#| label: 'Stock'
-#| eval:   true
-
-pAREA <- "STOCK"
-STK <- 
-  fLoadOpenHubExport(
-    pAREA = pAREA,  
-    # pKEY  = c("MAT_PLANT", "PLANT"),
-    pPTH  = file.path(PS01, SYS, "STK", "CSV")
-  )                                                              %T>%         
-  setkey("CALDAY", "MATERIAL", "PLANT")                          %T>%
-  write_parquet(
-    sink = file.path(
-      PS02, SYS, "STK", 
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
-    )
-  ) 
-
 ```
 
 ### Promotions

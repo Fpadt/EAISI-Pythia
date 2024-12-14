@@ -360,3 +360,16 @@ transform_csv_to_parquet <-
       )
     })
   }
+
+fGetPipeLines <- 
+  function(){
+    fread(
+      file = file.path(PS01, SYS, "B4", "B4_PIPELINE.csv")
+    )
+  }
+
+fGetPipeLine <- 
+  function(x) {
+    fGetPipeLines() %>%
+      .[PYTHIA == x, .(FLDNM_IN, FIELDTP, TRNSFRM, FLDNM_OUT)]  
+  }
