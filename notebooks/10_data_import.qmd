@@ -174,6 +174,8 @@ dbDisconnect(con)
 | 53  | TANOSHI          |
 | 65  | NATURELA         |
 
+## Sales all
+
 ```{r}
 #| label: 'Sales Data ALL',
 #| eval:   true
@@ -181,9 +183,6 @@ dbDisconnect(con)
 
 # Establish a connection to DuckDB
 con <- dbConnect(duckdb(), dbdir = ":memory:")
-
-FFNG <- file.path(PS02, SYS, "RTP", "OB", paste0("DD_SALES_QTY_20*")  ) 
-FFNG <- file.path(PS02, SYS, "RTP", "OB", paste0("DD_SALES_QTY_2024*")  )
 
 system.time({
   ISLS <- 
@@ -194,7 +193,7 @@ system.time({
           *,
           sum(SLS_QT_SO + SLS_QT_FOC) as DEMND_QTY
          FROM 
-          read_parquet('", FFNG, "')
+          read_parquet('", FN_ISLS, "')
          WHERE 
           SALESORG    IN ('FR30', 'NL10') 
          GROUP BY 
@@ -209,15 +208,15 @@ system.time({
 })
 ```
 
+## Sales per Article
+
 ```{r}
-#| label: 'Sales Data',
+#| label: 'Sales Data for Article'
 #| eval:   true
 
 
 # Establish a connection to DuckDB
 con <- dbConnect(duckdb(), dbdir = ":memory:")
-
-FFNG <- file.path(PS02, SYS, "RTP", paste0("DD_SALES_QTY_20*")  ) 
 
 system.time({
   ISLS <- 
@@ -229,7 +228,7 @@ system.time({
           CALMONTH,
           sum(SLS_QT_SO + SLS_QT_FOC) as DEMND_QTY
          FROM 
-          read_parquet('", FFNG, "')
+          read_parquet('", FN_ISLS, "')
          WHERE 
           SALESORG    IN ('FR30', 'NL10') AND
           MATERIAL    IN ('000000000003021952')
@@ -246,43 +245,7 @@ system.time({
 })
 ```
 
-```{r}
-#| label: 'Sales Data Material',
-#| eval:   true
-
-
-# Establish a connection to DuckDB
-con <- dbConnect(duckdb(), dbdir = ":memory:")
-
-FFNG <- file.path(PS02, SYS, "RTP", paste0("DD_SALES_QTY_20*")  ) 
-
-system.time({
-  ISLS <- 
-    dbGetQuery(
-      con, 
-      paste0(
-        "SELECT
-          SALESORG,
-          MATERIAL,
-          CALMONTH,
-          sum(SLS_QT_SO + SLS_QT_FOC) as DEMND_QTY
-         FROM 
-          read_parquet('", FFNG, "')
-         WHERE 
-          SALESORG    IN ('FR30', 'NL10') AND
-          MATERIAL    IN ('000000000000010023')
-         GROUP BY 
-          ALL
-         ORDER BY 
-          SALESORG,
-          CALMONTH"
-      )
-    )                                                                  %>%
-    setDT()
-  
-  View(ISLS)
-})
-```
+## Sales scope
 
 ```{r}
 #| label: 'Sales Data',
@@ -290,10 +253,6 @@ system.time({
 
 # Establish a connection to DuckDB
 con <- dbConnect(duckdb::duckdb())
-
-# Check file metadata
-# read_parquet(FFN, as_data_frame = FALSE) %T>%
-#   print()
 
 # Query the file and load it into a data.table
 system.time({
@@ -304,7 +263,7 @@ system.time({
         "SELECT 
           MATL.PRDH1, MATL.PRDH1_TMD, MATL.PRDH2_TMD,
           ISLS.SALESORG,
-          DATE_TRUNC('month', CALDAY) AS CALMONTH,
+          CALMONTH,
           sum(SLS_QT_SO + SLS_QT_FOC + SLS_QT_DIR) as DEMND_QTY
          FROM 
           read_parquet('", FN_ISLS, "') AS ISLS
@@ -333,8 +292,6 @@ system.time({
     )                                                                  %>%
     setDT()
 
-  
-            # MATERIAL = '000000000000010023' AND
   # View the data.table
   View(ISLS[0:100])
 })
@@ -354,51 +311,6 @@ dbDisconnect(con)
 ```
 
 ## All Sales
-
-```{r}
-#| label: 'All Sales Data per Month',
-#| eval:   false
-#| 
-# Establish a connection to DuckDB
-con <- dbConnect(duckdb::duckdb())
-
-# Query the file and load it into a data.table
-system.time({
-  IALL <- 
-    dbGetQuery(
-      con, 
-      paste0(
-        "SELECT 
-          MATERIAL,
-          CUSTOMER,
-          PLANT,
-          SALESORG,
-          DATE_TRUNC('month', CALDAY) AS CALMONTH,
-          sum(SLS_QT_SO + SLS_QT_FOC) as Q
-         FROM 
-          read_parquet('", FN_ISLS, "') AS ISLS
-         WHERE 
-          SALESORG    IN ('FR30', 'NL10')
-         GROUP BY
-          MATERIAL,
-          CUSTOMER,
-          PLANT,
-          SALESORG,
-          CALMONTH"
-      )
-    )                                                                  %>%
-    setDT() 
-})
-
-# Disconnect from DuckDB
-dbDisconnect(con)
-          # MATL.*,
-         # INNER JOIN 
-         #  read_parquet('", FN_MATL, "') AS MATL
-         # ON 
-         #  ISLS.MATERIAL = MATL.MATERIAL
-
-```
 
 ```{r}
 # ph1 <- c('07'  , '08'  , '10'  , '15'  , '53'  , '64'  , '65')
@@ -515,7 +427,7 @@ fBG <- function(phl, IPH){
 }
 ```
 
-## Transform
+# Transform
 
 ```{r}
 #| label: Transform
@@ -1195,25 +1107,11 @@ tsSLS |>
 # Stock Data
 
 ```{r}
-#| label: 'Stock Data',
+#| label:  Stock Data
 #| eval:   true
-
-# Define the path to your Parquet file
-FN_STCK<- 
-  file.path(
-      PS02, SYS, "STK", "ARR", 
-      "IMP03SM1_F.parquet"
-    ) %>% 
-  normalizePath() 
 
 # Establish a connection to DuckDB
 con <- dbConnect(duckdb::duckdb())
-
-# Check file metadata
-# read_parquet(FFN, as_data_frame = FALSE) %T>%
-#   print()
-
-# Query the file and load it into a data.table
 
 # Query the file and load it into a data.table
 system.time({
@@ -1232,7 +1130,7 @@ system.time({
     setDT()
   
   # View the data.table
-  View(STCK[0:100])
+  View(STCK[PLANT == 'FR30'])
 })
 
 # Disconnect from DuckDB
@@ -1307,37 +1205,9 @@ dtMATERIAL <-
 
 ```
 
-```{r}
-
-# dtSLS <- 
-#   DD_HISTO_QTY[MATERIAL %chin% dtMATE$MATERIAL &
-#                  PLANT %chin% c("FR30", "NL60","NL63")]         %>%
-#   .[, CALMONTH:= floor_date(CALDAY, "month")]                   %>%
-#   .[, .(
-#     SLS_QT_SO  = sum(as.numeric(SLS_QT_SO) , na.rm = TRUE), 
-#     SLS_QT_RET = sum(as.numeric(SLS_QT_RET), na.rm = TRUE), 
-#     SLS_QT_FOC = sum(as.numeric(SLS_QT_FOC), na.rm = TRUE), 
-#     SLS_QT_DIR = sum(as.numeric(SLS_QT_DIR), na.rm = TRUE), 
-#     # SLS_QT_PRO = sum(as.numeric(SLS_QT_PRO), na.rm = TRUE), 
-#     SLS_QT_IC  = sum(as.numeric(SLS_QT_IC) , na.rm = TRUE), 
-#     MSQTBUO    = sum(as.numeric(MSQTBUO)   , na.rm = TRUE)
-#   ),
-#     by = .(CALMONTH, MATERIAL, SALESORG, PLANT)
-#   ]                                                             %>%
-#   .[, DEMND_QTY:= 
-#       SLS_QT_SO + 
-#       # SLS_QT_RET + 
-#       SLS_QT_FOC + 
-#       SLS_QT_DIR + 
-#       # SLS_QT_PRO + 
-#       SLS_QT_IC
-#     ]
-  
-```
-
 # Validation
 
-## Actuals
+## Actual Sales
 
 ### IPM
 
@@ -1425,39 +1295,40 @@ B4_IPM002_A <-
    )
 ```
 
-### SDSFRPR1
-
-#### OpenHub
-
-pre-demand actuals snap-shots
+### SDSFRPR
 
 ```{r}
-#| label:    'get_data_OH_SDSFRPR1',
-#| comment:  'pre-DR Actuals',
+#| label:    'Data Ingestion FRPR'
 #| eval:      false
 
-options(scipen=999)
+# options(scipen=999)
 
-pAREA <- "SDSFRPR1"
-SDSFRPR1 <- 
-  fLoadOpenHubExport(
-    pAREA = pAREA,  
-    # pKEY = c("CALDAY", "MATERIAL", "CUSTOMER", "PLANT"),
-    pPTH  = file.path(PDYN)
-  )                                                                       %>%
-  .[, !c("PRMCP_QTY", "DMDCP_QTY")]                                       %>%
-  .[SALESORG %chin% c("FR30", "NL10")]                                    %>%
-  .[, `:=` 
-    (
-      DEMND_QTY = fSignLeft(DEMND_QTY),
-      BSELN_QTY = fSignLeft(BSELN_QTY),
-      PROMO_QTY = fSignLeft(PROMO_QTY)
-    )
-  ]
+# Establish a connection to DuckDB
+con <- dbConnect(duckdb(), dbdir = ":memory:")
 
-# copy(SDSFRPR1) %>%
-#   .[, CHECK_QTY:= round(DEMND_QTY - BSELN_QTY - PROMO_QTY, 2)]            %T>%
-#   fOpen_as_xlsx(SDSFRPR1[ MATERIAL == LP0("10023", 18) & CHECK_QTY != 0])
+system.time({
+  FRPR <- 
+    dbGetQuery(
+      con, 
+      paste0(
+        "SELECT 
+          *
+         FROM 
+          read_parquet('", FN_FRPR, "')
+         WHERE 
+          SALESORG    IN ('FR30', 'NL10') AND
+          MATERIAL = '000000000000010023'
+         GROUP BY 
+          ALL
+         ORDER BY 
+          SALESORG,
+          CALMONTH"
+      )
+    )                                                                  %>%
+    setDT()
+  
+})
+
 
 ```
 

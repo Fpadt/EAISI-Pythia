@@ -55,6 +55,14 @@ invisible(source('library/KnitR_SetUp.R'))
 lsrc <- "notebooks/05_data_ingestion.R"  
 if( file.exists(lsrc)){source(lsrc)}
 
+# Configuration parameters of Open Hub DSCP_TRAN
+FILE_SPEC <- 
+  list(
+    DELIM        = ';',
+    HEADER       = FALSE,
+    DATE_FORMAT  = '%Y-%m-%d'
+  )
+
 # B4_RSDSSEGFD <- 
 #   fread(file = file.path(PS01, SYS, "B4", "B4_RSDSSEGFD.csv"))
 # 
@@ -79,7 +87,7 @@ clipr::write_clip(
 ## Pythia DTP's
 
 | Seq. | DTP | Description | Time |
-|--------------------|--------------------|--------------------|----------------------|
+|--------------------|--------------------|--------------------|---------------------|
 | 0 | DTP_006EIZGR39XAWQANS1LNUZF2Y | Pythia's Advice -\> IS PERKZ-W \[2021\] Incl.FR50 | 15 min. |
 | 0 | DTP_006EIZGR39XAWQANYOZZI4HSQ | Pythia's Advice -\> IS PERKZ-W \[2022\] Incl.FR50 |  |
 | 0 | DTP_006EIZGR39XAWQANZ3O0NUFIY | Pythia's Advice -\> IS PERKZ-W \[2023\] Incl.FR50 |  |
@@ -111,23 +119,7 @@ clipr::write_clip(
 
 ### Outbound
 
-#### Specification
-
-```{r}
-#| label: 'File Spec for CSV'
-#| eval:   true
-
-# Configuration parameters of Open Hub DSCP_TRAN
-FILE_SPEC <- 
-  list(
-    DELIM        = ';',
-    HEADER       = FALSE,
-    DATE_FORMAT  = '%Y-%m-%d'
-  )
-
-```
-
-#### Sales 
+#### Sales RTP
 
 ```{r}
 #| label: 'Sales Ingestion from Bronze (S1B) to Silver (S2S)'
@@ -137,7 +129,7 @@ SALES_PIPE_LINE <- fGetPipeLine("SALES")
 
 # generate file names per year
 fls <- 
-  23:24                         %>%  
+  21:24                         %>%  
   paste0("DD_SALES_QTY_20", .)
 
 # Define file paths
@@ -153,6 +145,37 @@ purrr::walk(
   output_path, 
   FILE_SPEC, 
   SALES_PIPE_LINE, 
+  verbose = TRUE
+) 
+
+```
+
+#### Sales DYN
+
+```{r}
+#| label: 'Sales Dynasys 2018 Ingestion from Bronze (S1B) to Silver (S2S)'
+#| eval:   true
+
+ASLS_PIPE_LINE <- fGetPipeLine("ASLS")
+
+# generate file names per year
+fls <- 
+  1:4                         %>%  
+  paste0("DD_HISTO_QTY_202", .)
+
+# Define file paths
+farea_path  <- file.path(SYS, "IPM", "OB")
+input_path  <- file.path(PS01, farea_path)
+output_path <- file.path(PS02, farea_path)
+
+# Run the main function
+purrr::walk(
+  fls, 
+  transform_csv_to_parquet, 
+  input_path, 
+  output_path, 
+  FILE_SPEC, 
+  ASLS_PIPE_LINE, 
   verbose = TRUE
 ) 
 
@@ -190,98 +213,34 @@ purrr::walk(
 
 ### Inbound
 
-#### Functions
+#### Dynasys 2018
 
 ```{r}
-#| label: 'Inbound - Data Ingestion Functions'
+#| label: 'DYN2018 - Actuals & Forecasts Ingestion from Bronze (S1B) to Silver (S2S)'
 #| eval:   true
 
-# Configuration parameters of Open Hub DSCP_TRAN
-FILE_SPEC <- 
-  list(
-    DELIM        = ';',
-    HEADER       = FALSE,
-    DATE_FORMAT  = '%Y-%m-%d'
-  )
-
-# DSCP_IN_PIPE_LINE <- 
-#   fread(text = "
-#         FLDNM_IN              | FIELDTP | TRNSFRM                | FLDNM_OUT
-#         CREATION_DATE         | VARCHAR    | CREATION_DATE          | UPDATE_DATE
-#         DFU_CODE              | VARCHAR | DFU_CODE               | 
-#         MATERIAL_CODE         | VARCHAR | MATERIAL_CODE          | MATERIAL_CODE
-#         CUSTOMERL3_CODE       | VARCHAR | CUSTOMERL3_CODE        | 
-#         CL3_CODE              | VARCHAR | CL3_CODE               | CL3_CODE
-#         CL2_CODE              | VARCHAR | CL2_CODE               | CL2_CODE
-#         CL1_CODE              | VARCHAR | CL1_CODE               | CL1_CODE
-#         PLANT_CODE            | VARCHAR | PLANT_CODE             | PLANT_CODE
-#         SALESORG_CODE         | VARCHAR | SALESORG_CODE          | SALESORG_CODE
-#         PERIOD_CODE           | VARCHAR | PERIOD_CODE            | PERIOD_CODE
-#         TOTAL_DEMAND_QTY      | VARCHAR   | TOTAL_DEMAND_QTY       | TOTAL_DEMAND_QTY
-#         BASE_LINE_QTY         | VARCHAR   | BASE_LINE_QTY          | BASE_LINE_QTY
-#         PROMO_QTY             | VARCHAR   | PROMO_QTY              | PROMO_QTY
-#         TOTAL_DEMAND_COMP_QTY | VARCHAR   | TOTAL_DEMAND_COMP_QTY  | TOTAL_DEMAND_COMP_QTY
-#         PROMO_COMP_QTY        | VARCHAR   | PROMO_COMP_QTY         | PROMO_COMP_QTY
-#         BASEUNITOFMEASURE_CODE| VARCHAR | BASEUNITOFMEASURE_CODE | BASEUNITOFMEASURE_CODE",
-#         sep = "|"  
-#   ) 
-
-FRPR_IN_PIPE_LINE <- 
-  fread(text = "
-          FLDNM_IN              | FIELDTP    | TRNSFRM                | FLDNM_OUT
-          COMP_CODE             | VARCHAR    | COMP_CODE              | COMP_CODE
-          SALESORG              | VARCHAR    | SALESORG               | SALESORG
-          PLANT                 | VARCHAR    | PLANT                  | PLANT 
-          MATERIAL              | VARCHAR    | MATERIAL               | MATERIAL 
-          CUST_HIE03            | VARCHAR    | CUST_HIE03             | CUST_HIE03
-          CALMONTH              | VARCHAR    | CALMONTH               | CALMONTH
-          VTYPE                 | VARCHAR    | VTYPE                  | VTYPE 
-          FTYPE                 | VARCHAR    | FTYPE                  | FTYPE
-          VERSMON               | VARCHAR    | VERSMON                | VERSMON 
-          RECORDMODE            | VARCHAR    | RECORDMODE             | RECORDMODE 
-          UPD_DATE              | VARCHAR    | UPD_DATE               | UPD_DATE
-          CUST_HIE02            | VARCHAR    | CUST_HIE02             | CUST_HIE02 
-          CUST_HIE01            | VARCHAR    | CUST_HIE01             | CUST_HIE01 
-          DEMND_QTY             | VARCHAR    | DEMND_QTY              | DEMND_QTY 
-          BSELN_QTY             | VARCHAR    | BSELN_QTY              | BSELN_QTY 
-          PROMO_QTY             | VARCHAR    | PROMO_QTY              | PROMO_QTY 
-          DMDCP_QTY             | VARCHAR    | DMDCP_QTY              | DMDCP_QTY 
-          PRMCP_QTY             | VARCHAR    | PRMCP_QTY              | PRMCP_QTY
-          BASE_UOM              | VARCHAR    | BASE_UOM               | BASE_UOM",
-        sep = "|"
-  )
-```
-
-#### Execution
-
-```{r}
-#| label: 'Data Ingestion Execution from Bronze (S1B) to Silver (S2S)'
-#| eval:   true
-
-# Configuration parameters of DataSources:
-# - BEFOREDR_ACTUALS
-# - BEFOREDR_FORECASTS
-# - AFTERDR_ACTUALS
-# - AFTERDR_FORECASTS
+FRPR_PIPE_LINE <- fGetPipeLine("FRPR", "OH_FRPR1") 
 
 # generate file names per year
 fls <- 
-  c(
-    "SDSFRPR1_12",
-    "SDSFRPR3_12"
-  )
+  1:4                         %>%  
+  paste0("SDSFRPR", .)
 
 # Define file paths
-farea_path  <- file.path(SYS, "DYN")
+farea_path  <- file.path(SYS, "DYN", "IB")
 input_path  <- file.path(PS01, farea_path)
 output_path <- file.path(PS02, farea_path)
 
 # Run the main function
 purrr::walk(
-  fls, transform_csv_to_parquet, input_path, output_path, 
-  FILE_SPEC, FRPR_IN_PIPE_LINE, verbose = TRUE
-)
-
+  fls, 
+  transform_csv_to_parquet, 
+  input_path, 
+  output_path, 
+  FILE_SPEC, 
+  FRPR_PIPE_LINE, 
+  verbose = TRUE
+) 
 ```
 
 ```{r}

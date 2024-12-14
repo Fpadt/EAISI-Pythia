@@ -369,7 +369,13 @@ fGetPipeLines <-
   }
 
 fGetPipeLine <- 
-  function(x) {
-    fGetPipeLines() %>%
-      .[PYTHIA == x, .(FLDNM_IN, FIELDTP, TRNSFRM, FLDNM_OUT)]  
+  function(pythia, ohdest) {
+    DPL <- fGetPipeLines() 
+      
+    if (!missing(ohdest)){
+      DPL <- DPL[OHDEST == ohdest]
+    }
+    
+    DPL[PYTHIA == pythia, .(FLDNM_IN, FIELDTP, TRNSFRM, FLDNM_OUT)]
+    
   }
