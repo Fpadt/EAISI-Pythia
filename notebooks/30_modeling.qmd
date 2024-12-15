@@ -279,3 +279,57 @@ ggsave(
 )
 
 ```
+
+## Material/Salesorg Analysis
+
+```{r}
+#| label: 'Material Salesorg' 
+#| eval:   true
+
+pmat <- '10023'
+porg <- 'FR30'
+
+dtMat <- fGet_Sales_by_Material_Salesorg(
+  material = pmat,
+  salesorg = porg
+) %>%
+  .[, y:= y/1000]
+
+ggplot(
+  data = dtMat,
+  mapping = aes(x = ds, y=y)
+) +
+  geom_col(color = 'white', fill=ET_CG) +
+  labs(
+    title    = "Historical Sales ",
+    subtitle = paste(pmat, "for", porg),
+    x        = "Month/Year",
+    y        = "Sales ('000)")
+
+tsMat <- 
+  dtMat[, month:= yearmonth(ds)] %>%
+  as_tsibble(
+    key = unique_id,
+    index = month
+    )                  
+
+tsMat %>%
+  autoplot()
+
+tsMat %>% gg_season(y, period = "year")
+
+tsMat %>%
+  model(
+    STL(y ~ trend(window = 7) +
+          season(window = "periodic"),
+        robust = TRUE)) %>%
+  components() %>%
+  autoplot() +
+  theme(legend.position = "none")
+
+tsFT <- 
+  tsMat %>%
+  features(y, feature_set(pkgs = "feasts")) 
+
+```
+
