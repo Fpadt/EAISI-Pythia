@@ -29,123 +29,43 @@ editor_options:
     # Setup
 
 ```{r}
-#| label: 'setup'
-#| eval:  TRUE
+#| label:  setup
+#| eval:   true
 
-
-knitr::opts_chunk$set(
-  cache   = FALSE,
-  echo    = TRUE,     # include R source code in the output  
-  eval    = TRUE,
-  message = FALSE,
-  warning = FALSE,
-  results = "markup",
-  image   = TRUE,  
-  include = TRUE      # include the chunk output in the output 
-)
-
-# KnitR SetUp location
-KS <- 
-  file.path("C:", "RW", "ETRMK", "00_RProj", 
-    "00_Global", "KnitR_SetUp.R")
-
-library(reticulate)
-use_condaenv("sapyr")
-
-# public functions ---------------------------------------------------------
-invisible(source(KS))
-if( file.exists("functions.R")){source("functions.R")}
-
-PDAT <- file.path("C:", "PW", "OneDrive", "ET", "pythia", "dat")
-PYTH <- file.path(PET , "pythia", "upg", "data") 
-
-
-FLD <- file.path(IMM, "SLM")
-wbt <- "" # workbook Title
-wbc <- "" # workbook Category
-wbf <- "" # workbook FileName
-
+# knitr::opts_chunk$set(
+#   cache   = FALSE,
+#   echo    = TRUE,     # include R source code in the output  
+#   # eval    = TRUE,
+#   message = FALSE,
+#   warning = FALSE,
+#   results = "markup",
+#   image   = TRUE,  
+#   include = TRUE      # include the chunk output in the output 
+# )
 
 SID <- "WPB500"
-CCD <- "FR30" 
-CYR <- 
-MAT <- "10023" %>% LP0(18)
-PLT <- "FR30"
-VWK <-  ''
+SYS <- substr(SID, 1, 3)
 
-fdiff_mnths <- function(x, y) {
-  strdate <- ymd(paste0(x, "01"))
-  enddate <- ymd(paste0(y, "01"))
-  interval(strdate, enddate) %/% months(1)
-}
+# SAP Access
+# library(reticulate)
+# use_condaenv("sapyr")
+
+# public functions ---------------------------------------------------------
+invisible(source('library/KnitR_SetUp.R'))
+
+lsrc <- "notebooks/05_data_ingestion.R"  
+if( file.exists(lsrc)){source(lsrc)}
+
+# Configuration parameters of Open Hub DSCP_TRAN
+FILE_SPEC <- 
+  list(
+    DELIM        = ';',
+    HEADER       = FALSE,
+    DATE_FORMAT  = '%Y-%m-%d'
+  )
 ```
 
-# Business reports
 
-```{r}
-#| label: 'get_business_reports',
-#| eval:   false
-  
-shell.exec(normalizePath(file.path(OPS, "DOC", "EBI.xlsx")))
-```
-
-## Sharepoint
-
-```{r}
-#| label: 'get_sharepoint_reports',
-#| eval:  false
-
-EBP <- 
-  read.xlsx(
-    xlsxFile = file.path(OPS, "DOC", "EBI.xlsx"),
-    sheet = "EBP"
-  )                                                                        %T>%
-  setDT()                                                                  %>%
-  .[, ENV:= "BIP"] 
-
-EBQ <- 
-  read.xlsx(
-    xlsxFile = file.path(OPS, "DOC", "EBI.xlsx"),
-    sheet = "EBQ"
-  )                                                                        %T>%
-  setDT()                                                                  %>%
-  .[, ENV:= "BIQ"]
-
-EBI <- rbind(EBP, EBQ, fill = TRUE)
-
-fOpen_as_xlsx(
-  EBI[Additional.Information == 'Forecast', .(
-    Report.Code, Title, Content.Type, 
-    Description, URL, Name,	Query,	ENV)
-  ]
-)  
-```
-
-# Data Export
-
-```{r}
-
-ONE <- file.path("C:", "Users", "floris.padt", "OneDrive - Wessanen")
-DAT <- file.path(ONE, "Forecasting", "upg", "data") 
-PNW <- file.path(DAT, "WPB", "NEW", "perkz_w") 
-PYT <- file.path("C:", "PW", "OneDrive", "ET", "pythia", "upg", "data")
-  
-fCopy2Pythia <- 
-  function(x, .p){
-
-    file.copy(
-      from = x,
-      to   = file.path(.p, basename(x)),
-      overwrite = TRUE
-    )
-  }
-
-purrr::walk(
-  .x = list.files(PNW, pattern = "MD*", full.names = TRUE),
-  .f = fCopy2Pythia,
-  .p = PYT
-)
-```
 
 # Data Import
 

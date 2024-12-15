@@ -18,8 +18,6 @@ editor_options:
 
 ![Logo](../images/logo.png)
 
-CLIPPER NL10 -\> STL Aggregatie
-
 # Setup
 
 ```{r}
@@ -41,11 +39,6 @@ knitr::opts_chunk$set(
 SID <- "WPB500"
 SYS <- substr(SID, 1, 3)
 
-library(reticulate)
-library(fpp3)
-library(feasts)
-library(tsibble)
-library(ggrepel)
 # use_condaenv("sapyr")
 
 # public functions ---------------------------------------------------------
@@ -55,12 +48,6 @@ invisible(source('library/KnitR_SetUp.R'))
 lsrc <- "notebooks/10_data_import.R"  
 if( file.exists(lsrc)){source(lsrc)}
 
-# Establish a connection to DuckDB
-con <- dbConnect(duckdb::duckdb())
-
-pimg <- file.path(FCT, 'PYTHIA', 'img')
-
-# Material of Interest
 ```
 
 # Material Data
@@ -133,7 +120,7 @@ dbDisconnect(con)
 ## Material Plant
 
 ```{r}
-#| label: 'Material Plant Data',
+#| label: 'Material Plant Data'
 #| eval:   true
 
 # Establish a connection to DuckDB
@@ -325,133 +312,7 @@ dbDisconnect(con)
 # ph3 <- c('4010', '4013', '4020', '4023', '4030', '4032', '4040', '4062', '4066')
 ```
 
-## graph Functions
 
-```{r}
-
-fMP <- function(phl, IPH){
-  fST(phl, IPH)
-  fSL(phl, IPH)
-  fBG(phl, IPH)
-}
-
-fST <- function(phl, IPH){
-  
-  tsSLS <- 
-    IPH[, CALMONTH:= yearmonth(CALMONTH)]                            %>%
-    as_tsibble(, index = "CALMONTH", 
-               key= c("label", "SALESORG")) 
-  
-  tsSLS                                                              %>%
-    features(Q, feat_stl)                                            %>%
-    ggplot(
-      aes(
-        x     = trend_strength, 
-        y     = seasonal_strength_year,
-        label = label,
-        col   = label)
-    ) +
-    geom_point() +
-    geom_text_repel() +
-    facet_wrap(~SALESORG) +
-    theme(legend.position = "none") +
-    scale_x_continuous(limits = c(0, 1.0)) +
-    scale_y_continuous(limits = c(0, 1.0))
-  
-  ggsave(
-    filename = paste(phl, 'season_trend.png', sep = '_'),
-    device   = "png",
-    path     = pimg,
-    width    = 5000,
-    height   = 3000,
-    units    = "px"
-  )
-
-}
-
-fSL <- function(phl, IPH){
-
-  IPH %>%
-    ggplot(
-      aes(
-        x   = CALMONTH, 
-        y   = Q,
-        col = SALESORG)
-    ) +
-    geom_line() +
-    facet_wrap(
-      ~label, 
-      # scales = 'fixed'
-      scales = 'free_y'
-    )
-  
-  ggsave(
-    filename = paste(phl, 'sales.png', sep = '_'),
-    device   = "png",
-    path     = pimg,
-    width    = 5000,
-    height   = 3000,
-    units    = "px"
-  )
-}
-
-fBG <- function(phl, IPH){
-
-  IPH %>%
-    .[, PROMO:= factor(PROMO, levels = c("0", "1"))] %>%
-    ggplot(
-      aes(
-        x     = CALMONTH, 
-        y     = Q,
-        fill  = PROMO
-        # ,
-        # col   = PROMO
-        )
-      ,
-      col  = "white",
-      size = 0.1
-    ) +
-    geom_col() +
-    facet_wrap(
-      # nrow = 1,
-      ~label, 
-      # scales = 'fixed'
-      scales = 'free_y'
-    ) +
-    theme(legend.position = "top") + # Move legend to the top +
-    scale_fill_manual(values  = c("0" = ET_CG, "1" = ET_YL))   
-  # +
-  #   scale_color_manual(values = c("0" = ET_CG, "1" = ET_YL)) 
-  
-  ggsave(
-    filename = paste(phl, 'bar_sales.png', sep = '_'),
-    device   = "png",
-    path     = pimg,
-    width    = 5000,
-    height   = 3000,
-    units    = "px"
-  )
-}
-```
-
-# Transform
-
-```{r}
-#| label: Transform
-#| eval: true
-
-dtSLS <- 
-  MATL[, .(MATERIAL, 
-           PRDH1, PRDH1_TMD,
-           PRDH2, PRDH2_TMD,
-           PRDH3, PRDH3_TMD,
-           PRDH4, PRDH4_TMD)
-       ]                                                             %>%
-  .[IALL, on = .(MATERIAL)]                                          %>%
-  MATS[, .(MATERIAL = MAT_SALES, SALESORG, PROMO = PRAT7)][          
-    ., on = .(MATERIAL, SALESORG)] 
-
-```
 
 ## PH1
 
@@ -645,42 +506,6 @@ fBG(
 )
 ```
 
-### STL
-
-```{r}
-#| label: STL on Infusion tea
-#| eval: true
-
-
-
-ITEA <- 
-  IALL[PRDH4 == '00100467' & SALESORG == 'NL10',
-       .(DEMND_QTY = sum(DEMND_QTY)/1000),
-         by = .(label = PRDH4_TMD, CALMONTH)
-  ]
-
-tsTEA <- 
-  ITEA[, CALMONTH:= yearmonth(CALMONTH)]                            %>%
-  as_tsibble(, index = "CALMONTH", 
-             key= c("label"))                                       %>%
-  model(
-    STL(DEMND_QTY ~ trend(window = 7) +
-          season(window = "periodic"),
-        robust = TRUE)) %>%
-  components() %>%
-  autoplot() +
-  theme(legend.position = "none")
-
-  ggsave(
-    filename = paste('infusion', 'tea', 'nl10', 'stl.png', sep = '_'),
-    device   = "png",
-    path     = pimg,
-    width    = 5000,
-    height   = 3000,
-    units    = "px"
-  )
-
-```
 
 ## MAT
 
@@ -931,54 +756,6 @@ ggsave(
 
 ```
 
-```{r}
-#| label: MAT
-#| eval: true
-
-
-MAT <- 
-  IALL[PRDH4_TMD %like% "Rice Cakes Plain",
-       .(DEMND_QTY = sum(DEMND_QTY)),
-         by = .(MATERIAL_TMD, SALESORG, CALMONTH)
-  ]
-
-tsSLS <- 
-  MAT[, CALMONTH:= yearmonth(CALMONTH)]                             %>%
-  .[, label:= MATERIAL_TMD ] %>%
-  as_tsibble(, index = "CALMONTH", 
-             key= c("label", "SALESORG")) 
-
-gp0M <- 
-  tsSLS %>%
-  features(DEMND_QTY, feat_stl) %>%
-  ggplot(
-    aes(
-      x     = trend_strength, 
-      y     = seasonal_strength_year,
-      label = label,
-      col   = label)
-  ) +
-  geom_point() +
-  geom_text_repel() +
-  # geom_text(aes(label = PRDH2_TMD),
-  #           vjust = -1, hjust = 0.5,
-  #           size = 12, size.unit = "pt"
-  #           ) +
-  facet_wrap(~SALESORG) +
-  theme(legend.position = "none") +
-  scale_x_continuous(limits = c(0, 1.0)) +
-  scale_y_continuous(limits = c(0, 1.0))
-
-ggsave(
-  filename = "mat_season_trend.png",
-  device   = "png",
-  path     = ".",
-  width    = 2500,
-  height   = 1500,  
-  units    = "px"
-)
-
-```
 
 ```{r}
 

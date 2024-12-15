@@ -1,0 +1,281 @@
+---
+title   : EAISI - Pythia
+subtitle: mODELING
+author  : "F.J. Padt"
+date    : "`r format(Sys.time(), '%B %d, %Y')`"
+output  :
+  pdf_document:
+    df_print: paged
+    toc: yes
+    toc_depth: 1      
+editor_options:
+  chunk_output_type: console
+  markdown: 
+    wrap: 80  
+---
+
+\newpage
+
+![Logo](../images/logo.png)
+
+# Setup
+
+```{r}
+#| label: 'setup'
+#| eval:   true
+
+
+# knitr::opts_chunk$set(
+#   cache   = FALSE,
+#   echo    = TRUE,     # include R source code in the output  
+#   eval    = TRUE,
+#   message = FALSE,
+#   warning = FALSE,
+#   results = "markup",
+#   image   = TRUE,  
+#   include = TRUE      # include the chunk output in the output 
+# )
+
+SID <- "WPB500"
+SYS <- substr(SID, 1, 3)
+
+library(reticulate)
+library(fpp3)
+library(feasts)
+library(tsibble)
+library(ggrepel)
+# use_condaenv("sapyr")
+
+# public functions ---------------------------------------------------------
+invisible(source('library/KnitR_SetUp.R'))
+
+# setwd("C:/RW/EAISI-Pythia/notebooks")
+lsrc <- "notebooks/30_modeling.R"  
+if( file.exists(lsrc)){source(lsrc)}
+
+# location for generated figures
+pimg <- file.path('.', 'fig')
+
+```
+
+```{r}
+#| label: 'Get Material Master data '
+#| eval:   true
+
+
+MATL <- fGet_MATL() # MARA/0MATERIAL
+MATS <- fGet_MATS() # MVKE/0MAT_SALES
+MATP <- fGet_MATP() # MARC/0MAT_PLANT
+```
+
+```{r}
+#| label: 'Get Sales in PA scope '
+#| eval:   true
+
+
+IALL <- fGet_PA_sales()
+```
+
+
+## Graph Functions
+
+```{r}
+
+fMP <- function(phl, IPH){
+  fST(phl, IPH)
+  fSL(phl, IPH)
+  fBG(phl, IPH)
+}
+
+fST <- function(phl, IPH){
+  
+  tsSLS <- 
+    IPH[, CALMONTH:= yearmonth(CALMONTH)]                            %>%
+    as_tsibble(, index = "CALMONTH", 
+               key= c("label", "SALESORG")) 
+  
+  tsSLS                                                              %>%
+    features(Q, feat_stl)                                            %>%
+    ggplot(
+      aes(
+        x     = trend_strength, 
+        y     = seasonal_strength_year,
+        label = label,
+        col   = label)
+    ) +
+    geom_point() +
+    geom_text_repel() +
+    facet_wrap(~SALESORG) +
+    theme(legend.position = "none") +
+    scale_x_continuous(limits = c(0, 1.0)) +
+    scale_y_continuous(limits = c(0, 1.0))
+  
+  ggsave(
+    filename = paste(phl, 'season_trend.png', sep = '_'),
+    device   = "png",
+    path     = pimg,
+    width    = 5000,
+    height   = 3000,
+    units    = "px"
+  )
+
+}
+
+fSL <- function(phl, IPH){
+
+  IPH %>%
+    ggplot(
+      aes(
+        x   = CALMONTH, 
+        y   = Q,
+        col = SALESORG)
+    ) +
+    geom_line() +
+    facet_wrap(
+      ~label, 
+      # scales = 'fixed'
+      scales = 'free_y'
+    )
+  
+  ggsave(
+    filename = paste(phl, 'sales.png', sep = '_'),
+    device   = "png",
+    path     = pimg,
+    width    = 5000,
+    height   = 3000,
+    units    = "px"
+  )
+}
+
+fBG <- function(phl, IPH){
+
+  IPH %>%
+    .[, PROMO:= factor(PROMO, levels = c("0", "1"))] %>%
+    ggplot(
+      aes(
+        x     = CALMONTH, 
+        y     = Q,
+        fill  = PROMO
+        # ,
+        # col   = PROMO
+        )
+      ,
+      col  = "white",
+      size = 0.1
+    ) +
+    geom_col() +
+    facet_wrap(
+      # nrow = 1,
+      ~label, 
+      # scales = 'fixed'
+      scales = 'free_y'
+    ) +
+    theme(legend.position = "top") + # Move legend to the top +
+    scale_fill_manual(values  = c("0" = ET_CG, "1" = ET_YL))   
+  # +
+  #   scale_color_manual(values = c("0" = ET_CG, "1" = ET_YL)) 
+  
+  ggsave(
+    filename = paste(phl, 'bar_sales.png', sep = '_'),
+    device   = "png",
+    path     = pimg,
+    width    = 5000,
+    height   = 3000,
+    units    = "px"
+  )
+}
+```
+
+# Transform
+
+```{r}
+#| label: Transform
+#| eval: true
+
+dtSLS <- 
+  MATL[, .(MATERIAL, 
+           PRDH1, PRDH1_TMD,
+           PRDH2, PRDH2_TMD,
+           PRDH3, PRDH3_TMD,
+           PRDH4, PRDH4_TMD)
+       ]                                                             %>%
+  .[IALL, on = .(MATERIAL)]                                          %>%
+  MATS[, .(MATERIAL = MAT_SALES, SALESORG, PROMO = PRAT7)][          
+    ., on = .(MATERIAL, SALESORG)] 
+
+```
+
+### STL
+
+```{r}
+#| label: STL on Infusion tea
+#| eval: true
+
+ITEA <- 
+  IALL[PRDH4 == '00100467' & SALESORG == 'NL10',
+       .(DEMND_QTY = sum(DEMND_QTY)/1000),
+         by = .(label = PRDH4_TMD, CALMONTH)
+  ]
+
+tsTEA <- 
+  ITEA[, CALMONTH:= yearmonth(CALMONTH)]                            %>%
+  as_tsibble(, index = "CALMONTH", 
+             key= c("label"))                                       %>%
+  model(
+    STL(DEMND_QTY ~ trend(window = 7) +
+          season(window = "periodic"),
+        robust = TRUE)) %>%
+  components() %>%
+  autoplot() +
+  theme(legend.position = "none")
+
+```
+
+```{r}
+#| label: MAT
+#| eval: true
+
+
+MAT <- 
+  IALL[PRDH4_TMD %like% "Rice Cakes Plain",
+       .(DEMND_QTY = sum(DEMND_QTY)),
+         by = .(MATERIAL_TMD, SALESORG, CALMONTH)
+  ]
+
+tsSLS <- 
+  MAT[, CALMONTH:= yearmonth(CALMONTH)]                             %>%
+  .[, label:= MATERIAL_TMD ] %>%
+  as_tsibble(, index = "CALMONTH", 
+             key= c("label", "SALESORG")) 
+
+gp0M <- 
+  tsSLS %>%
+  features(DEMND_QTY, feat_stl) %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = label,
+      col   = label)
+  ) +
+  geom_point() +
+  geom_text_repel() +
+  # geom_text(aes(label = PRDH2_TMD),
+  #           vjust = -1, hjust = 0.5,
+  #           size = 12, size.unit = "pt"
+  #           ) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "mat_season_trend.png",
+  device   = "png",
+  path     = ".",
+  width    = 2500,
+  height   = 1500,  
+  units    = "px"
+)
+
+```

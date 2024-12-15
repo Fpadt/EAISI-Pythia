@@ -1,4 +1,4 @@
-fGet_dtMaterial <- 
+fGet_Sales_by_Material <- 
   function(material, salesorg){
     
     # Establish a connection to DuckDB
@@ -44,4 +44,138 @@ fGet_dtMaterial <-
     dbDisconnect(con)
     
     return(dtTS)
+  }
+
+fGet_MATL <- 
+  function(){
+    
+    # Establish a connection to DuckDB
+    con <- dbConnect(duckdb::duckdb())
+    
+    # Query the file and load it into a data.table
+    MATL <- 
+      dbGetQuery(
+        con, 
+        paste0(
+          "SELECT 
+          * 
+         FROM read_parquet('", FN_MATL, "')
+         "
+        )
+      )                                                                  %>%
+      setDT()
+    
+    
+    # Disconnect from DuckDB
+    dbDisconnect(con)
+    
+    return(MATL)
+  }
+
+fGet_MATS <- 
+  function() {
+    #| label: 'Material Sales Data',
+    #| eval:   true
+    
+    # Establish a connection to DuckDB
+    con <- dbConnect(duckdb::duckdb())
+    
+    # Query the file and load it into a data.table
+      MATS <- 
+        dbGetQuery(
+          con, 
+          paste0(
+            "SELECT 
+          * 
+         FROM 
+          read_parquet('", FN_MATS, "')
+        "
+          )
+        )                                                            %>%
+        setDT()
+      
+    # Disconnect from DuckDB
+    dbDisconnect(con)
+    
+    return(MATS)
+  }
+
+fGet_MATP <- 
+  function(){
+    #| label: 'Material Plant Data',
+    #| eval:   true
+    
+    # Establish a connection to DuckDB
+    con <- dbConnect(duckdb::duckdb())
+    
+    # Query the file and load it into a data.table
+
+      MATP <- 
+        dbGetQuery(
+          con, 
+          paste0(
+            "SELECT 
+          * 
+         FROM 
+          read_parquet('", FN_MATP, "')
+        "
+          )
+        )                                                                  %>%
+        setDT()
+      
+    # Disconnect from DuckDB
+    dbDisconnect(con)
+    
+    return(MATP)
+  }
+
+fGet_PA_sales <- 
+  function(){
+    #| label: 'Sales Data PA Scope',
+    #| eval:   true
+    
+    # Establish a connection to DuckDB
+    con <- dbConnect(duckdb(), dbdir = ":memory:")
+    
+    SORG <- c('FR30', 'NL10')
+    PRDH <- c(
+      '07',  # ALTER ECO
+      '08',  # BJORG
+      '10',  # CLIPPER (CUPPER)
+      '15',  # ZONNATURA
+      '53',  # TANOSHI
+      '65'   # NATURELA
+    )
+    
+    query <-   
+      glue_sql("
+    SELECT 
+      *,
+      sum(SLS_QT_SO + SLS_QT_FOC) as DEMND_QTY 
+    FROM 
+      read_parquet({`FN_ISLS`}) AS ISLS
+    INNER JOIN
+      read_parquet({`FN_MATL`}) AS MATL 
+    ON
+      ISLS.MATERIAL = MATL.MATERIAL
+    WHERE
+      SALESORG IN ({SORG*}) AND
+      PRDH1    IN ({PRDH*})
+    GROUP BY 
+      ALL
+    ORDER BY 
+      SALESORG,
+      CALMONTH
+    ", .con = con
+      )
+    
+    ISLS <- 
+      dbGetQuery(con, query, n = Inf) %>%
+      setDT()
+    
+    # Disconnect from DuckDB
+    dbDisconnect(con)
+    
+    return(ISLS)
+    
   }
