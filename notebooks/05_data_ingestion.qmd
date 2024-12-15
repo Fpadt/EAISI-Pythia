@@ -16,7 +16,7 @@ editor_options:
 
 \newpage
 
-![Logo](C:/PW\OneDrive\ET\pythia\img\pythia_logo2_no_text.png)
+![Logo](../images/logo.png)
 
 # Purpose
 

@@ -16,7 +16,7 @@ editor_options:
 
 \newpage
 
-![Logo](C:/Users/floris.padt/OneDrive%20-%20Wessanen/Pictures/ECOTONE/Logo.png)
+![Logo](../images/logo.png)
 
 # References
 
