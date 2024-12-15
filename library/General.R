@@ -1167,6 +1167,11 @@ LP0 <-
     )
   }
 
+MATN1 <- 
+  function(x){
+    LP0(x, 18)
+  }
+
 fTC <- 
   function(x, SID = EBW, REC = "Inf", CMT = "# "){
     

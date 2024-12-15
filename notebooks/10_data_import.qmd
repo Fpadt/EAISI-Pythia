@@ -184,28 +184,32 @@ dbDisconnect(con)
 # Establish a connection to DuckDB
 con <- dbConnect(duckdb(), dbdir = ":memory:")
 
+SORG <- c('FR30', 'NL10')
+TABL <- FN_ISLS
+
+query <-   
+  glue_sql("
+    SELECT 
+      *,
+      sum(SLS_QT_SO + SLS_QT_FOC) as DEMND_QTY 
+    FROM 
+      read_parquet({`TABL`})
+    WHERE
+      SALESORG IN ({SORG*})
+    GROUP BY 
+      ALL
+    ORDER BY 
+      SALESORG,
+      CALMONTH
+    ", .con = con
+  )
+
 system.time({
   ISLS <- 
-    dbGetQuery(
-      con, 
-      paste0(
-        "SELECT 
-          *,
-          sum(SLS_QT_SO + SLS_QT_FOC) as DEMND_QTY
-         FROM 
-          read_parquet('", FN_ISLS, "')
-         WHERE 
-          SALESORG    IN ('FR30', 'NL10') 
-         GROUP BY 
-          ALL
-         ORDER BY 
-          SALESORG,
-          CALMONTH"
-      )
-    )                                                                  %>%
+    dbGetQuery(con, query, n = Inf) %>%
     setDT()
-  
 })
+
 ```
 
 ## Sales per Article
@@ -218,31 +222,34 @@ system.time({
 # Establish a connection to DuckDB
 con <- dbConnect(duckdb(), dbdir = ":memory:")
 
+MATL <- c(MATN1('10023'))
+TABL <- FN_ISLS
+
+query <-   
+  glue_sql("
+    SELECT 
+      MATERIAL,
+      CALMONTH,
+      sum(SLS_QT_SO + SLS_QT_FOC) as DEMND_QTY
+    FROM 
+      read_parquet({`TABL`})
+    WHERE
+      MATERIAL IN ({MATL*}) AND
+      CALMONTH < date_trunc('month', current_date)
+    GROUP BY 
+      ALL
+    ORDER BY 
+      MATERIAL,
+      CALMONTH
+    ", .con = con
+  )
+
 system.time({
-  ISLS <- 
-    dbGetQuery(
-      con, 
-      paste0(
-        "SELECT 
-          SALESORG,
-          CALMONTH,
-          sum(SLS_QT_SO + SLS_QT_FOC) as DEMND_QTY
-         FROM 
-          read_parquet('", FN_ISLS, "')
-         WHERE 
-          SALESORG    IN ('FR30', 'NL10') AND
-          MATERIAL    IN ('000000000003021952')
-         GROUP BY 
-          ALL
-         ORDER BY 
-          SALESORG,
-          CALMONTH"
-      )
-    )                                                                  %>%
+  tsMAT <- 
+    dbGetQuery(con, query, n = Inf) %>%
     setDT()
-  
-  View(ISLS)
 })
+
 ```
 
 ## Sales scope
