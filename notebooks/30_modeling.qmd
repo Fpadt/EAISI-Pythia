@@ -56,12 +56,19 @@ if( file.exists(lsrc)){source(lsrc)}
 # location for generated figures
 pimg <- file.path('.', 'fig')
 
+
+fdiff_mnths <- function(x, y) {
+  
+  strdate <- ymd(paste0(x, "01"))
+  enddate <- ymd(paste0(y, "01"))
+  
+  lubridate::interval(strdate, enddate) %/% months(1)
+}
 ```
 
 ```{r}
 #| label: 'Get Material Master data '
 #| eval:   true
-
 
 MATL <- fGet_MATL() # MARA/0MATERIAL
 MATS <- fGet_MATS() # MVKE/0MAT_SALES
@@ -72,9 +79,18 @@ MATP <- fGet_MATP() # MARC/0MAT_PLANT
 #| label: 'Get Sales in PA scope '
 #| eval:   true
 
-
 IALL <- fGet_PA_sales()
 ```
+
+```{r}
+#| label: 'Get FRPR in PA scope '
+#| eval:   true
+
+FRPR <- 
+  fGet_MP_FCST('FR30','10023') %>%
+  .[VTYPE == '060', MDIFF:= fdiff_mnths(VERSMON, CALMONTH)]               
+```
+
 
 ## Graph Functions
 
@@ -358,6 +374,8 @@ tsMat_fc |>
        subtitle = paste(pmat, "for", porg)
        ) +
   guides(colour = guide_legend(title = "Forecast"))
+
+augment(tsMat_fit)
 
 ```
 

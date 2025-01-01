@@ -34,6 +34,22 @@ FN_STCK <-
   file.path(PSTK, paste0("IMP03SM1*")) 
 
 # Dynasys 2018
-FN_FRPR <- 
-  file.path(PDYN, paste0("SDSFRPR*")) 
+FN_FCST <- 
+  paste0("['", 
+         normalizePath(file.path(PDYN, "SDSFRPR2.parquet")), "', '", 
+         normalizePath(file.path(PDYN, "SDSFRPR4.parquet")),
+         "']"
+  )
+
+FN_FRPR1 <- 
+  file.path(PDYN, paste0("SDSFRPR1.parquet")) 
+
+FN_FRPR2 <- 
+  file.path(PDYN, paste0("SDSFRPR2.parquet"))
+
+FN_FRPR3 <- 
+  file.path(PDYN, paste0("SDSFRPR3.parquet"))
+
+FN_FRPR4 <- 
+  file.path(PDYN, paste0("SDSFRPR4.parquet")) 
 
