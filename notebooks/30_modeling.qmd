@@ -76,7 +76,6 @@ MATP <- fGet_MATP() # MARC/0MAT_PLANT
 IALL <- fGet_PA_sales()
 ```
 
-
 ## Graph Functions
 
 ```{r}
@@ -295,41 +294,70 @@ dtMat <- fGet_Sales_by_Material_Salesorg(
 ) %>%
   .[, y:= y/1000]
 
+# Calculate the range of your data 
+min_value <- min(dtMat$y) 
+max_value <- max(dtMat$y) 
+padding <- 0.1 * (max_value - min_value) # 10% padding
+
 ggplot(
   data = dtMat,
   mapping = aes(x = ds, y=y)
 ) +
-  geom_col(color = 'white', fill=ET_CG) +
+  geom_col(color = "white", fill = ET_CG) +
+  coord_cartesian(ylim = c(min_value - padding, max_value + padding)) +
   labs(
     title    = "Historical Sales ",
     subtitle = paste(pmat, "for", porg),
     x        = "Month/Year",
-    y        = "Sales ('000)")
+    y        = "Sales ('000)"
+    )
 
 tsMat <- 
   dtMat[, month:= yearmonth(ds)] %>%
   as_tsibble(
-    key = unique_id,
+    key   = unique_id,
     index = month
     )                  
-
-tsMat %>%
-  autoplot()
-
-tsMat %>% gg_season(y, period = "year")
-
-tsMat %>%
-  model(
-    STL(y ~ trend(window = 7) +
-          season(window = "periodic"),
-        robust = TRUE)) %>%
-  components() %>%
-  autoplot() +
-  theme(legend.position = "none")
 
 tsFT <- 
   tsMat %>%
   features(y, feature_set(pkgs = "feasts")) 
+
+tsMat_2023 <- 
+  tsMat                  %>%
+  filter(year(month) < 2024)
+
+tsMat_2024 <- 
+  tsMat                  %>%
+  filter(year(month) == 2024)
+
+# tsMat %>%
+#   autoplot()
+
+# tsMat %>% gg_season(y, period = "year")
+
+tsMat_fit <- 
+  tsMat_2023 %>%
+  model(
+    Mean    = MEAN(y),
+    `Naïve` = NAIVE(y),
+    Drift   = NAIVE(y ~ drift())
+  ) 
+
+# Produce forecasts 
+tsMat_fc <- 
+  tsMat_fit %>%
+  forecast(new_data = tsMat_2024)
+
+# Plot the forecasts
+tsMat_fc |>
+  autoplot(tsMat_2023, level = NULL) +
+  autolayer(tsMat_2024, y, colour = "black") +
+  labs(y = "Sales ('000)",
+       title = "Historical Sales ",
+       subtitle = paste(pmat, "for", porg)
+       ) +
+  guides(colour = guide_legend(title = "Forecast"))
 
 ```
 
