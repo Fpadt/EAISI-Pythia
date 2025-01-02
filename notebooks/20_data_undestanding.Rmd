@@ -61,10 +61,14 @@ FILE_SPEC <-
   list(
     DELIM        = ';',
     HEADER       = FALSE,
-    DATE_FOR <-   = '%Y-%m-%d'
+    DATE_FOR     = '%Y-%m-%d'
   )
 
 MAT <- MATN1("10023")
+
+# setwd("C:/RW/EAISI-Pythia/notebooks")
+lsrc <- "notebooks/30_modeling.R"  
+if( file.exists(lsrc)){source(lsrc)}
 ```
 
 # Data Import
@@ -78,7 +82,7 @@ Forecast Accuracy (Month)
 ```{r}
 #| label:   'get_data_SDMDMFR1'
 #| comment: 'Forecast Accuracy (Month)'
-#| eval:    true
+#| eval:    false
 
 # Active Data Table for DataStore SDMDMFR1 #### 
 B4_SDMDMFR12_A <- 
@@ -149,7 +153,7 @@ Forecast Accuracy BOM (Month)
 ```{r}
 #| label:  'get_data_SDMDMFR2'
 #| comment: 'Forecast Accuracy BOM (Month)'
-#| eval:    true
+#| eval:    false
 
 # Active Data Table for DataStore SDMDMFR2 #### 
 B4_SDMDMFR22_A <- 
@@ -221,8 +225,8 @@ B4_SDMDMFR22_A <-
 Demand and Forecast (Month)
 
 ```{r}
-#| label: 'get_data_SDWDMMG1',
-#| eval:  TRUE
+#| label: 'get_data_SDWDMMG1'
+#| eval:  false
 
 # Active Data Table for DataStore SDWDMMG1 #### 
 B4_SDWDMMG12_A <- 
@@ -266,6 +270,56 @@ B4_SDWDMMG12_A <-
 
 ```
 
+### SDSFRCT0
+
+Sales forecast history weekly
+
+```{r}
+#| label: 'get_data_SDSFRCT0'
+#| eval:  false
+
+# Active Data Table for DataStore SDSFRCT0 #### 
+B4_SDSFRCT02_A <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BIC/ASDSFRCT02",
+     pOptions  = list(
+       paste0("MATERIAL = '", MAT, "'")
+     ),
+     pFields   = list(
+        "PLANT"          , # Plant                          X
+        "MATERIAL"       , # Material                       X
+        "CALDAY"         , # Calendar day                   X
+        "/BIC/VERSDATE"  , # Version date                   X
+        # "RECORDMODE"     , # NA
+        "CALWEEK"        , # Calendar year / week
+        "/BIC/VERSWEEK"  , # Version week
+        # "MAT_PLANT"      , # Material Plant
+        "/BIC/KOPRW"     , # Corrected value forecast
+        # "/BIC/PRWRT"     , # Forecast value (Qty)
+        "BASE_UOM"       , # Base Unit of Measure
+        "/BIC/PERKZ"       # Period Indicator
+    ),
+     pRowcount = Inf
+   ) 
+
+```
+
+### SDSFRCT1
+
+Sales forecast history daily
+
+```{r}
+#| label: 'get_data_SDSFRCT1'
+#| eval:  false
+
+SDSFRCT02 <- 
+  copy(B4_SDSFRCT02_A)                         %>%
+  .[CALWEEK %between% c('202401', '202452')]   %>%
+  .[VERSDATE >= ymd("2023/09/04")]
+
+```
+
 ## SC-113B (DYN)
 
 ### SDWVAIT0
@@ -273,8 +327,8 @@ B4_SDWDMMG12_A <-
 Sales order item (& SSL)
 
 ```{r}
-#| label: 'get_data_SDWVAIT0',
-#| eval:  TRUE
+#| label: 'get_data_SDWVAIT0'
+#| eval:  true
 
 # Active Data Table for DataStore SDWVAIT0 #### 
 B4_SDWVAIT02_A <- 
@@ -467,7 +521,7 @@ Dynasys forecast accuracy
 
 ```{r}
 #| label: 'get_data_SDMFRCAC'
-#| eval:  false
+#| eval:  true
 
 # Active Data Table for DataStore SDMFRCAC #### 
 B4_SDMFRCAC2_A <- 
@@ -475,10 +529,10 @@ B4_SDMFRCAC2_A <-
      pSIDCLNT  = "WPB500",
      pTable    = "/BIC/ASDMFRCAC2",
      pOptions  = list(
-       # "PLANT = 'FR30'"                , "AND",
-       # paste0("MATERIAL = '", MAT, "'"), "AND",
-       "/BIC/VERSMON >= '202306'"      , "AND",
-       "CALMONTH LE '202411'"
+       "SALESORG = 'FR30'"             , "AND",
+       paste0("MATERIAL = '", MAT, "'"), "AND",
+       "/BIC/VERSMON >= '202301'"      , "AND",
+       "CALMONTH LE '202501'"
      ),
      pFields   = list(
         "COMP_CODE"       , # Company code                  X
@@ -535,8 +589,11 @@ B4_SDMFRCAC2_A <-
 if(rstudioapi::showQuestion(
   title   = "Save?", 
   message = "Do you want to save the data?"
-  ) == TRUE) {
-  saveRDS(object = B4_SDMFRCAC2_A, file = file.path(PDAT, "B4_SDMFRCAC2_A.rds"), ver)
+) == TRUE) {
+  saveRDS(
+    object = B4_SDMFRCAC2_A, 
+    file = file.path(PDAT, "B4_SDMFRCAC2_A.rds")
+  )
 }
 ```
 
@@ -546,7 +603,7 @@ Dynasys pre demand review actuals
 
 ```{r}
 #| label:   'get_data_SDSFRPR1'
-#| comment: "pre-DR Forecast ####"
+#| comment: 'pre-DR Forecast ####'
 #| eval:    true
 
 # Active Data Table for DataStore SDSFRPR1 #### 
@@ -582,7 +639,15 @@ B4_SDSFRPR12_A <-
      pRowcount = Inf
    )
 
-fwrite(B4_SDSFRPR12_A, file.path(PDYN, "B4_SDSFRPR12_A.csv"))
+if(rstudioapi::showQuestion(
+  title   = "Save?", 
+  message = "Do you want to save the data?"
+) == TRUE) {
+  saveRDS(
+    object = B4_SDSFRPR12_A, 
+    file = file.path(PDAT, "B4_SDSFRPR12_A.rds")
+  )
+}
 ```
 
 ### SDMFRPR1 ❌
@@ -689,7 +754,15 @@ B4_SDSFRPR42_A <-
      pRowcount = Inf
    )
 
-fwrite(B4_SDSFRPR42_A, file.path(PDYN, "B4_SDSFRPR42_A.csv"))
+if(rstudioapi::showQuestion(
+  title   = "Save?", 
+  message = "Do you want to save the data?"
+) == TRUE) {
+  saveRDS(
+    object = B4_SDSFRPR42_A, 
+    file = file.path(PDAT, "B4_SDSFRPR42_A.rds")
+  )
+}
 ```
 
 ### SDMFRPR4 ❌
@@ -1061,7 +1134,7 @@ B4_MATERIAL_P <-
 # Forecast Accuracy
 
 ```{r}
-#| label: 'replicate_SC113B',
+#| label: 'replicate_SC113B'
 #| eval:  true
 
 dtFA <- 
@@ -1076,134 +1149,77 @@ dtFA <-
     AE  = abs(ERR)
     APE = 100 * (1 - AE / ACT)
     EPE = 100 * (1 - AE / FM1)
-    .(PLANT, MATERIAL, CALMONTH, ERR, AE, APE, EPE)
+    .(PLANT, MATERIAL, CALMONTH, ACT, FM1, ERR, AE, APE, EPE)
   }
-  ] 
-
-```
-
-```{r}
+  ] %>%
+  .[CALMONTH %between% c('202401', '202412')]                        %T>%
+  setorder("PLANT", "MATERIAL", "CALMONTH")
 
 FCST <- 
-  copy(B4_SDMFRPR42_A)                                               %>%
-  .[, mnth_diff:= fdiff_mnths(VERSMON, CALMONTH)]                    %>%
-  .[, VERSMON:= NULL]                                                %>%
+  copy(B4_SDSFRPR42_A)                                               %>%
+  .[, STEP:= fdiff_mnths(VERSMON, CALMONTH)]                         %>%
+  # .[, VERSMON:= NULL]                                              %>%
+  #  .[]                                                             %>%
+  .[, .(
+    FCST = sum(DEMND_QTY)
+  ), by = .(PLANT, MATERIAL, CALMONTH, STEP)
+  ]                                                                  %T>%
+  setorder("PLANT", "MATERIAL", "CALMONTH", "STEP")                  %>%
   .[
-    CALMONTH %between% c('202401', '202410') & 
-      # CUSTOMER   == '0000030988' &
-      # CUST_HIE01 == '0000030936' &
-      # CUST_HIE03 == '0000030977' &
-      TRUE
-    ] 
- 
+    STEP == 1 &
+      CALMONTH %between% c('202401', '202412')]
 
 ACTS <- 
-  copy(B4_SDMFRPR12_A)                                               %>%
-  .[, `:=`(VERSMON = NULL, UPD_DATE = NULL)]                         %>%
-  .[, mnth_diff:= 0]                                                 %>%
-  .[, FTYPE    := 0]                                                 %>%  
-  .[
-    CALMONTH %between% c('202401', '202410') & 
-      # CUSTOMER   == '0000030988' &
-      # CUST_HIE01 == '0000030936' &
-      # CUST_HIE03 == '0000030977'
-      TRUE
-    ] 
+  copy(B4_SDSFRPR12_A)                                               %>%
+  .[, STEP:= fdiff_mnths(VERSMON, CALMONTH)]                         %>%  
+  # .[, `:=`(VERSMON = NULL, UPD_DATE = NULL)]                       %>%
+  # .[, STEP:= NA]                                                   %>%
+  # .[, FTYPE    := 0]                                               %>%
+  .[, .(
+    ACTS = sum(DEMND_QTY)
+  ), by = .(PLANT, MATERIAL, CALMONTH, STEP)
+  ]                                                                  %T>%
+  setorder("PLANT", "MATERIAL", "CALMONTH", "STEP")                  %>%  
+  .[ 
+    STEP == -1 &
+      CALMONTH %between% c('202401', '202412') ]                     %>%
+  .[ , `:=`(STEP = NULL)]                                         
 
-CMB <- 
-  rbind(ACTS, FCST, use.names = TRUE)                                %>%
-  dcast(
-    ... ~ "DQ" + paste0('V', VTYPE) + paste0('F', FTYPE) + 
-      paste0('M', str_pad(mnth_diff, 2, "left", pad = "0")),
-    fun.aggregate = sum,
-    value.var = "DEMND_QTY"
-  )                                                                  %>%
-  melt.data.table(
-    measure.vars  = patterns("V060"),
-    variable.name = "FTYPE",
-    value.name    = "FCST"
-  ) 
+# Full outer join
+dtKEY <-
+  rbind(
+   ACTS[, .(PLANT, MATERIAL, CALMONTH)],
+   FCST[, .(PLANT, MATERIAL, CALMONTH)]
+  ) %>% unique()
+
+CMB <-
+  ACTS[dtKEY, on = .(PLANT, MATERIAL, CALMONTH)]                    %>%
+  FCST[.    , on = .(PLANT, MATERIAL, CALMONTH)]                    
 
 ACC <- 
-  copy(CMB[])                                                        %T>%
-  setnames("V010_F0_M00", "ACTL")                                    %>%
-  .[, .(ACTL = sum(ACTL), FCST = sum(FCST)), 
-    by = .(
-      SYSTID,
-      CLIENT,
-      COMP_CODE,
-      SALESORG,
-      PLANT,
-      MATERIAL,
-      CUST_HIE03,
-      CALMONTH,
-      # CUSTOMER,
-      # CUST_HIE02,
-      # CUST_HIE01,
-      BASE_UOM,
-      FTYPE
-    )]                                                                %>%
+  copy(CMB[])                                                        %>%
   .[, `:=` (
-    ERR = ACTL - FCST,
-    AE  = abs(ACTL - FCST),
-    APE = 100 * (1 - abs(ACTL - FCST) / ACTL),
-    EPE = 100 * (1 - abs(ACTL - FCST) / FCST)
+    ERR = ACTS - FCST,
+    AE  = abs(ACTS - FCST),
+    APE = 100 * (1 - abs(ACTS - FCST) / ACTS),
+    EPE = 100 * (1 - abs(ACTS - FCST) / FCST)
   )
   ]
 
-# fwrite(
-#   ACC[FTYPE == 'V060_F2_M00'], 
-#   file.path(PDAT, RL0(MAT), "ACC.csv"), sep = ";")
+ggplot(ACTS, aes(x = CALMONTH, y = ACTS)) +
+  geom_col(colour = "white", fill = ET_CG) +
+  labs(
+    x = "Month",
+    y = "Quantity EA", 
+    title = paste("Sales of SKU:", RL0(MAT), "per month")
+    )                 +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
 
 ```
 
-### compare
 
-```{r}
-#| label: 'compare_data'
-#| eval:  false 
-
-SDMFRCAC <- 
-  copy(B4_SDMFRCAC2_A)%>%
-  .[, mnth_diff:= fdiff_mnths(VERSMON, CALMONTH)] %>%
-  .[, .(
-    SYSTID, CLIENT, COMP_CODE, SALESORG, PLANT, MATERIAL, CUST_HIE03,
-    CALMONTH, VERSMON, VTYPE, FTYPE, CUSTOMER, CUST_HIE02, CUST_HIE01,
-    BASE_UOM, DEMQTYM0,   
-    BSELN_QTY = BSLNQTYM0, 
-    PROMO_QTY = PRMQTYM0,
-    mnth_diff 
-  )]
-
-SDMFRPR1 <- 
-  copy(B4_SDMFRPR12_A)%>%
-  .[, mnth_diff:= fdiff_mnths(VERSMON, CALMONTH)]
-
-myNM <- names(SDMFRPR1)
-
-SDMFRPR4 <- 
-  copy(B4_SDMFRPR42_A)%>%
-  .[, mnth_diff:= fdiff_mnths(VERSMON, CALMONTH)]
-
-
-
-CMP <- 
-  rbind(
-    SDMFRCAC[VTYPE == '060', ..myNM][, TYP:="FRCAC"],
-    SDMFRPR4[, TYP:="FRPR4"],
-    use.names = TRUE
-  ) %>%
-  dcast(
-    ... ~ TYP,
-    fun.aggregate = length,
-    value.var = "CLIENT"
-  ) %>%
-  .[, TOT:= FRPR4 + FRCAC]
-
-View(CMP[TOT !=2 & CALMONTH >= '202309' & mnth_diff %in% 1:3])
-
-# fOpen_as_xlsx(SDMFRPR1, "SDMFRPR1")
-```
+# Modeling
 
 ```{r}
 
@@ -1234,21 +1250,6 @@ PTRN <- file.path("C:", "PW", "OneDrive", "ET", "pythia", "dat", "WPB", "TRAN")
 
 ```
 
-## Refresh Transaction Data
-
-Note:decimal sep = , thousands sep = .
-
-1.  execute DTP: DTP_006EICO68TUM23UTWQUR6YBKL
-2.  download from AL11 to
-
-```{r}
-#| label: "write_destination_folder_in_clipboard",
-#| eval:  true
-
-clipr::write_clip("C:\\Users\\Floris.padt\\OneDrive - Wessanen\\Forecasting\\upg\\data\\WPB\\NEW\\perkz_w\\DD_HISTO_QTY.CSV")
-
-# clipr::write_clip(file.path(PNW, PKZ, "DD_HISTO_QTY.CSV"))
-```
 
 ```{r}
 #| label: 'RTP SALES', 
@@ -1258,96 +1259,50 @@ SLS_A <- fread(file = file.path(PYTH, "DD_HISTO_QTY.CSV"))
 
 ```
 
-```{r}
-#| label: "get_data_filtered_by_mat",
-#| eval:  false 
-
-# fGetData <- 
-#   function(pPath, pSID, pFile) {
-#     fread(
-#       file.path(pPath, pSID, paste0(pFile, ".csv"))
-#     )
-#   }
-
-# SALES <- 
-#   fGetData(PDAT, "WPB", "SDMVSSL22")                               %>%
-#   .[MATERIAL == MAT]                                               %>%
-#   fwrite(file.path(PDAT, RL0(MAT), "SDMVSSL22.csv"), sep = ";")
-
-
-CUST <- 
-  fread(
-    file = file.path(
-      PNW , "perkz_w", "MD_SOLD_TO_CUSTOMER.CSV"
-      )
-    )                                                                %T>%
-  setnames(fGetOHFields("DSCP_CUST"))                                
-
-# SALES <- 
-#   fread(file = file.path(PTRN, "DD_HISTO_QTY_ALL.csv"))              %>%
-#   .[MATERIAL == RL0(MAT)]                                            %T>%
-#   fwrite(file.path(PDAT, RL0(MAT), "DD_HISTO_QTY.csv"), sep = ";")
-# 
-# PROMONAT <-
-#   read.xlsx(
-#     xlsxFile = file.path(PDAT, "PROMO", "export_20241002_143603.xlsx"),
-#     sheet = "Feuil1",
-#     detectDates = TRUE
-#   )                                                        %>% 
-#   setDT()                                                  %>%
-#   .[Réf == MAT]                                            %>% 
-#   fwrite(file.path(PDAT, RL0(MAT), "PROMONAT.csv"))
-#   
-# STOCK <- 
-#   fGetData(PDAT, "WPB", "IMP03SM1_F")                      %T>%
-#   setnames(fGetOHFields("OH_STOCK"))                       %>%
-#   .[MATERIAL == RL0(MAT)]                                  %>%
-#   fwrite(file.path(PDAT, RL0(MAT), "IMP03SM1_F.csv"))
-```
-
 ### 10023
 
 ```{r}
+# Actuals from IMP or RTP
 
-SLS10023 <- 
-  fread(file = file.path(PYTH, "DD_HISTO_QTY.CSV"))                  %T>%
-  # fread(file.path(PNW , PKZ, "DEC", "DD_HISTO_QTY.CSV"))             %T>%
-  setnames(fGetOHFields("DSCP_TRAN"))                                %>%
-  .[MATERIAL == RL0(MAT)]                                            %>%
-  .[CALDAY   <  ymd("2024-10-01")]                                   %>%
-  .[PLANT    == "FR30"]                                              %>%
-  .[, `:=`(
-    CALMONTH = paste0(year(CALDAY), LP0(month(CALDAY)  , 2)),
-    CALWEEK  = paste0(year(CALDAY), LP0(isoweek(CALDAY), 2))
-  )]                                                                 %>%
-  CUST[, 
-       .(CUSTOMER, SALESORG,
-         CUSTHIE04, CUST_HIE03, CUST_HIE02, CUST_HIE01)][
-         ., on = .(CUSTOMER, SALESORG)]                              %>%
-  .[, SLS_QT:= SLS_QT_SO + SLS_QT_FOC]                               %>%
-  .[ , .(SLS_QT_SO = sum(SLS_QT) ), 
-     by = .(
-       MATERIAL,
-       # CUSTOMER,
-       # CUSTHIE04,
-       # CUST_HIE03,
-       # CUST_HIE02,
-       # CUST_HIE01,
-       PLANT,
-       # SALESORG,
-       # CALDAY,
-       CALMONTH #,
-       # CALWEEK
-     )] 
-
-ggplot(SLS10023, aes(x = CALMONTH, y = SLS_QT_SO)) +
-  geom_col(colour = "white", fill = ET_CG) +
-  labs(
-    x = "Month",
-    y = "Quantity EA", 
-    title = paste("Sales of SKU:", RL0(MAT), "per month")
-    )                 +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+# SLS10023 <- 
+#   fread(file = file.path(PYTH, "DD_HISTO_QTY.CSV"))                  %T>%
+#   # fread(file.path(PNW , PKZ, "DEC", "DD_HISTO_QTY.CSV"))             %T>%
+#   setnames(fGetOHFields("DSCP_TRAN"))                                %>%
+#   .[MATERIAL == RL0(MAT)]                                            %>%
+#   .[CALDAY   <  ymd("2024-10-01")]                                   %>%
+#   .[PLANT    == "FR30"]                                              %>%
+#   .[, `:=`(
+#     CALMONTH = paste0(year(CALDAY), LP0(month(CALDAY)  , 2)),
+#     CALWEEK  = paste0(year(CALDAY), LP0(isoweek(CALDAY), 2))
+#   )]                                                                 %>%
+#   CUST[, 
+#        .(CUSTOMER, SALESORG,
+#          CUSTHIE04, CUST_HIE03, CUST_HIE02, CUST_HIE01)][
+#          ., on = .(CUSTOMER, SALESORG)]                              %>%
+#   .[, SLS_QT:= SLS_QT_SO + SLS_QT_FOC]                               %>%
+#   .[ , .(SLS_QT_SO = sum(SLS_QT) ), 
+#      by = .(
+#        MATERIAL,
+#        # CUSTOMER,
+#        # CUSTHIE04,
+#        # CUST_HIE03,
+#        # CUST_HIE02,
+#        # CUST_HIE01,
+#        PLANT,
+#        # SALESORG,
+#        # CALDAY,
+#        CALMONTH #,
+#        # CALWEEK
+#      )] 
+# 
+# ggplot(SLS10023, aes(x = CALMONTH, y = SLS_QT_SO)) +
+#   geom_col(colour = "white", fill = ET_CG) +
+#   labs(
+#     x = "Month",
+#     y = "Quantity EA", 
+#     title = paste("Sales of SKU:", RL0(MAT), "per month")
+#     )                 +
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 ts10023 <- 
   SLS10023[, CALMONTH:= yearmonth(CALMONTH, format = "%Y%m")] |> 
@@ -1388,13 +1343,6 @@ accuracy(FCT10023, ts10023)
 #     value.var = "SLS_QT_SO",
 #     fun.aggregate = sum
 #   ) %T>% fOpen_as_xlsx()
-
-ACTS %>%
-    dcast.data.table(
-    CALMONTH ~ CUST_HIE03,
-    value.var = "DEMND_QTY",
-    fun.aggregate = sum
-  ) %T>% fOpen_as_xlsx()
 
 PRM10023 <- 
   PROMONAT                                                 %>%
@@ -1442,44 +1390,4 @@ shell.exec(normalizePath(FFN))
 
 ```
 
-```{r}
-#| label: 'get_data_SDSFRCT0',
-#| eval:  TRUE
 
-# Active Data Table for DataStore SDSFRCT0 #### 
-B4_SDSFRCT02_A <- 
-   fRead_and_Union(
-     pSIDCLNT  = "WPB500",
-     pTable    = "/BIC/ASDSFRCT02",
-     pOptions  = list(
-       paste0("MATERIAL = '", MAT, "'")
-     ),
-     pFields   = list(
-        "PLANT"          , # Plant                          X
-        "MATERIAL"       , # Material                       X
-        "CALDAY"         , # Calendar day                   X
-        "/BIC/VERSDATE"  , # Version date                   X
-        # "RECORDMODE"     , # NA
-        "CALWEEK"        , # Calendar year / week
-        "/BIC/VERSWEEK"  , # Version week
-        # "MAT_PLANT"      , # Material Plant
-        "/BIC/KOPRW"     , # Corrected value forecast
-        # "/BIC/PRWRT"     , # Forecast value (Qty)
-        "BASE_UOM"       , # Base Unit of Measure
-        "/BIC/PERKZ"       # Period Indicator
-    ),
-     pRowcount = Inf
-   ) 
-
-```
-
-```{r}
-#| label: 'get_data_SDSFRCT1',
-#| eval:  TRUE
-
-SDSFRCT02 <- 
-  copy(B4_SDSFRCT02_A)                         %>%
-  .[CALWEEK %between% c('202401', '202452')]   %>%
-  .[VERSDATE >= ymd("2023/09/04")]
-
-```
