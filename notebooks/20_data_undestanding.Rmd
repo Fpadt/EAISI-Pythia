@@ -26,7 +26,7 @@ editor_options:
 
 -   
 
-    # Setup
+# Setup
 
 ```{r}
 #| label:  setup
@@ -47,8 +47,8 @@ SID <- "WPB500"
 SYS <- substr(SID, 1, 3)
 
 # SAP Access
-# library(reticulate)
-# use_condaenv("sapyr")
+library(reticulate)
+use_condaenv("sapyr")
 
 # public functions ---------------------------------------------------------
 invisible(source('library/KnitR_SetUp.R'))
@@ -61,19 +61,24 @@ FILE_SPEC <-
   list(
     DELIM        = ';',
     HEADER       = FALSE,
-    DATE_FORMAT  = '%Y-%m-%d'
+    DATE_FOR <-   = '%Y-%m-%d'
   )
+
+MAT <- MATN1("10023")
 ```
-
-
 
 # Data Import
 
-## SDMDMFR1
+## SC-113A (S4)
+
+### SDMDMFR1
+
+Forecast Accuracy (Month)
 
 ```{r}
-#| label: 'get_data_SDMDMFR1',
-#| eval:  TRUE
+#| label:   'get_data_SDMDMFR1'
+#| comment: 'Forecast Accuracy (Month)'
+#| eval:    true
 
 # Active Data Table for DataStore SDMDMFR1 #### 
 B4_SDMDMFR12_A <- 
@@ -137,7 +142,83 @@ B4_SDMDMFR12_A <-
 
 ```
 
-## SDWDMMG1
+### SDMDMFR2
+
+Forecast Accuracy BOM (Month)
+
+```{r}
+#| label:  'get_data_SDMDMFR2'
+#| comment: 'Forecast Accuracy BOM (Month)'
+#| eval:    true
+
+# Active Data Table for DataStore SDMDMFR2 #### 
+B4_SDMDMFR22_A <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BIC/ASDMDMFR22",
+     pOptions  = list(),
+     pFields   = list(
+        # "COMP_CODE"       , # Company code                                     X
+        # "SALESORG"        , # Sales Organization                               X
+        # "MATERIAL"        , # Material                                         X
+        # "CALMONTH"        , # Calendar year/month                              X
+        # "/BIC/MAT_PROMO"  , # Promotional Material                             X
+        # "RECORDMODE"      , #                                                  
+        # "PLANT"           , # Plant                                            
+        # "SALES_UNIT"      , # Sales unit                                       
+        # "BASE_UOM"        , # Base Unit of Measure                             
+        # "MAT_PLANT"       , # Material Plant                                   
+        # "CURRENCY"        , # Currency key                                     
+        # "CALQUARTER"      , # Calendar year/quarter                            
+        # "CALYEAR"         , # Calendar year                                    
+        # "CALMONTH2"       , # Calendar month                                   
+        # "/BIC/PROMO_IDC"  , # Promotion Indicator                              
+        # "/BIC/UOM_SEL2"   , # UoM Selection: 1 = BUoM | 2 = SUoM               
+        # "/BIC/FCPER"      , # Forecast Period                                  
+        # "/BIC/MEAS_SEL2"  , # Measure selection                                
+        # "MAT_SALES"       , # Material (Sales)                                 
+        # "DISTR_CHAN"      , # Distribution Channel                             
+        # "/BIC/PRDH1"      , # Name of the Brand                                
+        # "/BIC/PRDH2"      , # Main Category                                    
+        # "/BIC/PRDH3"      , # Product Sub Category                             
+        # "/BIC/PRDH4"      , # Product Family                                   
+        # "DLV_QTY"         , # Actual quantity delivered (in sales units)       
+        # "ACT_DL_QTY"      , # Actual quantity delivered in stockkeeping units  
+        # "REQU_QTY"        , # Desired Delivery Quantity                        
+        # "/BIC/FC8QTYB"    , # Forecast qty -8 BU                               
+        # "/BIC/FC8_QTY"    , # Forecast qty -8 (SUoM)                           
+        # "/BIC/FC13SUQTY"  , # Forecast Qty -13 SU                              
+        # "/BIC/FC13_QTY"   , # Forecast qty -13 (BUoM)                          
+        # "/BIC/FER8QTYB"   , # Forecast Error -8 BU                             
+        # "/BIC/FERR8QTY"   , # Forecast Error -8 (SUoM)                         
+        # "/BIC/FERR13QTY"  , # Forcast Error -13  (BUoM)                        
+        # "/BIC/FER13QTYS"  , # Forecast Error -13 SU                            
+        # "/BIC/ACTVAL"     , # Actuals amount                                   
+        # "/BIC/FC8VAL"     , # Forecast -8 amount                               
+        # "/BIC/FCER8VAL"   , # Forecast err -8 amount                           
+        # "/BIC/FC13VAL"    , # Forecast -13 amount                              
+        # "/BIC/FCER13VAL"  , # Forecast err -13 amount                          
+        # "/BIC/F4QTYB"     , # Forecast Qty -4  (BUoM)                          
+        # "/BIC/F4QTYS"     , # Forecast Qty -4  (SUoM)                          
+        # "/BIC/F4VAL"      , # Forecast -4 amount                               
+        # "/BIC/FER4QTYB"   , # Forecast Error -4  (BUoM)                        
+        # "/BIC/FER4QTYS"   , # Forecast Error -4  (SUoM)                        
+        # "/BIC/FER4VAL"    , # Forecast Error -4 amount                         
+        # "/BIC/FCQTYBU"    , # Forecast Qty BU                                  
+        # "/BIC/FCQTYSU"    , # Forecast Qty SU                                  
+        # "/BIC/FERQTYB"    , # Forecast Error  (BUoM)                           
+        # "/BIC/FERQTYS"    , # Forecast Error (SUoM)                            
+        # "/BIC/FCVAL"      , # Forecast amount                                  
+        # "/BIC/FERVAL"       # Forecast Error amount                            
+    ),
+     pRowcount = Inf
+   )
+
+```
+
+### SDWDMMG1
+
+Demand and Forecast (Month)
 
 ```{r}
 #| label: 'get_data_SDWDMMG1',
@@ -185,7 +266,11 @@ B4_SDWDMMG12_A <-
 
 ```
 
-## SDWVAIT0
+## SC-113B (DYN)
+
+### SDWVAIT0
+
+Sales order item (& SSL)
 
 ```{r}
 #| label: 'get_data_SDWVAIT0',
@@ -376,13 +461,13 @@ B4_SDWVAIT02_A <-
 
 ```
 
-## SDMFRCAC
+### SDMFRCAC ❔
+
+Dynasys forecast accuracy
 
 ```{r}
 #| label: 'get_data_SDMFRCAC'
 #| eval:  false
-
-MAT <- LP0("3026687", 18)
 
 # Active Data Table for DataStore SDMFRCAC #### 
 B4_SDMFRCAC2_A <- 
@@ -455,11 +540,13 @@ if(rstudioapi::showQuestion(
 }
 ```
 
-## SDSFRPR1
+### SDSFRPR1 ✔
+
+Dynasys pre demand review actuals
 
 ```{r}
-#| label:   'get_data_SDSFRPR1',
-#| comment: "pre-DR Forecast ####",
+#| label:   'get_data_SDSFRPR1'
+#| comment: "pre-DR Forecast ####"
 #| eval:    true
 
 # Active Data Table for DataStore SDSFRPR1 #### 
@@ -469,7 +556,7 @@ B4_SDSFRPR12_A <-
      pTable    = "/BIC/ASDSFRPR12",
      pOptions  = list(
        paste0("MATERIAL = '", MAT, "'"), "AND",
-       "/BIC/VERSMON >= '202306'"
+       "/BIC/VERSMON >= '202301'"
      ),
      pFields   = list(
         "COMP_CODE"       , # Company code                 X
@@ -495,14 +582,26 @@ B4_SDSFRPR12_A <-
      pRowcount = Inf
    )
 
+fwrite(B4_SDSFRPR12_A, file.path(PDYN, "B4_SDSFRPR12_A.csv"))
 ```
 
-## SDMFRPR1
+### SDMFRPR1 ❌
+
+Dynasys pre demand review actuals
+
+Only actuals where the difference between VERSMON and CALMONTH is 1 
+
+Enriched with
+
+- Company Code
+- CalYear
+- CalMonth
+
 
 ```{r}
-#| label:   'get_data_SDMFRPR1', 
-#| comment: "pre-DR Actuals ####",
-#| eval:    true
+#| label:   'get_data_SDMFRPR1' 
+#| comment: 'pre-DR Actuals ####'
+#| eval:    false
 
 # Active Data Table for DataStore SDMFRPR1 #### 
 B4_SDMFRPR12_A <- 
@@ -547,12 +646,65 @@ B4_SDMFRPR12_A <-
 
 ```
 
-## SDMFRPR4
+
+### SDSFRPR4 ✔
+
+Dynasys post demand review forecast
+
+```{r}
+#| label:   'get_data_SDSFRPR4'
+#| comment: 'post-DR Forecast ####'
+#| eval:    true
+
+# Active Data Table for DataStore SDSFRPR4 #### 
+B4_SDSFRPR42_A <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BIC/ASDSFRPR42",
+     pOptions  = list(
+       paste0("MATERIAL = '", MAT, "'"), "AND",
+       "/BIC/VERSMON >= '202301'"
+     ),
+     pFields   = list(
+        # "COMP_CODE"       , # Company code                 X
+        # "SALESORG"        , # Sales Organization           X
+        # "PLANT"           , # Plant                        X
+        # "MATERIAL"        , # Material                     X
+        # "CUST_HIE03"      , # Customer Hierarchy Level 3   X
+        # "CALMONTH"        , # Calendar year/month          X
+        # "VTYPE"           , # Value Type for Reporting     X
+        # "/BIC/FTYPE"      , # Forecast Type                X
+        # "/BIC/VERSMON"    , # Version Calendar year/month  X
+        # "RECORDMODE"      , #                              
+        # "UPD_DATE"        , # Update Date                  
+        # "CUST_HIE02"      , # Customer Hierarchy Level 2   
+        # "CUST_HIE01"      , # Customer Hierarchy Level 1   
+        # "/BIC/DEMND_QTY"  , # Demand qty                   
+        # "/BIC/BSELN_QTY"  , # Baseline qty                 
+        # "/BIC/PROMO_QTY"  , # Promotion qty                
+        # "/BIC/DMDCP_QTY"  , # Demand components qty        
+        # "/BIC/PRMCP_QTY"  , # Promo components qty         
+        # "BASE_UOM"          # Base Unit of Measure         
+    ),
+     pRowcount = Inf
+   )
+
+fwrite(B4_SDSFRPR42_A, file.path(PDYN, "B4_SDSFRPR42_A.csv"))
+```
+
+### SDMFRPR4 ❌
+
+Dynasys post demand review forecast
+
+Enriched with 
+
+- MONTHDIFF
+- Company Code from SalesOrg
 
 ```{r}
 #| label:   'get_data_SDMFRPR42'
 #| comment: 'post-DR Forecast'
-#| eval:     true
+#| eval:     false
 
 # Active Data Table for DataStore SDMFRPR4 #### 
 B4_SDMFRPR42_A <- 
@@ -560,10 +712,9 @@ B4_SDMFRPR42_A <-
      pSIDCLNT  = "WPB500",
      pTable    = "/BIC/ASDMFRPR42",
      pOptions  = list(
-       # paste0("MATERIAL = '", MAT, "'"), "AND",
-       "/BIC/VERSMON = '202411'", "AND",
-       "SALESORG = 'FR30'"      , "AND",
-       "CALMONTH <= 202606"
+       paste0("MATERIAL = '", MAT, "'"), "AND",
+       "/BIC/VERSMON = '202501'"       , "AND",
+       "SALESORG     = 'FR30'"           
      ),
      pFields   = list(
         "COMP_CODE"       , # Company code                  X
@@ -608,7 +759,7 @@ B4_SDMFRPR42_A <-
 
 ```
 
-## OPSTARG
+### OPSTARG
 
 ```{r}
 #| label: 'get_data_OPSTARG',
@@ -649,216 +800,22 @@ B4_OPSTARG2_A <-
 
 ```
 
-## SDWDMMG1
+### IMP03SM1 ❌
 
-```{r}
-#| label: 'get_data_SDWDMMG12',
-#| eval:  true
-
-# Active Data Table for DataStore SDWDMMG1 #### 
-B4_SDWDMMG12_A <- 
-   fRead_and_Union(
-     pSIDCLNT  = "WPB500",
-     pTable    = "/BIC/ASDWDMMG12",
-     pOptions  = list(),
-     pFields   = list(
-        # "COMP_CODE"       , # Company code                                     X
-        # "SALESORG"        , # Sales Organization                               X
-        # "MATERIAL"        , # Material                                         X
-        # "CALMONTH"        , # Calendar year/month                              X
-        # "SALES_UNIT"      , # Sales unit                                       X
-        # "BASE_UOM"        , # Base Unit of Measure                             X
-        # "RECORDMODE"      , #                                                  
-        # "DISTR_CHAN"      , # Distribution Channel                             
-        # "PLANT"           , # Plant                                            
-        # "/BIC/PRDH1"      , # Name of the Brand                                
-        # "/BIC/PRDH2"      , # Main Category                                    
-        # "/BIC/PRDH3"      , # Product Sub Category                             
-        # "/BIC/PRDH4"      , # Product Family                                   
-        # "/BIC/MAT_PROMO"  , # Promotional Material                             
-        # "/BIC/PROMO_IDC"  , # Promotion Indicator                              
-        # "DLV_QTY"         , # Actual quantity delivered (in sales units)       
-        # "ACT_DL_QTY"      , # Actual quantity delivered in stockkeeping units  
-        # "REQU_QTY"        , # Desired Delivery Quantity                        
-        # "/BIC/FCQTYBU"    , # Forecast Qty BU                                  
-        # "/BIC/FCQTYSU"    , # Forecast Qty SU                                  
-        # "/BIC/F4QTYB"     , # Forecast Qty -4  (BUoM)                          
-        # "/BIC/F4QTYS"     , # Forecast Qty -4  (SUoM)                          
-        # "/BIC/FC8QTYB"    , # Forecast qty -8 BU                               
-        # "/BIC/FC8_QTY"    , # Forecast qty -8 (SUoM)                           
-        # "/BIC/FC13SUQTY"  , # Forecast Qty -13 SU                              
-        # "/BIC/FC13_QTY"     # Forecast qty -13 (BUoM)                          
-    ),
-     pRowcount = Inf
-   )
-
-```
-
-## SDMDMFR1
-
-```{r}
-#| label:   'get_data_SDMDMFR1'
-#| comment: ""
-#| eval:    true
-
-
-# Active Data Table for DataStore SDMDMFR1 #### 
-B4_SDMDMFR12_A <- 
-   fRead_and_Union(
-     pSIDCLNT  = "WPB500",
-     pTable    = "/BIC/ASDMDMFR12",
-     pOptions  = list(),
-     pFields   = list(
-        # "COMP_CODE"       , # Company code                                     X
-        # "SALESORG"        , # Sales Organization                               X
-        # "MATERIAL"        , # Material                                         X
-        # "CALMONTH"        , # Calendar year/month                              X
-        # "RECORDMODE"      , #                                                  
-        # "PLANT"           , # Plant                                            
-        # "SALES_UNIT"      , # Sales unit                                       
-        # "BASE_UOM"        , # Base Unit of Measure                             
-        # "MAT_PLANT"       , # Material Plant                                   
-        # "CURRENCY"        , # Currency key                                     
-        # "CALQUARTER"      , # Calendar year/quarter                            
-        # "CALYEAR"         , # Calendar year                                    
-        # "CALMONTH2"       , # Calendar month                                   
-        # "/BIC/UOM_SEL2"   , # UoM Selection: 1 = BUoM | 2 = SUoM               
-        # "/BIC/FCPER"      , # Forecast Period                                  
-        # "/BIC/MEAS_SEL2"  , # Measure selection                                
-        # "MAT_SALES"       , # Material (Sales)                                 
-        # "DISTR_CHAN"      , # Distribution Channel                             
-        # "DLV_QTY"         , # Actual quantity delivered (in sales units)       
-        # "ACT_DL_QTY"      , # Actual quantity delivered in stockkeeping units  
-        # "REQU_QTY"        , # Desired Delivery Quantity                        
-        # "/BIC/FC8QTYB"    , # Forecast qty -8 BU                               
-        # "/BIC/FC8_QTY"    , # Forecast qty -8 (SUoM)                           
-        # "/BIC/FC13SUQTY"  , # Forecast Qty -13 SU                              
-        # "/BIC/FC13_QTY"   , # Forecast qty -13 (BUoM)                          
-        # "/BIC/FER8QTYB"   , # Forecast Error -8 BU                             
-        # "/BIC/FERR8QTY"   , # Forecast Error -8 (SUoM)                         
-        # "/BIC/FERR13QTY"  , # Forcast Error -13  (BUoM)                        
-        # "/BIC/FER13QTYS"  , # Forecast Error -13 SU                            
-        # "/BIC/ACTVAL"     , # Actuals amount                                   
-        # "/BIC/FC8VAL"     , # Forecast -8 amount                               
-        # "/BIC/FCER8VAL"   , # Forecast err -8 amount                           
-        # "/BIC/FC13VAL"    , # Forecast -13 amount                              
-        # "/BIC/FCER13VAL"  , # Forecast err -13 amount                          
-        # "/BIC/F4QTYB"     , # Forecast Qty -4  (BUoM)                          
-        # "/BIC/F4QTYS"     , # Forecast Qty -4  (SUoM)                          
-        # "/BIC/F4VAL"      , # Forecast -4 amount                               
-        # "/BIC/FER4QTYB"   , # Forecast Error -4  (BUoM)                        
-        # "/BIC/FER4QTYS"   , # Forecast Error -4  (SUoM)                        
-        # "/BIC/FER4VAL"    , # Forecast Error -4 amount                         
-        # "/BIC/FCQTYBU"    , # Forecast Qty BU                                  
-        # "/BIC/FCQTYSU"    , # Forecast Qty SU                                  
-        # "/BIC/FERQTYB"    , # Forecast Error  (BUoM)                           
-        # "/BIC/FERQTYS"    , # Forecast Error (SUoM)                            
-        # "/BIC/FCVAL"      , # Forecast amount                                  
-        # "/BIC/FERVAL"       # Forecast Error amount                            
-    ),
-     pRowcount = Inf
-   )
-
-```
-
-## SDMDMFR2
-
-```{r}
-#| label:  'get_data_SDMDMFR2'
-#| comment: ""
-#| eval:    true
-
-# Active Data Table for DataStore SDMDMFR2 #### 
-B4_SDMDMFR22_A <- 
-   fRead_and_Union(
-     pSIDCLNT  = "WPB500",
-     pTable    = "/BIC/ASDMDMFR22",
-     pOptions  = list(),
-     pFields   = list(
-        # "COMP_CODE"       , # Company code                                     X
-        # "SALESORG"        , # Sales Organization                               X
-        # "MATERIAL"        , # Material                                         X
-        # "CALMONTH"        , # Calendar year/month                              X
-        # "/BIC/MAT_PROMO"  , # Promotional Material                             X
-        # "RECORDMODE"      , #                                                  
-        # "PLANT"           , # Plant                                            
-        # "SALES_UNIT"      , # Sales unit                                       
-        # "BASE_UOM"        , # Base Unit of Measure                             
-        # "MAT_PLANT"       , # Material Plant                                   
-        # "CURRENCY"        , # Currency key                                     
-        # "CALQUARTER"      , # Calendar year/quarter                            
-        # "CALYEAR"         , # Calendar year                                    
-        # "CALMONTH2"       , # Calendar month                                   
-        # "/BIC/PROMO_IDC"  , # Promotion Indicator                              
-        # "/BIC/UOM_SEL2"   , # UoM Selection: 1 = BUoM | 2 = SUoM               
-        # "/BIC/FCPER"      , # Forecast Period                                  
-        # "/BIC/MEAS_SEL2"  , # Measure selection                                
-        # "MAT_SALES"       , # Material (Sales)                                 
-        # "DISTR_CHAN"      , # Distribution Channel                             
-        # "/BIC/PRDH1"      , # Name of the Brand                                
-        # "/BIC/PRDH2"      , # Main Category                                    
-        # "/BIC/PRDH3"      , # Product Sub Category                             
-        # "/BIC/PRDH4"      , # Product Family                                   
-        # "DLV_QTY"         , # Actual quantity delivered (in sales units)       
-        # "ACT_DL_QTY"      , # Actual quantity delivered in stockkeeping units  
-        # "REQU_QTY"        , # Desired Delivery Quantity                        
-        # "/BIC/FC8QTYB"    , # Forecast qty -8 BU                               
-        # "/BIC/FC8_QTY"    , # Forecast qty -8 (SUoM)                           
-        # "/BIC/FC13SUQTY"  , # Forecast Qty -13 SU                              
-        # "/BIC/FC13_QTY"   , # Forecast qty -13 (BUoM)                          
-        # "/BIC/FER8QTYB"   , # Forecast Error -8 BU                             
-        # "/BIC/FERR8QTY"   , # Forecast Error -8 (SUoM)                         
-        # "/BIC/FERR13QTY"  , # Forcast Error -13  (BUoM)                        
-        # "/BIC/FER13QTYS"  , # Forecast Error -13 SU                            
-        # "/BIC/ACTVAL"     , # Actuals amount                                   
-        # "/BIC/FC8VAL"     , # Forecast -8 amount                               
-        # "/BIC/FCER8VAL"   , # Forecast err -8 amount                           
-        # "/BIC/FC13VAL"    , # Forecast -13 amount                              
-        # "/BIC/FCER13VAL"  , # Forecast err -13 amount                          
-        # "/BIC/F4QTYB"     , # Forecast Qty -4  (BUoM)                          
-        # "/BIC/F4QTYS"     , # Forecast Qty -4  (SUoM)                          
-        # "/BIC/F4VAL"      , # Forecast -4 amount                               
-        # "/BIC/FER4QTYB"   , # Forecast Error -4  (BUoM)                        
-        # "/BIC/FER4QTYS"   , # Forecast Error -4  (SUoM)                        
-        # "/BIC/FER4VAL"    , # Forecast Error -4 amount                         
-        # "/BIC/FCQTYBU"    , # Forecast Qty BU                                  
-        # "/BIC/FCQTYSU"    , # Forecast Qty SU                                  
-        # "/BIC/FERQTYB"    , # Forecast Error  (BUoM)                           
-        # "/BIC/FERQTYS"    , # Forecast Error (SUoM)                            
-        # "/BIC/FCVAL"      , # Forecast amount                                  
-        # "/BIC/FERVAL"       # Forecast Error amount                            
-    ),
-     pRowcount = Inf
-   )
-
-```
-
-## SDSFRPR3
-
-```{r}
-#| label:    'get_data_SDSFRPR3'
-#| comment:  ""
-#| eval:     true
-
-# Active Data Table for DataStore SDMDMFR3 #### 
-SDSFRPR3 <- 
-  fread(file = file.path("C:\\PW\\OneDrive\\ET\\pythia\\dat\\SDSFRPR3.csv"))
-
-```
-
-## IMP03SM1
+Material Stocks & Movements
 
 ```{r}
 #| label:   'get_data_IMP03SM1'
-#| comment: ""
-#| eval:    true
+#| comment: 'Material Stocks & Movements'
+#| eval:    false
 
 IMP03SM1 <- 
   fread(file = file.path(PDAT, "WPB", "IMP03SM1_F.csv"))
 
 ```
 
-## PROMOTION
+
+## Promotions
 
 ### Dynasys
 
@@ -925,7 +882,7 @@ PR_GL_CL3 <-
 ```{r}
 #| label:   'get_promo_data_PROMONAT'
 #| eval:    true
-#| comment: "Extraction from PROMONAT from Corentine ####"
+#| comment: 'Extraction from PROMONAT from Corentine ####'
 
 PROMONAT <-
   read.xlsx(
@@ -941,13 +898,14 @@ fOpenExcel <-
   }
 ```
 
-
-
 # Material Master Data
 
-## BW
+## Material (B4)
 
 ```{r}
+#| label:   'get_data_MATERIAL'
+#| comment: '0MATERIAL MD'
+#| eval:     false
 
 # Master Data (Time-Ind.): Characteristic Material #### 
 B4_MATERIAL_P <- 

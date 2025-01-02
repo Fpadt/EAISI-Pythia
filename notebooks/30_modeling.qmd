@@ -91,7 +91,6 @@ FRPR <-
   .[VTYPE == '060', MDIFF:= fdiff_mnths(VERSMON, CALMONTH)]               
 ```
 
-
 ## Graph Functions
 
 ```{r}
@@ -378,4 +377,3 @@ tsMat_fc |>
 augment(tsMat_fit)
 
 ```
-
