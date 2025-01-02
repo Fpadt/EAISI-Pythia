@@ -1145,15 +1145,27 @@ dtFA <-
   ), by = .(PLANT, MATERIAL, CALMONTH)
   ]                                                                  %>%
   .[, {
-    ERR = ACT - FM1
-    AE  = abs(ERR)
+    E   = ACT - FM1
+    E2  = E ^ 2
+    AE  = abs(E)
     APE = 100 * (1 - AE / ACT)
     EPE = 100 * (1 - AE / FM1)
-    .(PLANT, MATERIAL, CALMONTH, ACT, FM1, ERR, AE, APE, EPE)
+    .(PLANT, MATERIAL, CALMONTH, 
+      ACT, FM1, E, E2, AE, APE, EPE)
   }
   ] %>%
   .[CALMONTH %between% c('202401', '202412')]                        %T>%
   setorder("PLANT", "MATERIAL", "CALMONTH")
+
+
+# dtFA <- 
+#   dtFA[
+#     !is.nan(APE) & 
+#     !is.nan(ECO) &   
+#     !is.infinite(APE) &
+#     !is.infinite(ECO) &  
+#     APE > -100 &
+#     ECO > -100  ]
 
 FCST <- 
   copy(B4_SDSFRPR42_A)                                               %>%
@@ -1198,12 +1210,15 @@ CMB <-
 
 ACC <- 
   copy(CMB[])                                                        %>%
-  .[, `:=` (
-    ERR = ACTS - FCST,
-    AE  = abs(ACTS - FCST),
-    APE = 100 * (1 - abs(ACTS - FCST) / ACTS),
-    EPE = 100 * (1 - abs(ACTS - FCST) / FCST)
-  )
+  .[, {
+    E   = ACTS - FCST
+    E2  = E ^ 2
+    AE  = abs(E)
+    APE = 100 * (1 - AE / ACTS)
+    EPE = 100 * (1 - AE / FCST)
+    .(PLANT, MATERIAL, CALMONTH, 
+      ACT, FM1, E, E2, AE, APE, EPE)
+  }
   ]
 
 ggplot(ACTS, aes(x = CALMONTH, y = ACTS)) +
@@ -1218,6 +1233,62 @@ ggplot(ACTS, aes(x = CALMONTH, y = ACTS)) +
 
 ```
 
+
+```{r}
+#| label:  'APE vs ECO'
+#| eval:   true
+
+ggplot(
+  data = dtFA[
+    CALMONTH >='202401' 
+    & APE > -50
+    # & MATERIAL == MAT
+  ], 
+  aes(x = APE, y = EPE)
+) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1) +
+  # geom_label(aes(label = round(PE, 1))) +
+  # facet_wrap(~ PLANT + MATERIAL, scales = "free_y") +
+  # scale_color_manual(values=c(ET_CG, ET_FG))+
+  theme_minimal()
+```
+
+```{r}
+#| label:  'SC-113B_1'
+#| eval:   true
+
+dtFA_melt  <- 
+  copy(dtFA) %>%
+  melt.data.table(
+    measure.vars  = c("APE", "EPE"),
+    variable.name = "PE_TYPE",
+    value.name    = "PE"
+    ) %T>% setorder(CALMONTH)
+
+ggplot(
+  data = dtFA_melt[CALMONTH >='202401' & MATERIAL == MAT], 
+  aes(x     = CALMONTH, 
+      y     = PE, 
+      group = PE_TYPE, 
+      color = PE_TYPE)
+  ) +
+  geom_line(linewidth = 2) +
+  geom_point() +
+  geom_label(aes(label = round(PE, 1))) +
+  # facet_wrap(~ PLANT + MATERIAL, scales = "free_y") +
+  scale_color_manual(values=c(ET_CG, ET_FG))+
+  theme_minimal()
+
+if(MAN){
+  if(rstudioapi::showQuestion(
+    title   = "SAC",
+    message = "Do you want to open SC-113B?"
+  ) == TRUE) {
+    browseURL(url = "https://wessanen.eu10.sapanalytics.cloud/link/SC113B")
+  }
+}
+```
 
 # Modeling
 
