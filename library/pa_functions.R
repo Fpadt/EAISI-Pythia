@@ -280,7 +280,6 @@ fGet_MP_FCST <-
     query <-   
       glue_sql("
     SELECT 
-      COMP_CODE,
       SALESORG,
       PLANT,
       MATERIAL,
@@ -291,7 +290,7 @@ fGet_MP_FCST <-
       BASE_UOM, 
       sum(DEMND_QTY) as Q
     FROM 
-      read_parquet({`FN_FCST`})
+      read_parquet([{`FN_FRPR2`}, {`FN_FRPR4`} ])
     WHERE
       SALESORG IN ({salesorg*}) AND
       MATERIAL IN ({material*}) AND
@@ -300,7 +299,6 @@ fGet_MP_FCST <-
        (VERSMON  > '202212' AND VTYPE = '060')
       )
     GROUP BY 
-      COMP_CODE,
       SALESORG,
       PLANT,
       MATERIAL,
