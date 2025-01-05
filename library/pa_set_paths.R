@@ -21,7 +21,7 @@ FN_MATP <-
   file.path(PRTP, "MD_MATERIAL_PLANT.parquet") %>% 
   normalizePath() 
 
-FN_MATP <- 
+FN_CUST <- 
   file.path(PRTP, "MD_SOLD_TO_CUSTOMER.parquet") %>% 
   normalizePath() 
 
@@ -34,17 +34,17 @@ FN_STCK <-
   file.path(PSTK, paste0("IMP03SM1*")) 
 
 
-# [
-#   'C:/PW/OneDrive/ET/pythia/dat/S2S/WPB/DYN/IB/SDSFRPR2.parquet', 
-#   'C:/PW/OneDrive/ET/pythia/dat/S2S/WPB/DYN/IB/SDSFRPR4.parquet'
-# ]
-
-# Dynasys 2018
-FN_FCST <- paste(
-  'C:/PW/OneDrive/ET/pythia/dat/S2S/WPB/DYN/IB/SDSFRPR2.parquet',
-  'C:/PW/OneDrive/ET/pythia/dat/S2S/WPB/DYN/IB/SDSFRPR4.parquet',
-  sep = "', '"
-)
+# # [
+# #   'C:/PW/OneDrive/ET/pythia/dat/S2S/WPB/DYN/IB/SDSFRPR2.parquet', 
+# #   'C:/PW/OneDrive/ET/pythia/dat/S2S/WPB/DYN/IB/SDSFRPR4.parquet'
+# # ]
+# 
+# # Dynasys 2018
+# FN_FCST <- paste(
+#   'C:/PW/OneDrive/ET/pythia/dat/S2S/WPB/DYN/IB/SDSFRPR2.parquet',
+#   'C:/PW/OneDrive/ET/pythia/dat/S2S/WPB/DYN/IB/SDSFRPR4.parquet',
+#   sep = "', '"
+# )
 
   
 FN_FRPR1 <- 

@@ -83,12 +83,28 @@ IALL <- fGet_PA_sales()
 ```
 
 ```{r}
-#| label: 'Get FRPR in PA scope '
+#| label: 'Get FCST for Material/Plant '
 #| eval:   true
 
-FRPR <- 
-  fGet_MP_FCST('FR30','10023') %>%
-  .[VTYPE == '060', MDIFF:= fdiff_mnths(VERSMON, CALMONTH)]               
+FCST <- 
+  fGet_MP_FCST('FR30','10023') 
+
+ACTL <- 
+  fGet_Actuals(apply_scope = TRUE) 
+
+# ACTC <- 
+#   dcast.data.table(
+#     ACTL, 
+#     ... ~ paste0("TYP_", FTYPE),  
+#     value.var = "A"
+#   ) %>%
+#   .[, DIFF:= TYP_1 - TYP_2]
+# 
+# View(ACTC[DIFF != 0])
+
+
+
+
 ```
 
 ## Graph Functions
