@@ -90,7 +90,10 @@ FCST <-
   fGet_MP_FCST('FR30','10023') 
 
 ACTL <- 
-  fGet_Actuals(apply_scope = TRUE) 
+  fGet_DYN_Actuals(apply_scope = TRUE) 
+
+FCST <- 
+  fGet_DYN_Forecast(apply_scope = TRUE) 
 
 # ACTC <- 
 #   dcast.data.table(

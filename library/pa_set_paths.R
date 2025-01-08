@@ -6,7 +6,7 @@
 
 PRTP <- file.path(PS02, SYS, "RTP", "OB")
 PSTK <- file.path(PS02, SYS, "STK", "OB")
-PDYN <- file.path(PS02, SYS, "DYN", "IB")
+PDYN <- file.path(PS02, SYS, "DYN")
 
 # Material 
 FN_MATL <- 
@@ -48,14 +48,14 @@ FN_STCK <-
 
   
 FN_FRPR1 <- 
-  file.path(PDYN, paste0("SDSFRPR1.parquet")) 
+  file.path(PDYN, paste0("SDSFRPR1_*.parquet")) 
 
 FN_FRPR2 <- 
-  file.path(PDYN, paste0("SDSFRPR2.parquet"))
+  file.path(PDYN, paste0("SDSFRPR2_*.parquet"))
 
 FN_FRPR3 <- 
-  file.path(PDYN, paste0("SDSFRPR3.parquet"))
+  file.path(PDYN, paste0("SDSFRPR3_*.parquet"))
 
 FN_FRPR4 <- 
-  file.path(PDYN, paste0("SDSFRPR4.parquet")) 
+  file.path(PDYN, paste0("SDSFRPR4_*.parquet")) 
 

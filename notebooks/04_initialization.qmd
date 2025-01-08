@@ -22,6 +22,8 @@ editor_options:
 
 Get all meta data needed from SAP to run locally
 
+Note: can only be executed from **Ecotone Laptop**
+
 # Setup
 
 ```{r}
@@ -166,19 +168,26 @@ fwrite(
   file = file.path(PS01, SYS, "B4", "B4_FILENAMECI.csv"),
 )
 
-B4_RSBOHFIELDS[, .(
-  PYTHIA = ''                , 
-  OHDEST                     , 
-  POSIT = paste0(POSIT, '00'),
-  DATATYPE                   ,    
-  FLDNM_IN  = FIELDNM        ,
-  FIELDTP   = 'VARCHAR'      ,
-  TRNSFRM   = FIELDNM        ,
-  FLDNM_OUT = FIELDNM
-)] %T>%
-  setorder(OHDEST, POSIT) %T>%
-  fwrite(
-    file = file.path(PS01, SYS, "B4", "B4_PIPELINE.csv")
-    )
+```
+
+```{r}
+#| label:  Write_pipeline
+#| label:  false 
+
+
+# B4_RSBOHFIELDS[, .(
+#   PYTHIA = ''                , 
+#   OHDEST                     , 
+#   POSIT = paste0(POSIT, '00'),
+#   DATATYPE                   ,    
+#   FLDNM_IN  = FIELDNM        ,
+#   FIELDTP   = 'VARCHAR'      ,
+#   TRNSFRM   = FIELDNM        ,
+#   FLDNM_OUT = FIELDNM
+# )] %T>%
+#   setorder(OHDEST, POSIT) %T>%
+#   fwrite(
+#     file = file.path(PS01, SYS, "B4", "B4_PIPELINE.csv")
+#     )
 
 ```

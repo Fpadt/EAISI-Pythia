@@ -1,4 +1,4 @@
-# Scope
+# Scope ####
 
 # SCOPE_MATL <- MATN1('10023')
 SCOPE_SORG <- c('FR30', 'NL10')
@@ -267,7 +267,6 @@ fGet_MATP <-
   }
 
 # Sales Functions ####
-
 fGet_Sales_by_Material_Salesorg <- 
   function(material, salesorg){
     
@@ -318,6 +317,7 @@ fGet_Sales_by_Material_Salesorg <-
     return(dtTS)
   }
 
+# Get PA sales ####
 fGet_PA_sales <- 
   function(){
     #| label: 'Sales Data PA Scope',
@@ -362,7 +362,6 @@ fGet_PA_sales <-
   }
 
 # Dynasys results A & F ####
-
 fGet_PA_FRPR <- 
   function(){
     
@@ -403,8 +402,7 @@ fGet_PA_FRPR <-
     
   }
 
-# Get pre-demand Actuals 
-
+# Get pre-demand Actuals ####
 fGet_PA_FRPR2 <- 
   function(){
     
@@ -447,7 +445,7 @@ fGet_PA_FRPR2 <-
   }
 
 
-# Get Forecast data 
+# Get Forecast data - OBSOLETE #### 
 fGet_MP_FCST <- 
   function(salesorg, material, step_low = 1, step_high = 18){
     
@@ -507,7 +505,7 @@ fGet_MP_FCST <-
   }
 
 
-# Get Actuals 
+# Get DYN Actuals ####
 fGet_DYN_Actuals <- 
   function(
     salesorg    = NULL    ,    # Optional user-supplied salesorg
@@ -589,7 +587,9 @@ fGet_DYN_Actuals <-
           PLANT,
           MATERIAL,
           CALMONTH,
+          VERSMON,
           FTYPE,
+          VTYPE,
           BASE_UOM, 
           SUM(DEMND_QTY) AS A
         FROM 
@@ -607,6 +607,109 @@ fGet_DYN_Actuals <-
     
   }
 
+# Get DYN Forecast ####
+fGet_DYN_Forecast <- 
+  function(
+    salesorg    = NULL    ,    # Optional user-supplied salesorg
+    material    = NULL    ,    # Optional user-supplied material
+    apply_scope = TRUE    ,    # restrict to Pythia Scope
+    cm_min      = '202401', 
+    cm_max      = '202506',
+    n           = Inf){
+    
+    # Establish a connection to DuckDB
+    con <- dbConnect(duckdb(), dbdir = ":memory:")
+    # ensure we disconnect on function exit
+    on.exit(dbDisconnect(con), add = TRUE)  
+    
+    # ---- CTE Scope Materials ----
+    # 1) Conditionally build a CTE for scope_materials if apply_scope=TRUE
+    cte_scope_materials <- ""
+    if (isTRUE(apply_scope)) {
+      cte_scope_materials <- glue_sql(SCOPE_MATL, .con = con)
+    }
+    
+    # ---- WHERE clause list ----
+    # 2) Build up a list of WHERE clauses
+    where_clauses <- list()
+    
+    # ---- apply scope ----
+    # (a) If apply_scope=TRUE, filter by SCOPE_SORG + scope_materials
+    if (isTRUE(apply_scope)) {
+      # 1) Force salesorg in the global SCOPE_SORG
+      where_clauses <- c(
+        where_clauses,
+        glue_sql("SALESORG IN ({vals*})", vals = SCOPE_SORG, .con = con)
+      )
+      
+      # 2) Force material in the CTE scope_materials
+      where_clauses <- c(
+        where_clauses,
+        glue_sql("MATERIAL IN (SELECT MATERIAL FROM SCOPE_MATL)", .con = con)
+      )
+    }
+    
+    # (b) Regardless of scope, 
+    # filter on salesorg if existing
+    if (!is.null(salesorg) && length(salesorg) > 0) {
+      where_clauses <- c(
+        where_clauses,
+        glue_sql("SALESORG IN ({vals*})", 
+                 vals = salesorg, .con = con)
+      )
+    }
+    
+    # (c) Regardless of scope, 
+    # filter on material list if existing
+    if (!is.null(material) && length(material) > 0) {
+      where_clauses <- c(
+        where_clauses,
+        glue_sql("MATERIAL IN ({vals*})", 
+                 vals = MATN1(material), .con = con)
+      )
+    }
+    
+    # (d) Always apply CALMONTH filter
+    where_clauses <- c(
+      where_clauses,
+      glue_sql("CALMONTH BETWEEN {cm_min} AND {cm_max}", .con = con)
+    )
+    
+    # ---- Final Where clause ----
+    # Combine them with AND
+    final_where <- paste(where_clauses, collapse = " AND ")
+    
+    # ---- Query ----
+    # 3) Build the final query, using the CTE + main SELECT
+    query <- 
+      glue_sql("
+        {DBI::SQL(cte_scope_materials)}
+        SELECT 
+          SALESORG,
+          PLANT,
+          MATERIAL,
+          CALMONTH,
+          VERSMON,
+          FTYPE,
+          VTYPE,
+          BASE_UOM, 
+          SUM(DEMND_QTY) AS A
+        FROM 
+          read_parquet([{`FN_FRPR2`}, {`FN_FRPR4`}]) 
+        WHERE 
+          {DBI::SQL(final_where)}
+        GROUP BY 
+          ALL
+        ORDER BY 
+          ALL
+      ", .con = con)
+    
+    dbGetQuery(con, query, n = n) %>%
+      setDT()
+    
+  }
+
+# Get RTP Actuals ####
 fGet_RTP_Actuals <- 
   function(
     salesorg    = NULL    ,    # Optional user-supplied salesorg

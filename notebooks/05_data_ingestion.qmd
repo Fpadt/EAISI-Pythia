@@ -150,10 +150,11 @@ purrr::walk(
 
 ```
 
-#### Sales DYN
+#### Sales IPM
 
 ```{r}
-#| label: 'Sales Dynasys 2018 Ingestion from Bronze (S1B) to Silver (S2S)'
+#| label: 'Sales to Dynasys 2018'
+#| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
 #| eval:   true
 
 ASLS_PIPE_LINE <- fGetPipeLine("ASLS")
@@ -181,6 +182,47 @@ purrr::walk(
 
 ```
 
+#### Sales DYN
+
+```{r}
+#| label:   'Sales from Dynasys 2018'
+#| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
+#| eval:    true
+
+FRPR_PIPE_LINE <- 
+  fGetPipeLine(pythia = "FRPR", ohdest = "OH_FRPR1")
+
+# generate file names per year
+# yrs <- 2021:2024
+# fls <- 
+#   c(
+#     paste0("SDSFRPR3_", yrs)
+#   )
+
+fls <- 
+  list.files(
+    path       = "C:\\Users\\flori\\OneDrive\\ET\\pythia\\dat\\S1B\\WPB\\DYN", 
+    pattern    = "SDSFRPR4", 
+    full.names = FALSE
+  ) %>% sub(".csv", "", .)
+
+# Define file paths
+farea_path  <- file.path(SYS, "DYN")
+input_path  <- file.path(PS01, farea_path)
+output_path <- file.path(PS02, farea_path)
+
+# Run the main function
+purrr::walk(
+  fls, 
+  transform_csv_to_parquet, 
+  input_path, 
+  output_path, 
+  FILE_SPEC, 
+  FRPR_PIPE_LINE, 
+  verbose = TRUE
+) 
+
+```
 #### Stock
 
 ```{r}
