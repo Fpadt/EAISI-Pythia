@@ -368,43 +368,42 @@ transform_csv_to_parquet <-
     })
   }
 
-fGetPipeLines <- 
-  function(){
-    fread(
-      file = file.path(PS01, SYS, "B4", "B4_PIPELINE.csv")
-    )
-  }
+# fGetPipeLines <- 
+#   function(){
+#     fread(
+#       file = file.path(PS01, SYS, "B4", "B4_PIPELINE.csv")
+#     )
+#   }
 
 fGetPipeLine <- 
-  function(pythia, ohdest) {
-    DPL <- fGetPipeLines() 
+  function(ohdest) {
+    
+    fread(file = file.path(PS01, SYS, "B4", "B4_PIPELINE.csv")) %>%
+      .[OHDEST == ohdest]
       
-    if (!missing(ohdest)){
-      DPL <- DPL[OHDEST == ohdest]
-    }
+    # if (!missing(ohdest)){
+    #   DPL <- DPL[OHDEST == ohdest]
+    # }
     
-    DPL[PYTHIA == pythia, .(FLDNM_IN, FIELDTP, TRNSFRM, FLDNM_OUT)]
-    
+    # DPL[PYTHIA == pythia, .(FLDNM_IN, FIELDTP, TRNSFRM, FLDNM_OUT)]
+    # DPL <- DPL[OHDEST == ohdest]
   }
 
 fTransform_csv_to_parquet <- 
-  function(source, pattern, verbose){
+  function(source_path, output_path, file_pattern, ohdest, verbose){
     
-    SRC <- source
-    PAT <- pattern
-    
-    PIPE_LINE <- fGetPipeLine(pythia = SRC)
+    PIPE_LINE <- fGetPipeLine(ohdest = ohdest)
 
     # Check if the pipeline for the source exists"
     if (nrow(PIPE_LINE) == 0) {
-      stop(glue("Error: The pipeline does not exists!: {SRC}"))
+      stop(glue("Error: The pipeline does not exists!: {ohdest}"))
     }   
  
     # list all relevant files
     fls <- 
       list.files(
-        path       = file.path(PS01, SYS, SRC), 
-        pattern    = PAT, 
+        path       = source_path, 
+        pattern    = file_pattern, 
         full.names = TRUE
       )
     
@@ -412,14 +411,14 @@ fTransform_csv_to_parquet <-
     if (length(fls) == 0) {
       stop(
         glue(
-          "Error: No source files!: {file.path(PS01, SYS, SRC)} {PAT}"))
+          "Error: No source files!: {source_path} {file_pattern}"))
     }  
     
     # Run the main function to transform data from Bronze to Silver
     purrr::walk(
       .x          = fls, 
       .f          = transform_csv_to_parquet, 
-      output_path = file.path(PS02, SYS, SRC), 
+      output_path = output_path,  
       file_spec   = FILE_SPEC, 
       pipe_line   = PIPE_LINE, 
       verbose     = verbose

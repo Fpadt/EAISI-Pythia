@@ -808,3 +808,12 @@ fGet_RTP_Actuals <-
       setDT()
     
   }
+
+
+# Open Folder ####
+fOpen_Folder <- 
+  function(path){
+    # Open the folder in Windows Explorer
+    shell.exec(normalizePath(path))
+  }
+
