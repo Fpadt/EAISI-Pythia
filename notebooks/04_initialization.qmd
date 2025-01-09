@@ -16,7 +16,7 @@ editor_options:
 
 \newpage
 
-![Logo](../images/logo.png)
+![](../images/logo.png)
 
 # Purpose
 
@@ -56,14 +56,206 @@ if( file.exists(lsrc)){source(lsrc)}
 
 ```
 
+## OB - Open Hub
+
+```{r}
+#| label:  RSBOHDEST
+#| eval:   true
+
+# Directory of Open Hub Destinations #### 
+B4_RSBOHDEST <- 
+   fRead_and_Union(
+     pSIDCLNT  = SID,
+     pTable    = "RSBOHDEST",
+     pOptions  = list(
+       "OBJVERS = 'A'"
+     ),
+     pFields   = list(
+        # "OHDEST"          , # Open Hub Destination                                        X
+        # "OBJVERS"         , # Object version                                              X
+        # "DESTTYPE"        , # Type of an Open Hub Destination                             
+        # "DESTSUBTYPE"     , # Subtype of an Open Hub Destination                          
+        # "LOGSYS"          , # Logical Target System for Open Hub                          
+        # "COMSTRU"         , # Communication structure                                     
+        # "OBJSTAT"         , # Object Status                                               
+        # "CONTREL"         , # Content release                                             
+        # "CONTTIMESTMP"    , # Content time stamp: Last modification to the object by SAP  
+        # "OWNER"           , # Owner (Person Responsible)                                  
+        # "BWAPPL"          , # BW Application (Namespace)                                  
+        # "ACTIVFL"         , # Active and revised version do not agree                     
+        # "TSTPNM"          , # Last Changed By                                             
+        # "TIMESTMP"        , # UTC Time Stamp in Short Form (YYYYMMDDhhmmss)               
+        # "SOURCETLOGO"     , # Object Type of Template                                     
+        # "SOURCETLOGOSUB"  , # Subtype of Object                                           
+        # "SOURCEOBJNM"     , # Name of Source                                              
+        # "DATASOURCE"      , # DataSource, (3.x DataSource)                                
+        # "SOURCELOGSYS"    , # Source system                                               
+        # "INFOAREA"        , # InfoArea                                                    
+        # "NEW_OHD"         , # Boolean                                                     
+        # "TLOGO"           , # BW: Object Type (TLOGO)                                     
+        # "OBJNM"           , # Object Name in Object Directory                             
+        # "SUBTYPE"         , # BW Metadata Repository: Subtype of TLOGO Type               
+        # "DISPLAY_ONLY"    , # Boolean                                                     
+        # "GENERATED"       , # Boolean                                                     
+        # "DTP_CREATE"      , # Boolean                                                     
+        # "CREATED_AT"      , # Creation UTC Time Stamp in Short Form (YYYYMMDDhhmmss)      
+        # "CREATED_BY"      , # Tlogo Object Created by                                     
+        # "STATUS_SET_EXT"  , # Boolean                                                     
+        # "SEND_NOTIFY"     , # Boolean                                                     
+        # "DESTINATION"       # Logical system                                              
+    ),
+     pRowcount = Inf
+   )
+
+# Directory of Open Hub Destinations #### 
+B4_RSBOHDESTT <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "RSBOHDESTT",
+     pOptions  = list(
+       "LANGU   = 'EN'", "AND",
+       "OBJVERS = 'A'"       
+     ),
+     pFields   = list(
+        # "LANGU"     , # Language Key          X
+        # "OHDEST"    , # Open Hub Destination  X
+        # "OBJVERS"   , # Object version        X
+        # "TXTSH"     , # Short description     
+        # "TXTLG"       # Long description      
+    ),
+     pRowcount = Inf
+   )
+
+# Add Text ####
+RSBOHDEST <- 
+  B4_RSBOHDESTT %>%
+  .[B4_RSBOHDEST, 
+    on = .(SYSTID, CLIENT, OBJVERS, OHDEST)] %T>%
+  setorder(OHDEST)
+
+# write RSBOHDEST ####
+fwrite(
+  x = RSBOHDEST,
+  file = file.path(PS01, SYS, "B4", "B4_RSBOHDEST.csv"),
+)
+```
+
+### Fields
+
+```{r}
+#| label:  RSBOHFIELDS
+#| eval:   true
+
+# Fields of the Open Hub Destination #### 
+B4_RSBOHFIELDS <- 
+   fRead_and_Union(
+     pSIDCLNT  = SID,
+     pTable    = "RSBOHFIELDS",
+     pOptions  = list(
+       "OBJVERS = 'A'"
+     ),
+     pFields   = list(
+        "OHDEST"      , # Open Hub Destination                            X
+        "OBJVERS"     , # Object version                                  X
+        "FIELDNM"     , # Field name                                      X
+        "POSIT"       , # Position of the Field in the Structure / Table
+        "TEMPIOBJNM"  , # InfoObject
+        "KEYFLAG"     , # Open Hub: Indicator for Semantic Key
+        "DATATYPE"    , # Data Type
+        "INTLEN"      , # Internal Length in Bytes
+        "LENG"        , # Length (No. of Characters)
+        "OUTPUTLEN"   , # Output Length
+        "INTTYPE"     , # ABAP data type (C,D,N,...)
+        "CONVEXIT"    , # Conversion Routine
+        "DECIMALS"    , # Number of Decimal Places
+        "OUTFORMAT"   , # Data Input Format (Internal/External)
+        "EXT_DTYPE"   , # Data Type
+        "EXT_LENGHT"  , # Output Length
+        "UNIFIELDNM"  , # Name of the relevant unit field
+        "DTELNM"        # Data Element (Semantic Domain)
+    ),
+     pRowcount = Inf
+   ) 
+
+# Text Table for Fields of the Open Hub Destination #### 
+B4_RSBOHFIELDST <- 
+   fRead_and_Union(
+     pSIDCLNT  = SID,
+     pTable    = "RSBOHFIELDST",
+     pOptions  = list(
+       "LANGU   = 'EN'", "AND",
+       "OBJVERS = 'A'"
+     ),
+     pFields   = list(
+        "LANGU"     , # Language Key          X
+        "OHDEST"    , # Open Hub Destination  X
+        "OBJVERS"   , # Object version        X
+        "FIELDNM"   , # Field name            X
+        "TXTSH"     , # Short description
+        "TXTLG"       # Long description
+    ),
+     pRowcount = Inf
+   )
+
+# Add text ####
+RSBOHFIELDS <- 
+  B4_RSBOHFIELDST %>%
+  .[B4_RSBOHFIELDS, 
+    on = .(SYSTID, CLIENT, OHDEST, OBJVERS, FIELDNM)] %T>%
+  setorder(OHDEST, POSIT)
+
+# Write RSBOHFIELDS ####
+fwrite(
+  x = RSBOHFIELDS,
+  file = file.path(PS01, SYS, "B4", "B4_RSBOHFIELDS.csv"),
+)
+
+```
+
+### Pythia
+
+- RW_DSCP
+- RW_PYTHIA
+- DML_SOP
+- RW_MD_SOP
+
+```{r}
+#| label:  PA_OPEN_HUB
+#| eval:   true
+
+# Pythia Info Area's
+PA_IA <- c('RW_DSCP', 'RW_PYTHIA', 'DML_SOP', 'RW_MD_SOP')
+
+# Create PA Open Hub ####
+PA_OPEN_HUB <- 
+  RSBOHDEST[, .(
+    SYSTID, CLIENT, OHDEST, OHD = TXTLG, OBJVERS, INFOAREA, 
+    SOURCEOBJNM, SOURCETLOGO, CREATED_BY, OWNER, DESTTYPE)][
+      RSBOHFIELDS[],
+      on = .(SYSTID, CLIENT, OHDEST, OBJVERS)] %>%
+  .[INFOAREA %chin% PA_IA] %T>%
+  setorder(OHDEST, POSIT)
+
+# Write PA Open Hub ####
+fwrite(
+  x = PA_OPEN_HUB,
+  file = file.path(PS01, SYS, "B4", "PA_OPEN_HUB.csv"),
+)
+
+
+```
+
+## IB - Data Sources
+
 ```{r}
 #| label:  SAP
 #| eval:   true
 
+# Inbound DataSources - Dynasys -> BW
 # DataSource - Segment Fields #### 
 B4_RSDSSEGFD <- 
    fRead_and_Union(
-     pSIDCLNT  = "WQB500",
+     pSIDCLNT  = SID,
      pTable    = "RSDSSEGFD",
      pOptions  = list(
        "OBJVERS = 'A'"
@@ -99,41 +291,10 @@ B4_RSDSSEGFD <-
      pRowcount = Inf
    )
 
-# Fields of the Open Hub Destination #### 
-B4_RSBOHFIELDS <- 
-   fRead_and_Union(
-     pSIDCLNT  = "WPB500",
-     pTable    = "RSBOHFIELDS",
-     pOptions  = list(
-       "OBJVERS = 'A'"
-     ),
-     pFields   = list(
-        "OHDEST"      , # Open Hub Destination                            X
-        "OBJVERS"     , # Object version                                  X
-        "FIELDNM"     , # Field name                                      X
-        "POSIT"       , # Position of the Field in the Structure / Table
-        "TEMPIOBJNM"  , # InfoObject
-        "KEYFLAG"     , # Open Hub: Indicator for Semantic Key
-        "DATATYPE"    , # Data Type
-        "INTLEN"      , # Internal Length in Bytes
-        "LENG"        , # Length (No. of Characters)
-        "OUTPUTLEN"   , # Output Length
-        "INTTYPE"     , # ABAP data type (C,D,N,...)
-        "CONVEXIT"    , # Conversion Routine
-        "DECIMALS"    , # Number of Decimal Places
-        "OUTFORMAT"   , # Data Input Format (Internal/External)
-        "EXT_DTYPE"   , # Data Type
-        "EXT_LENGHT"  , # Output Length
-        "UNIFIELDNM"  , # Name of the relevant unit field
-        "DTELNM"        # Data Element (Semantic Domain)
-    ),
-     pRowcount = Inf
-   ) 
-
 # Platform-Independent File Names, Cross-Client #### 
 B4_FILENAMECI <- 
    fRead_and_Union(
-     pSIDCLNT  = "WPB500",
+     pSIDCLNT  = SID,
      pTable    = "FILENAMECI",
      pOptions  = list(),
      pFields   = list(
@@ -153,15 +314,9 @@ B4_FILENAMECI <-
 #| label:  true 
 
 fwrite(
-  x = B4_RSDSSEGFD,
+  x = B4_RSBOHFIELDST,
   file = file.path(PS01, SYS, "B4", "B4_RSDSSEGFD.csv"),
 )
-
-fwrite(
-  x = B4_RSBOHFIELDS,
-  file = file.path(PS01, SYS, "B4", "B4_RSBOHFIELDS.csv"),
-)
-
 
 fwrite(
   x = B4_FILENAMECI,
