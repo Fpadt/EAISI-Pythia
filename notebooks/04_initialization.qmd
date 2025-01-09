@@ -22,7 +22,9 @@ editor_options:
 
 Get all meta data needed from SAP to run locally
 
+::: callout-note
 Note: can only be executed from **Ecotone Laptop**
+:::
 
 # Setup
 
@@ -56,7 +58,10 @@ if( file.exists(lsrc)){source(lsrc)}
 
 ```
 
-## OB - Open Hub
+# OB - Open Hub
+
+Get a list of all available Open Hubs in BW with description and save as:
+B4_RSBOHDEST.csv
 
 ```{r}
 #| label:  RSBOHDEST
@@ -140,7 +145,10 @@ fwrite(
 )
 ```
 
-### Fields
+## Fields
+
+Get a list of all available Open Hub fields with description and save as:
+B4_RSBOHFIELDS.csv
 
 ```{r}
 #| label:  RSBOHFIELDS
@@ -212,12 +220,15 @@ fwrite(
 
 ```
 
-### Pythia
+## Pythia
 
-- RW_DSCP
-- RW_PYTHIA
-- DML_SOP
-- RW_MD_SOP
+Open Hub with fields and description which are relevant for Pythia, save as:
+PA_OPEN_HUB.csv
+
+-   RW_DSCP
+-   RW_PYTHIA
+-   DML_SOP
+-   RW_MD_SOP
 
 ```{r}
 #| label:  PA_OPEN_HUB
@@ -229,11 +240,11 @@ PA_IA <- c('RW_DSCP', 'RW_PYTHIA', 'DML_SOP', 'RW_MD_SOP')
 # Create PA Open Hub ####
 PA_OPEN_HUB <- 
   RSBOHDEST[, .(
-    SYSTID, CLIENT, OHDEST, OHD = TXTLG, OBJVERS, INFOAREA, 
-    SOURCEOBJNM, SOURCETLOGO, CREATED_BY, OWNER, DESTTYPE)][
+    SYSTID     , CLIENT     , OHDEST    , OHD = TXTLG, OBJVERS, INFOAREA, 
+    SOURCEOBJNM, SOURCETLOGO, CREATED_BY, OWNER      , DESTTYPE)][
       RSBOHFIELDS[],
       on = .(SYSTID, CLIENT, OHDEST, OBJVERS)] %>%
-  .[INFOAREA %chin% PA_IA] %T>%
+  .[INFOAREA %chin% PA_IA]                     %T>%
   setorder(OHDEST, POSIT)
 
 # Write PA Open Hub ####
@@ -245,10 +256,12 @@ fwrite(
 
 ```
 
-## IB - Data Sources
+# IB - Data Sources
+
+Get list of Data Sources into BW with
 
 ```{r}
-#| label:  SAP
+#| label:  SAP Data Sources
 #| eval:   true
 
 # Inbound DataSources - Dynasys -> BW
@@ -291,6 +304,17 @@ B4_RSDSSEGFD <-
      pRowcount = Inf
    )
 
+fwrite(
+  x    = B4_RSDSSEGFD,
+  file = file.path(PS01, SYS, "B4", "B4_RSDSSEGFD.csv"),
+)
+```
+
+
+```{r}
+#| label:  SAP File Names
+#| eval:   true
+
 # Platform-Independent File Names, Cross-Client #### 
 B4_FILENAMECI <- 
    fRead_and_Union(
@@ -307,23 +331,16 @@ B4_FILENAMECI <-
      pRowcount = Inf
    )
 
-```
-
-```{r}
-#| label:  Write_metadata 
-#| label:  true 
-
 fwrite(
-  x = B4_RSBOHFIELDST,
-  file = file.path(PS01, SYS, "B4", "B4_RSDSSEGFD.csv"),
-)
-
-fwrite(
-  x = B4_FILENAMECI,
+  x    = B4_FILENAMECI,
   file = file.path(PS01, SYS, "B4", "B4_FILENAMECI.csv"),
 )
 
 ```
+
+# PipeLines
+
+## ToDo - diff B4_PIPELINE.csv with vanila
 
 ```{r}
 #| label:  Write_pipeline
@@ -339,7 +356,7 @@ fwrite(
 #   FIELDTP   = 'VARCHAR'      ,
 #   TRNSFRM   = FIELDNM        ,
 #   FLDNM_OUT = FIELDNM
-# )] %T>%
+# )]                        %T>%
 #   setorder(OHDEST, POSIT) %T>%
 #   fwrite(
 #     file = file.path(PS01, SYS, "B4", "B4_PIPELINE.csv")
