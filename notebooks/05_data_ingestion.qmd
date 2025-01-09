@@ -63,14 +63,6 @@ FILE_SPEC <-
     DATE_FORMAT  = '%Y-%m-%d'
   )
 
-# B4_RSDSSEGFD <- 
-#   fread(file = file.path(PS01, SYS, "B4", "B4_RSDSSEGFD.csv"))
-# 
-# B4_RSBOHFIELDS <- 
-#   fread(file = file.path(PS01, SYS, "B4", "B4_RSBOHFIELDS.csv"))
-# 
-# B4_FILENAMECI <- 
-#   fread(file = file.path(PS01, SYS, "B4", "B4_FILENAMECI"))
 ```
 
 ```{r}
@@ -104,190 +96,88 @@ clipr::write_clip(
     1.  TMP execute next code chunk to change Thousands Separator
 5.  
 
-## Transaction Data
+## Administration
 
 ```{r}
-#| label: 'get Header DD_SALES_QTY'
-#| eval:   false
- 
-# HDR <-  
-#   fread( 
-#     file = file.path(PS01, SYS, "RTP", "CSV", paste0("S_DD_SALES_QTY.CSV")), 
-#     header = TRUE, skip=5 
-#   ) 
+shell.exec(file.path(PS01, SYS, "B4","IB_OB_FLD.xlsx"))
 ```
+
+
+## Transaction Data
 
 ### Outbound
 
 #### Sales RTP
 
+Transform .csv files in Bronze to .parquet in Silver
+
 ```{r}
-#| label: 'Sales Ingestion from Bronze (S1B) to Silver (S2S)'
+#| label: 'Sales to Dynasys RTP'
+#| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
 #| eval:   true
 
-SALES_PIPE_LINE <- fGetPipeLine("SALES")
-
-# generate file names per year
-fls <- 
-  21:24                         %>%  
-  paste0("DD_SALES_QTY_20", .)
-
-# Define file paths
-farea_path  <- file.path(SYS, "RTP", "OB")
-input_path  <- file.path(PS01, farea_path)
-output_path <- file.path(PS02, farea_path)
-
-# Run the main function
-purrr::walk(
-  fls, 
-  transform_csv_to_parquet, 
-  input_path, 
-  output_path, 
-  FILE_SPEC, 
-  SALES_PIPE_LINE, 
+fTransform_csv_to_parquet(
+  source  = "RTP",
+  pattern = "^DD_SALES_QTY_20.*\\.csv$",
   verbose = TRUE
 ) 
-
 ```
 
 #### Sales IPM
+
+Transform .csv files in Bronze to .parquet in Silver
 
 ```{r}
 #| label: 'Sales to Dynasys 2018'
 #| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
 #| eval:   true
 
-ASLS_PIPE_LINE <- fGetPipeLine("ASLS")
-
-# generate file names per year
-fls <- 
-  1:4                         %>%  
-  paste0("DD_HISTO_QTY_202", .)
-
-# Define file paths
-farea_path  <- file.path(SYS, "IPM", "OB")
-input_path  <- file.path(PS01, farea_path)
-output_path <- file.path(PS02, farea_path)
-
-# Run the main function
-purrr::walk(
-  fls, 
-  transform_csv_to_parquet, 
-  input_path, 
-  output_path, 
-  FILE_SPEC, 
-  ASLS_PIPE_LINE, 
+fTransform_csv_to_parquet(
+  source  = "IPM",
+  pattern = "^DD_HISTO_QTY_20.*\\.csv$",
   verbose = TRUE
 ) 
 
 ```
 
-#### Sales DYN
-
-```{r}
-#| label:   'Sales from Dynasys 2018'
-#| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
-#| eval:    true
-
-FRPR_PIPE_LINE <- 
-  fGetPipeLine(pythia = "FRPR", ohdest = "OH_FRPR1")
-
-# generate file names per year
-# yrs <- 2021:2024
-# fls <- 
-#   c(
-#     paste0("SDSFRPR3_", yrs)
-#   )
-
-fls <- 
-  list.files(
-    path       = "C:\\Users\\flori\\OneDrive\\ET\\pythia\\dat\\S1B\\WPB\\DYN", 
-    pattern    = "SDSFRPR4", 
-    full.names = FALSE
-  ) %>% sub(".csv", "", .)
-
-# Define file paths
-farea_path  <- file.path(SYS, "DYN")
-input_path  <- file.path(PS01, farea_path)
-output_path <- file.path(PS02, farea_path)
-
-# Run the main function
-purrr::walk(
-  fls, 
-  transform_csv_to_parquet, 
-  input_path, 
-  output_path, 
-  FILE_SPEC, 
-  FRPR_PIPE_LINE, 
-  verbose = TRUE
-) 
-
-```
 #### Stock
 
 ```{r}
 #| label: 'Stock Ingestion from Bronze (S1B) to Silver (S2S)' 
 #| eval:   true  
 
-STOCK_PIPE_LINE <- fGetPipeLine("STOCK")
-
-# generate file names per year
-fls <- 
-  ''                         %>%  
-  paste0("IMP03SM1", .)
-
-# Define file paths
-farea_path  <- file.path(SYS, "STK", "OB")
-input_path  <- file.path(PS01, farea_path)
-output_path <- file.path(PS02, farea_path)
-
-# Run the main function
-purrr::walk(
-  fls, 
-  transform_csv_to_parquet, 
-  input_path, 
-  output_path, 
-  FILE_SPEC, 
-  STOCK_PIPE_LINE, 
+fTransform_csv_to_parquet(
+  source  = "STK",
+  pattern = "^IMP03SM1.*\\.csv$",
   verbose = TRUE
-)  
+) 
+
 ```
 
 ### Inbound
 
-#### Dynasys 2018
+#### Sales DYN
+
+Transform .csv files in Bronze to .parquet in Silver
 
 ```{r}
-#| label: 'DYN2018 - Actuals & Forecasts Ingestion from Bronze (S1B) to Silver (S2S)'
-#| eval:   true
+#| label:   'Sales from Dynasys 2018'
+#| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
+#| eval:    true
 
-FRPR_PIPE_LINE <- fGetPipeLine("FRPR", "OH_FRPR1") 
-
-# generate file names per year
-fls <- 
-  1:4                         %>%  
-  paste0("SDSFRPR", .)
-
-# Define file paths
-farea_path  <- file.path(SYS, "DYN", "IB")
-input_path  <- file.path(PS01, farea_path)
-output_path <- file.path(PS02, farea_path)
-
-# Run the main function
-purrr::walk(
-  fls, 
-  transform_csv_to_parquet, 
-  input_path, 
-  output_path, 
-  FILE_SPEC, 
-  FRPR_PIPE_LINE, 
+fTransform_csv_to_parquet(
+  source  = "DYN",
+  pattern = "^SDSFRPR[1234].*\\.csv$",
   verbose = TRUE
-) 
+)
+
 ```
+
+# Obsolete ? 
 
 ```{r}
 #| label: 'functions'
-#| eval:  true
+#| eval:  false
 
 getHeaderDataSource <-
   function(x){
@@ -300,7 +190,7 @@ getHeaderDataSource <-
 
 ```{r}
 #| label: 'Data Ingestion Execution'
-#| eval:   true
+#| eval:   false
 
 files_Inbound <- 
   list.files(file.path(PS01, SYS, "RTP", "IB"), pattern = "*.CSV", full.names = TRUE)

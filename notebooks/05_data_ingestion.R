@@ -294,15 +294,22 @@ gen_sql_to_write_data_to_parquet <-
 # read csv > transform > write parquet
 transform_csv_to_parquet <- 
   function(
-    file_name  , 
-    input_path , 
-    output_path, 
-    file_spec  ,
-    pipe_line  ,
-    verbose      = FALSE) {
-    
-    input_csv_file  <- file.path(input_path , paste0(file_name, ".csv"))
-    output_pqt_file <- file.path(output_path, paste0(file_name, ".parquet"))
+    full_file_name, 
+    output_path   , 
+    file_spec     ,
+    pipe_line     ,
+    verbose       = FALSE) {
+
+    file_name       <- fs::path_file(full_file_name)
+    input_csv_file  <- full_file_name
+    output_pqt_file <- file.path(output_path, 
+                                 fs::path_ext_set(file_name, "parquet")
+                                 )
+
+    # Check if the file extension is "csv"
+    if (fs::path_ext(input_csv_file) != "csv") {
+      stop(glue("Error: The file is not a CSV file!: {input_csv_file}"))
+    }
     
     # Check if input file exists
     if (!file.exists(input_csv_file)) {
@@ -351,7 +358,7 @@ transform_csv_to_parquet <-
           )
         }
         message(
-          cat(white$bgGreen$bold(glue("Data successfully written to {output_pqt_file}")))
+          cat(black$bgGreen$bold(glue("Data successfully written to {output_pqt_file}")))
         )
       })
     }, error = function(e) {
@@ -378,4 +385,43 @@ fGetPipeLine <-
     
     DPL[PYTHIA == pythia, .(FLDNM_IN, FIELDTP, TRNSFRM, FLDNM_OUT)]
     
+  }
+
+fTransform_csv_to_parquet <- 
+  function(source, pattern, verbose){
+    
+    SRC <- source
+    PAT <- pattern
+    
+    PIPE_LINE <- fGetPipeLine(pythia = SRC)
+
+    # Check if the pipeline for the source exists"
+    if (nrow(PIPE_LINE) == 0) {
+      stop(glue("Error: The pipeline does not exists!: {SRC}"))
+    }   
+ 
+    # list all relevant files
+    fls <- 
+      list.files(
+        path       = file.path(PS01, SYS, SRC), 
+        pattern    = PAT, 
+        full.names = TRUE
+      )
+    
+    # Check if the at least one soruce file exists
+    if (length(fls) == 0) {
+      stop(
+        glue(
+          "Error: No source files!: {file.path(PS01, SYS, SRC)} {PAT}"))
+    }  
+    
+    # Run the main function to transform data from Bronze to Silver
+    purrr::walk(
+      .x          = fls, 
+      .f          = transform_csv_to_parquet, 
+      output_path = file.path(PS02, SYS, SRC), 
+      file_spec   = FILE_SPEC, 
+      pipe_line   = PIPE_LINE, 
+      verbose     = verbose
+    ) 
   }
