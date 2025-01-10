@@ -344,8 +344,7 @@ fwrite(
 #| label:  Write_pipeline
 #| label:  true 
 
-B4_RSBOHFIELDS[, .(
-  PYTHIA = 'O'                        ,
+B4_RSBOHFIELDS[, .(                      ,
   OHDEST                             ,
   POSIT     = as.integer(POSIT) * 100,
   DATATYPE                           ,

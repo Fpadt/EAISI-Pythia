@@ -1,32 +1,32 @@
-CFG <- 
-  fread(text =
-          "EXP, TYPE, AREA     , FNM                      , OHD      , SAVE , COMP
-   OLD, TD  , SALES    , DD_HISTO_QTY.CSV         , ZSOP_ASLS, TRUE , none
-   OLD, TD  , ORDER    , DD_OPEN_ORDERS_QTY.CSV   , ZSOP_OSLS, TRUE , none
-   OLD, MD  , MATERIAL , MD_MATERIAL.CSV          , ZMAT_ATTR, TRUE , none  
-   OLD, MD  , MAT_SALES, MD_MATERIAL_SALES_ORG.CSV, ZMATSALES, TRUE , none
-   OLD, MD  , MAT_PLANT, MD_MATERIAL_PLANT.CSV    , ZMATPLANT, TRUE , none
-   OLD, MD  , BOM      , MD_BOM.CSV               , ZSOP_BOM , TRUE , none
-   OLD, MD  , PLANT    , MD_PLANT.CSV             , ZPLANT   , TRUE , none   
-   OLD, MD  , PRICE    , MD_PRICE.CSV             , ZPRICING , TRUE , none
-   OLD, MD  , SALES_ORG, MD_SALES_ORG.CSV         , ZSALESORG, TRUE , none
-   OLD, MD  , SOLDTO   , MD_SOLD_TO_CUSTOMER.CSV  , CUST_ATTR, TRUE , none  
-   NEW, TD  , SALES    , DD_HISTO_QTY.CSV         , DSCP_TRAN, TRUE , none
-   NEW, TD  , SLS2123  , DD_SALES_QTY_LE23.csv    , DSCP_TRAN, TRUE , none
-   NEW, TD  , SLS2424  , DD_SALES_QTY_GE24.csv    , DSCP_TRAN, TRUE , none   
-   NEW, TD  , ORDER    , DD_OPEN_ORDERS_QTY.CSV   , DSCP_TRAN, TRUE , none
-   NEW, MD  , MATERIAL , MD_MATERIAL.CSV          , DSCP_MATE, TRUE , none  
-   NEW, MD  , MAT_SALES, MD_MATERIAL_SALES_ORG.CSV, DSCP_MATS, TRUE , none
-   NEW, MD  , MAT_PLANT, MD_MATERIAL_PLANT.CSV    , DSCP_MATP, TRUE , none
-   NEW, MD  , BOM      , MD_BOM.CSV               , DSCP_BOMX, TRUE , none
-   NEW, MD  , PLANT    , MD_PLANT.CSV             , DSCP_PLNT, TRUE , none   
-   NEW, MD  , SALES_ORG, MD_SALES_ORG.CSV         , DSCP_SORG, TRUE , none
-   NEW, MD  , SOLDTO   , MD_SOLD_TO_CUSTOMER.CSV  , DSCP_CUST, TRUE , none     
-   NEW, TD  , SDSFRPR1 , SDSFRPR1.csv             , OH_FRPR1 , TRUE , none 
-   NEW, TD  , SDSFRPR2 , SDSFRPR2_F.csv           , OH_FRPR2 , TRUE , none
-   NEW, TD  , STOCK    , IMP03SM1_F.csv           , OH_STOCK , TRUE , none" 
-  ) %>%
-  .[, c("BNM", "EXT") := tstrsplit(x = FNM, split = "\\.")] 
+# CFG <- 
+#   fread(text =
+#           "EXP, TYPE, AREA     , FNM                      , OHD      , SAVE , COMP
+#    OLD, TD  , SALES    , DD_HISTO_QTY.CSV         , ZSOP_ASLS, TRUE , none
+#    OLD, TD  , ORDER    , DD_OPEN_ORDERS_QTY.CSV   , ZSOP_OSLS, TRUE , none
+#    OLD, MD  , MATERIAL , MD_MATERIAL.CSV          , ZMAT_ATTR, TRUE , none  
+#    OLD, MD  , MAT_SALES, MD_MATERIAL_SALES_ORG.CSV, ZMATSALES, TRUE , none
+#    OLD, MD  , MAT_PLANT, MD_MATERIAL_PLANT.CSV    , ZMATPLANT, TRUE , none
+#    OLD, MD  , BOM      , MD_BOM.CSV               , ZSOP_BOM , TRUE , none
+#    OLD, MD  , PLANT    , MD_PLANT.CSV             , ZPLANT   , TRUE , none   
+#    OLD, MD  , PRICE    , MD_PRICE.CSV             , ZPRICING , TRUE , none
+#    OLD, MD  , SALES_ORG, MD_SALES_ORG.CSV         , ZSALESORG, TRUE , none
+#    OLD, MD  , SOLDTO   , MD_SOLD_TO_CUSTOMER.CSV  , CUST_ATTR, TRUE , none  
+#    NEW, TD  , SALES    , DD_HISTO_QTY.CSV         , DSCP_TRAN, TRUE , none
+#    NEW, TD  , SLS2123  , DD_SALES_QTY_LE23.csv    , DSCP_TRAN, TRUE , none
+#    NEW, TD  , SLS2424  , DD_SALES_QTY_GE24.csv    , DSCP_TRAN, TRUE , none   
+#    NEW, TD  , ORDER    , DD_OPEN_ORDERS_QTY.CSV   , DSCP_TRAN, TRUE , none
+#    NEW, MD  , MATERIAL , MD_MATERIAL.CSV          , DSCP_MATE, TRUE , none  
+#    NEW, MD  , MAT_SALES, MD_MATERIAL_SALES_ORG.CSV, DSCP_MATS, TRUE , none
+#    NEW, MD  , MAT_PLANT, MD_MATERIAL_PLANT.CSV    , DSCP_MATP, TRUE , none
+#    NEW, MD  , BOM      , MD_BOM.CSV               , DSCP_BOMX, TRUE , none
+#    NEW, MD  , PLANT    , MD_PLANT.CSV             , DSCP_PLNT, TRUE , none   
+#    NEW, MD  , SALES_ORG, MD_SALES_ORG.CSV         , DSCP_SORG, TRUE , none
+#    NEW, MD  , SOLDTO   , MD_SOLD_TO_CUSTOMER.CSV  , DSCP_CUST, TRUE , none     
+#    NEW, TD  , SDSFRPR1 , SDSFRPR1.csv             , OH_FRPR1 , TRUE , none 
+#    NEW, TD  , SDSFRPR2 , SDSFRPR2_F.csv           , OH_FRPR2 , TRUE , none
+#    NEW, TD  , STOCK    , IMP03SM1_F.csv           , OH_STOCK , TRUE , none" 
+#   ) %>%
+#   .[, c("BNM", "EXT") := tstrsplit(x = FNM, split = "\\.")] 
 
 # OH_DMMG0
 # OH_FCWKF
@@ -368,25 +368,24 @@ transform_csv_to_parquet <-
     })
   }
 
-# fGetPipeLines <- 
-#   function(){
-#     fread(
-#       file = file.path(PS01, SYS, "B4", "B4_PIPELINE.csv")
-#     )
-#   }
+fGetPipeLines <-
+  function(){
+    rbind(
+      fread(file = file.path(PS01, SYS, "B4", "B4_PIPELINE_ORG.csv")) %>%
+        .[, SRC:= 'O'], 
+      fread(file = file.path(PS01, SYS, "B4", "B4_PIPELINE_MOD.csv")) %>%
+        .[, SRC:= 'C']
+    )                                                                   %T>%
+      setorder(SRC, OHDEST, POSIT)                                   %>%
+      .[, .SD[1], by = .(OHDEST, POSIT)]    
+  }
 
 fGetPipeLine <- 
   function(ohdest) {
     
-    fread(file = file.path(PS01, SYS, "B4", "B4_PIPELINE.csv")) %>%
-      .[OHDEST == ohdest]
-      
-    # if (!missing(ohdest)){
-    #   DPL <- DPL[OHDEST == ohdest]
-    # }
-    
-    # DPL[PYTHIA == pythia, .(FLDNM_IN, FIELDTP, TRNSFRM, FLDNM_OUT)]
-    # DPL <- DPL[OHDEST == ohdest]
+    fGetPipeLines()                                                     %>%
+      .[OHDEST == ohdest]                                               %T>%
+      setorder(OHDEST, POSIT)                                     
   }
 
 fTransform_csv_to_parquet <- 

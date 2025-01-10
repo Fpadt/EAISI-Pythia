@@ -20,10 +20,10 @@ editor_options:
 
 # Purpose
 
-Refresh data sets for the Pythia project from BW OpenHub to Pythia on 
-OneDrive ET. 
+Refresh data sets for the Pythia project from BW OpenHub to Pythia on OneDrive
+ET.
 
-::: {.callout-note}
+::: callout-note
 Can be executed outside Ecotone Network as OneDrive ET\Pythia is used
 :::
 
@@ -69,38 +69,31 @@ FILE_SPEC <-
 
 # Export & Copy Procedure
 
-## Pythia DTP's
-
-| Seq. | DTP | Description | Time |
-|--------------------|--------------------|--------------------|---------------------|
-| 0 | DTP_006EIZGR39XAWQANS1LNUZF2Y | Pythia's Advice -\> IS PERKZ-W \[2021\] Incl.FR50 | 15 min. |
-| 0 | DTP_006EIZGR39XAWQANYOZZI4HSQ | Pythia's Advice -\> IS PERKZ-W \[2022\] Incl.FR50 |  |
-| 0 | DTP_006EIZGR39XAWQANZ3O0NUFIY | Pythia's Advice -\> IS PERKZ-W \[2023\] Incl.FR50 |  |
-| 1 | DTP_006EIZGR39XAWQANZFHWJ64UY |  |  |
-| 2 | DTP_006EIZGR39XAWPP4O3JPT9E6Y | PYTHIA -\> IS PERKZ-W \[\>=2024\] | 05 min |
-| 3 | DTP_006EIZGR39XAWPP4SWFV127TM | OS PERKZ-W \[\>=SY-DATE - 60\] | 02 min |
-
-## Export
-
-1.  \[15. Min\] RSPC: LC_DYN_PERKZ_W
-2.  \[05. Min\] DTP_006EIZGR39XAWPP4O3JPT9E6Y PYTHIA -\> IS PERKZ-W \[\>=2024\]
-3.  AL11 - DSCP E:\USR\SAP\STAGE\DSCP\PERKZ\_W\
-4.  save PRTP
-    1.  TMP execute next code chunk to change Thousands Separator
-5.  
-
 ## Administration
 
 ```{r}
 shell.exec(file.path(PS01, SYS, "B4","IB_OB_FLD.xlsx"))
 ```
 
+## PipeLines
 
-## Transaction Data
+Use following code to check Pipelines and Transformations
 
-### Outbound
+```{r}
+View(fGetPipeLines())
+```
 
-#### Sales RTP
+# Transaction Data
+
+EPS_DELETE_FILE
+
+e:\usr\sap\stage\DSCP
+e:\usr\sap\stage\Dynasys\out
+ 
+
+## Outbound
+
+### Sales RTP
 
 Transform .csv files in Bronze to .parquet in Silver
 
@@ -112,14 +105,14 @@ Transform .csv files in Bronze to .parquet in Silver
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "RTP"),
   output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^DD_SALES_QTY_20.*\\.csv$",   
+  file_pattern = "^DD_SALES_QTY_202[45].*\\.csv$",   
   ohdest       = "DSCP_TRAN",
   verbose      = TRUE
 )
 
 ```
 
-#### Sales IPM
+### Sales IPM
 
 Transform .csv files in Bronze to .parquet in Silver
 
@@ -131,14 +124,14 @@ Transform .csv files in Bronze to .parquet in Silver
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "IPM"),
   output_path  = file.path(PS02, SYS, "IPM"),
-  file_pattern = "^DD_HISTO_QTY_20.*\\.csv$",   
+  file_pattern = "^DD_HISTO_QTY_202[45].*\\.csv$",   
   ohdest       = "ZSOP_ASLS",
   verbose      = TRUE
 )
 
 ```
 
-#### Stock
+### Stock
 
 ```{r}
 #| label:   'Stock from BW' 
@@ -155,9 +148,9 @@ fTransform_csv_to_parquet(
 
 ```
 
-### Inbound
+## Inbound
 
-#### Sales DYN
+### Sales DYN
 
 Transform .csv files in Bronze to .parquet in Silver
 
@@ -166,87 +159,59 @@ Transform .csv files in Bronze to .parquet in Silver
 #| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
 #| eval:    true
 
+# fTransform_csv_to_parquet(
+#   source_path  = file.path(PS01, SYS, "DYN"),
+#   output_path  = file.path(PS02, SYS, "DYN"),
+#   file_pattern = "^SDSFRPR[1234].*\\.csv$",   
+#   ohdest       = "OH_FRPR1",
+#   verbose      = TRUE
+# )
+
+# actuals
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "DYN"),
   output_path  = file.path(PS02, SYS, "DYN"),
-  file_pattern = "^SDSFRPR[1234].*\\.csv$",   
+  file_pattern = "^SDSFRPR[13].*\\.csv$",   
   ohdest       = "OH_FRPR1",
-  verbose      = TRUE
+  verbose      = FALSE
+)
+
+# forecasts
+fTransform_csv_to_parquet(
+  source_path  = file.path(PS01, SYS, "DYN"),
+  output_path  = file.path(PS02, SYS, "DYN"),
+  file_pattern = "^SDSFRPR[24]_202(412|501).*\\.csv$",   
+  ohdest       = "OH_FRPR1",
+  verbose      = FALSE
 )
 
 ```
 
-# Obsolete ? 
-
-```{r}
-#| label: 'functions'
-#| eval:  false
-
-getHeaderDataSource <-
-  function(x){
-    fread(file = file.path(PS01, SYS, "B4", "B4_RSDSSEGFD.csv"))     %T>%
-    setorder(DATASOURCE, POSIT)                                       %>%
-    .[DATASOURCE == x, FIELDNM]
-}
-
-```
-
-```{r}
-#| label: 'Data Ingestion Execution'
-#| eval:   false
-
-files_Inbound <- 
-  list.files(file.path(PS01, SYS, "RTP", "IB"), pattern = "*.CSV", full.names = TRUE)
-
-PRE_A <-  fread(
-  cmd = paste0("iconv -f UTF-16 -t UTF-8 '", files_Inbound[1], "'")
-) %T>%
-setnames(getHeaderDataSource("PRE_A")) 
 
 
-empty_unit <- PRE_A[BASEUNITOFMEASURE_CODE == ""]
-neg_baseln <- PRE_A[BASE_LINE_QTY < 0]
+# Master Data
 
+## Material
 
-```
-
-## Master Data
-
-### Material
-
-#### MATERIAL
+### MATERIAL
 
 ```{r}
 #| label: 'MATERIAL'
 #| eval:   true
 
+# !!!!File needs to be Converted to UTF-8
+
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "RTP"),
   output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_MATERIAL.*\\.csv$",   
+  file_pattern = "^MD_MATERIAL\\.csv$",   
   ohdest       = "DSCP_MATE",
   verbose      = TRUE
 )
 
-# pAREA <- "MATERIAL"
-# MATERIAL <- 
-#   fLoadOpenHubExport(
-#     pAREA = pAREA,  
-#     pKEY  = c(pAREA),
-#     pPTH  = file.path(PS01, SYS, "RTP", "CSV")
-#   )                                                                       %>% 
-#  .[, MATERIAL:= LP0(MATERIAL, 18)]                                        %T>%
-#   setcolorder("MATERIAL")                                                 %T>%
-#   write_parquet(
-#     sink = file.path(
-#       PS02, SYS, "RTP",  
-#       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
-#     )
-#   )
-
 ```
 
-#### MAT_SALES
+### MAT_SALES
 
 ```{r}
 #| label: 'MAT_SALES',
@@ -255,31 +220,14 @@ fTransform_csv_to_parquet(
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "RTP"),
   output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_MATERIAL_SALES_ORG.*\\.csv$",   
+  file_pattern = "^MD_MATERIAL_SALES_ORG\\.csv$",   
   ohdest       = "DSCP_MATS",
   verbose      = TRUE
 )
-# 
-# pAREA <- "MAT_SALES"
-# MAT_SALES <- 
-#   fLoadOpenHubExport(
-#     pAREA = pAREA,  
-#     pPTH  = file.path(PS01, SYS, "RTP", "CSV")
-#   )                                                                       %>%
-#   .[, DISTR_CHAN:= 10]                                                    %>%
-#   .[, `:=` (MAT_SALES = LP0(MATERIAL, 18), MATERIAL = NULL)]              %T>%
-#   setcolorder(c("MAT_SALES", "SALESORG", "DISTR_CHAN"))                   %T>%       
-#   setkey("MAT_SALES", "SALESORG", "DISTR_CHAN")                           %T>%
-#   write_parquet(
-#     sink = file.path(
-#       PS02, SYS, "RTP", 
-#       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
-#     )
-#   )                                                              
 
 ```
 
-#### MAT_PLANT
+### MAT_PLANT
 
 ```{r}
 #| label: 'MAT_PLANT',
@@ -288,102 +236,14 @@ fTransform_csv_to_parquet(
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "RTP"),
   output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_MATERIAL_PLANT.*\\.csv$",   
+  file_pattern = "^MD_MATERIAL_PLANT\\.csv$",   
   ohdest       = "DSCP_MATP",
   verbose      = TRUE
 )
 
-# pAREA <- "MAT_PLANT"
-# MAT_PLANT <- 
-#   fLoadOpenHubExport(
-#     pAREA = pAREA,  
-#     pKEY  = c("MAT_PLANT", "PLANT"),
-#     pPTH  = file.path(PS01, SYS, "RTP", "CSV")
-#   )                                                                       %>%
-#   .[, `:=` (MAT_PLANT = LP0(MAT_PLANT, 18))]                              %T>%
-#   setcolorder(c("MAT_PLANT", "PLANT"))                                    %T>%       
-#   setkey("MAT_PLANT", "PLANT")                                            %T>%
-#   write_parquet(
-#     sink = file.path(
-#       PS02, SYS, "RTP", 
-#       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
-#     )
-#   ) 
 ```
 
-### Customer
-
-#### CUST_SALES
-
-```{r}
-#| label: 'CUST_SALES',
-#| eval:   true
-
-fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "RTP"),
-  output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_SOLD_TO_CUSTOMER.*\\.csv$",   
-  ohdest       = "DSCP_CUST",
-  verbose      = TRUE
-)
-
-# pAREA <- "SOLDTO"
-# CUST_SALES <- 
-#   fLoadOpenHubExport(
-#     pAREA = pAREA,  
-#     # pKEY  = c("MAT_PLANT", "PLANT"),
-#     pPTH  = file.path(PS01, SYS, "RTP", "CSV")
-#   )                                                                       %>%
-#   .[, `:=` (
-#     CUST_SALES = LP0(CUSTOMER  , 10), 
-#     CUSTHIE04  = LP0(CUSTHIE04 , 10), 
-#     CUST_HIE03 = LP0(CUST_HIE03, 10), 
-#     CUST_HIE02 = LP0(CUST_HIE02, 10), 
-#     CUST_HIE01 = LP0(CUST_HIE01, 10),     
-#     DISTR_CHAN = 10, 
-#     CUSTOMER   = NULL
-#     )]                                                                    %T>%
-#   setcolorder(c("CUST_SALES", "SALESORG", "DISTR_CHAN"))                  %T>%         
-#   setkey("CUST_SALES", "SALESORG", "DISTR_CHAN")                          %T>%
-#   write_parquet(
-#     sink = file.path(
-#       PS02, SYS, "RTP",  
-#       paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
-#     )
-#   ) 
-```
-
-### Plant
-
-```{r}
-#| label: 'PLANT',
-#| eval:   true
-
-fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "RTP"),
-  output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_PLANT.*\\.csv$",   
-  ohdest       = "DSCP_PLNT",
-  verbose      = TRUE
-)
-```
-
-### Sales Organization
-
-```{r}
-#| label: 'SALESORG',
-#| eval:   true
-
-fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "RTP"),
-  output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_SALES_ORG.*\\.csv$",   
-  ohdest       = "DSCP_SORG",
-  verbose      = TRUE
-)
-```
-
-### BOM Explosion
+### BOMX
 
 ```{r}
 #| label: 'BOMX',
@@ -398,7 +258,62 @@ fTransform_csv_to_parquet(
 )
 ```
 
-### Promotions
+## Customer
+
+### CUST_SALES
+
+```{r}
+#| label: 'CUST_SALES',
+#| eval:   true
+
+# !!!! UTF-8 conversion
+
+fTransform_csv_to_parquet(
+  source_path  = file.path(PS01, SYS, "RTP"),
+  output_path  = file.path(PS02, SYS, "RTP"),
+  file_pattern = "^MD_SOLD_TO_CUSTOMER\\.csv$",   
+  ohdest       = "DSCP_CUST",
+  verbose      = TRUE
+)
+
+```
+
+## Plant
+
+### PLANT
+
+```{r}
+#| label: 'PLANT',
+#| eval:   true
+
+fTransform_csv_to_parquet(
+  source_path  = file.path(PS01, SYS, "RTP"),
+  output_path  = file.path(PS02, SYS, "RTP"),
+  file_pattern = "^MD_PLANT\\.csv$",   
+  ohdest       = "DSCP_PLNT",
+  verbose      = TRUE
+)
+```
+
+## Sales Organization
+
+### SALESORG
+
+```{r}
+#| label: 'SALESORG',
+#| eval:   true
+
+fTransform_csv_to_parquet(
+  source_path  = file.path(PS01, SYS, "RTP"),
+  output_path  = file.path(PS02, SYS, "RTP"),
+  file_pattern = "^MD_SALES_ORG\\.csv$",   
+  ohdest       = "DSCP_SORG",
+  verbose      = TRUE
+)
+```
+
+
+## Promotions
 
 #### PromoNat
 
