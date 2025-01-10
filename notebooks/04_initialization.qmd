@@ -23,7 +23,8 @@ editor_options:
 Get all meta data needed from SAP to run locally
 
 ::: callout-note
-Note: can only be executed from **Ecotone Laptop**
+Note: can only be executed from **within Ecotone Network**
+as a connection to SAP is needed
 :::
 
 # Setup
@@ -131,7 +132,7 @@ B4_RSBOHDESTT <-
      pRowcount = Inf
    )
 
-# Add Text ####
+# Add Text to B4_RSBOHDEST ####
 RSBOHDEST <- 
   B4_RSBOHDESTT %>%
   .[B4_RSBOHDEST, 
@@ -205,7 +206,7 @@ B4_RSBOHFIELDST <-
      pRowcount = Inf
    )
 
-# Add text ####
+# Add text to B4_RSBOHFIELDS ####
 RSBOHFIELDS <- 
   B4_RSBOHFIELDST %>%
   .[B4_RSBOHFIELDS, 
@@ -310,7 +311,6 @@ fwrite(
 )
 ```
 
-
 ```{r}
 #| label:  SAP File Names
 #| eval:   true
@@ -340,26 +340,37 @@ fwrite(
 
 # PipeLines
 
-## ToDo - diff B4_PIPELINE.csv with vanila
-
 ```{r}
 #| label:  Write_pipeline
-#| label:  false 
+#| label:  true 
 
-
-# B4_RSBOHFIELDS[, .(
-#   PYTHIA = ''                , 
-#   OHDEST                     , 
-#   POSIT = paste0(POSIT, '00'),
-#   DATATYPE                   ,    
-#   FLDNM_IN  = FIELDNM        ,
-#   FIELDTP   = 'VARCHAR'      ,
-#   TRNSFRM   = FIELDNM        ,
-#   FLDNM_OUT = FIELDNM
-# )]                        %T>%
-#   setorder(OHDEST, POSIT) %T>%
-#   fwrite(
-#     file = file.path(PS01, SYS, "B4", "B4_PIPELINE.csv")
-#     )
+B4_RSBOHFIELDS[, .(
+  PYTHIA = 'O'                        ,
+  OHDEST                             ,
+  POSIT     = as.integer(POSIT) * 100,
+  DATATYPE                           ,
+  FLDNM_IN  = FIELDNM                ,
+  FIELDTP   = 'VARCHAR'              ,
+  TRNSFRM   = FIELDNM                ,
+  FLDNM_OUT = FIELDNM
+)]                                     %T>%
+  setorder(OHDEST, POSIT)              %>%
+  fwrite(
+    file = file.path(PS01, SYS, "B4", "B4_PIPELINE_ORG.csv")
+  )
 
 ```
+
+## Open CSV to modify Pipelines
+
+```{r}
+#| label:  Open Pipeline files
+#| label:  true 
+#| 
+shell.exec(file.path(PS01, SYS, "B4", "B4_PIPELINE_ORG.csv"))
+shell.exec(file.path(PS01, SYS, "B4", "B4_PIPELINE_MOD.csv"))
+
+```
+
+
+
