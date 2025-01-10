@@ -87,9 +87,7 @@ View(fGetPipeLines())
 
 EPS_DELETE_FILE
 
-e:\usr\sap\stage\DSCP
-e:\usr\sap\stage\Dynasys\out
- 
+e:\usr\sap\stage\DSCP e:\usr\sap\stage\Dynasys\out
 
 ## Outbound
 
@@ -159,35 +157,34 @@ Transform .csv files in Bronze to .parquet in Silver
 #| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
 #| eval:    true
 
+fTransform_csv_to_parquet(
+  source_path  = file.path(PS01, SYS, "DYN"),
+  output_path  = file.path(PS02, SYS, "DYN"),
+  file_pattern = "^SDSFRPR([13].*|[24]_202(412|501)).*\\.csv$",   
+  ohdest       = "OH_FRPR1",
+  verbose      = FALSE
+)
+
+# 
+# # actuals
 # fTransform_csv_to_parquet(
 #   source_path  = file.path(PS01, SYS, "DYN"),
 #   output_path  = file.path(PS02, SYS, "DYN"),
-#   file_pattern = "^SDSFRPR[1234].*\\.csv$",   
+#   file_pattern = "^SDSFRPR[13].*\\.csv$",   
 #   ohdest       = "OH_FRPR1",
-#   verbose      = TRUE
+#   verbose      = FALSE
+# )
+# 
+# # forecasts
+# fTransform_csv_to_parquet(
+#   source_path  = file.path(PS01, SYS, "DYN"),
+#   output_path  = file.path(PS02, SYS, "DYN"),
+#   file_pattern = "^SDSFRPR[24]_202(412|501).*\\.csv$",   
+#   ohdest       = "OH_FRPR1",
+#   verbose      = FALSE
 # )
 
-# actuals
-fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "DYN"),
-  output_path  = file.path(PS02, SYS, "DYN"),
-  file_pattern = "^SDSFRPR[13].*\\.csv$",   
-  ohdest       = "OH_FRPR1",
-  verbose      = FALSE
-)
-
-# forecasts
-fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "DYN"),
-  output_path  = file.path(PS02, SYS, "DYN"),
-  file_pattern = "^SDSFRPR[24]_202(412|501).*\\.csv$",   
-  ohdest       = "OH_FRPR1",
-  verbose      = FALSE
-)
-
 ```
-
-
 
 # Master Data
 
@@ -311,7 +308,6 @@ fTransform_csv_to_parquet(
   verbose      = TRUE
 )
 ```
-
 
 ## Promotions
 
