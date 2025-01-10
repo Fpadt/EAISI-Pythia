@@ -23,8 +23,8 @@ editor_options:
 Get all meta data needed from SAP to run locally
 
 ::: callout-note
-Note: can only be executed from **within Ecotone Network**
-as a connection to SAP is needed
+Note: can only be executed from **within Ecotone Network** as a connection to
+SAP is needed
 :::
 
 # Setup
@@ -142,7 +142,7 @@ RSBOHDEST <-
 # write RSBOHDEST ####
 fwrite(
   x = RSBOHDEST,
-  file = file.path(PS01, SYS, "B4", "B4_RSBOHDEST.csv"),
+  file = file.path(PS01, SYS, "B4", "BCK", "B4_RSBOHDEST.csv"),
 )
 ```
 
@@ -216,7 +216,7 @@ RSBOHFIELDS <-
 # Write RSBOHFIELDS ####
 fwrite(
   x = RSBOHFIELDS,
-  file = file.path(PS01, SYS, "B4", "B4_RSBOHFIELDS.csv"),
+  file = file.path(PS01, SYS, "B4", "BCK", "B4_RSBOHFIELDS.csv"),
 )
 
 ```
@@ -251,7 +251,7 @@ PA_OPEN_HUB <-
 # Write PA Open Hub ####
 fwrite(
   x = PA_OPEN_HUB,
-  file = file.path(PS01, SYS, "B4", "PA_OPEN_HUB.csv"),
+  file = file.path(PS01, SYS, "B4", "BCK", "PA_OPEN_HUB.csv"),
 )
 
 
@@ -307,7 +307,7 @@ B4_RSDSSEGFD <-
 
 fwrite(
   x    = B4_RSDSSEGFD,
-  file = file.path(PS01, SYS, "B4", "B4_RSDSSEGFD.csv"),
+  file = file.path(PS01, SYS, "B4", "BCK", "B4_RSDSSEGFD.csv"),
 )
 ```
 
@@ -333,7 +333,7 @@ B4_FILENAMECI <-
 
 fwrite(
   x    = B4_FILENAMECI,
-  file = file.path(PS01, SYS, "B4", "B4_FILENAMECI.csv"),
+  file = file.path(PS01, SYS, "B4", "BCK", "B4_FILENAMECI.csv"),
 )
 
 ```
@@ -371,6 +371,3 @@ shell.exec(file.path(PS01, SYS, "B4", "B4_PIPELINE_ORG.csv"))
 shell.exec(file.path(PS01, SYS, "B4", "B4_PIPELINE_MOD.csv"))
 
 ```
-
-
-
