@@ -50,107 +50,7 @@ if( file.exists(lsrc)){source(lsrc)}
 
 ```
 
-# Material Data
-
-## Material
-
-```{r}
-#| label: 'Material Data',
-#| eval:   true
-
-# Establish a connection to DuckDB
-con <- dbConnect(duckdb::duckdb())
-
-# Query the file and load it into a data.table
-system.time({
-  MATL <- 
-    dbGetQuery(
-      con, 
-      paste0(
-        "SELECT 
-          * 
-         FROM read_parquet('", FN_MATL, "')
-         "
-      )
-    )                                                                  %>%
-    setDT()
-  
-  # View the data.table
-  View(MATL)
-})
-
-# Disconnect from DuckDB
-dbDisconnect(con)
-
-```
-
-## Material Sales
-
-```{r}
-#| label: 'Material Sales Data',
-#| eval:   true
-
-# Establish a connection to DuckDB
-con <- dbConnect(duckdb::duckdb())
-
-# Query the file and load it into a data.table
-system.time({
-  MATS <- 
-    dbGetQuery(
-      con, 
-      paste0(
-        "SELECT 
-          * 
-         FROM 
-          read_parquet('", FN_MATS, "')
-        "
-      )
-    )                                                                  %>%
-    setDT()
-  
-  # View the data.table
-  View(MATS)
-})
-
-# Disconnect from DuckDB
-dbDisconnect(con)
-
-```
-
-## Material Plant
-
-```{r}
-#| label: 'Material Plant Data'
-#| eval:   true
-
-# Establish a connection to DuckDB
-con <- dbConnect(duckdb::duckdb())
-
-# Query the file and load it into a data.table
-system.time({
-  MATP <- 
-    dbGetQuery(
-      con, 
-      paste0(
-        "SELECT 
-          * 
-         FROM 
-          read_parquet('", FN_MATP, "')
-        "
-      )
-    )                                                                  %>%
-    setDT()
-  
-  # View the data.table
-  View(MATP)
-})
-
-# Disconnect from DuckDB
-dbDisconnect(con)
-
-```
-
-# Sales Data
+# Scope
 
 | Key | Brand            |
 |:----|:-----------------|
@@ -160,6 +60,22 @@ dbDisconnect(con)
 | 15  | ZONNATURA        |
 | 53  | TANOSHI          |
 | 65  | NATURELA         |
+
+# Master Data
+
+## Material
+
+```{r}
+#| label: 'Get Material Master data '
+#| eval:   true
+
+MATL <- fGet_MATL() # MARA/0MATERIAL
+MATS <- fGet_MATS() # MVKE/0MAT_SALES
+MATP <- fGet_MATP() # MARC/0MAT_PLANT
+```
+
+
+# Sales Data
 
 ## Sales all
 

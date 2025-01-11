@@ -91,10 +91,9 @@ invisible(source(file.path(MOD, "ET_Functions.R")))
 invisible(source(file.path(MOD, "pa_functions.R")))
 invisible(source(file.path(MOD, "pa_set_paths.R")))
 #invisible(source(file.path(MOD, "00_Global", "SAP2R_BODS.R")))
-if (computer_name == 'TREX-TOAD'){
-  # invisible(source(file.path(MOD, "00_Global", "SAP2R.R")))
-} else {
+if (computer_name == 'GGN' ){
   devtools::load_all(path = "C:\\RW\\sapyr")
+} else {
   # library("sapyr", lib.loc = "C:/Users/Floris.Padt/AppData/Local/R/cache/R/renv/library/sapyr-1006ad23/R-4.3/x86_64-w64-mingw32/")
   # invisible(source(file.path(RW , "sapyr", "sapyr.R")))
 }
