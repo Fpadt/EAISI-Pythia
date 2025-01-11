@@ -75,158 +75,68 @@ MATP <- fGet_MATP() # MARC/0MAT_PLANT
 ```
 
 
-# Sales Data
+# Transaction Data
 
-## Sales all
+## Sales 
 
 ```{r}
-#| label: 'Sales Data ALL',
+#| label: 'Get DYN data from SDSFRPRx '
 #| eval:   true
 
-
-# Establish a connection to DuckDB
-con <- dbConnect(duckdb(), dbdir = ":memory:")
-
-SORG <- c('FR30', 'NL10')
-TABL <- FN_ISLS
-
-query <-   
-  glue_sql("
-    SELECT 
-      *,
-      sum(SLS_QT_SO + SLS_QT_FOC) as DEMND_QTY 
-    FROM 
-      read_parquet({`TABL`})
-    WHERE
-      SALESORG IN ({SORG*})
-    GROUP BY 
-      ALL
-    ORDER BY 
-      SALESORG,
-      CALMONTH
-    ", .con = con
+ACTL_DYN <- 
+  fGet_DYN_Actuals(
+    .material    = NULL    , # Optional user-supplied material
+    .salesorg    = NULL    , # Optional user-supplied salesorg
+    .scope_matl  = TRUE    , # restrict to Pythia Scope
+    .scope_sorg  = TRUE    , # restrict to Pythia Scope
+    .cm_min      = '202101', 
+    .cm_max      = '202512',
+    .step_low    = -Inf    , 
+    .step_high   = Inf     ,
+    .n           = Inf  
   )
 
-system.time({
-  ISLS <- 
-    dbGetQuery(con, query, n = Inf) %>%
-    setDT()
-})
-
-```
-
-## Sales per Article
-
-```{r}
-#| label: 'Sales Data for Article'
-#| eval:   true
-
-
-# Establish a connection to DuckDB
-con <- dbConnect(duckdb(), dbdir = ":memory:")
-
-MATL <- c(MATN1('10023'))
-TABL <- FN_ISLS
-
-query <-   
-  glue_sql("
-    SELECT 
-      MATERIAL,
-      CALMONTH,
-      sum(SLS_QT_SO + SLS_QT_FOC) as DEMND_QTY
-    FROM 
-      read_parquet({`TABL`})
-    WHERE
-      MATERIAL IN ({MATL*}) AND
-      CALMONTH < date_trunc('month', current_date)
-    GROUP BY 
-      ALL
-    ORDER BY 
-      MATERIAL,
-      CALMONTH
-    ", .con = con
+ACTL_RTP <- 
+  fGet_RTP_Actuals(
+    .material    = '10023' , # Optional user-supplied material
+    .salesorg    = NULL    , # Optional user-supplied salesorg
+    .scope_matl  = TRUE    , # restrict to Pythia Scope
+    .scope_sorg  = TRUE    , # restrict to Pythia Scope
+    .cm_min      = '202101', 
+    .cm_max      = '202512',
+    .step_low    = -Inf    , 
+    .step_high   = Inf     ,
+    .n           = Inf  
   )
 
-system.time({
-  tsMAT <- 
-    dbGetQuery(con, query, n = Inf) %>%
-    setDT()
-})
+
+
+FCST_DYN <- 
+  fGet_DYN_Forecast(
+    .material    = '10023' , # Optional user-supplied material
+    .salesorg    = 'FR30'  , # Optional user-supplied salesorg
+    .scope_matl  = TRUE    , # restrict to Pythia Scope
+    .scope_sorg  = TRUE    , # restrict to Pythia Scope
+    .cm_min      = '202401', 
+    .cm_max      = '202506',
+    .step_low    = 1       , 
+    .step_high   = 3       ,
+    .n           = Inf          
+  ) 
+
+# ACTC <- 
+#   dcast.data.table(
+#     ACTL, 
+#     ... ~ paste0("TYP_", FTYPE),  
+#     value.var = "A"
+#   ) %>%
+#   .[, DIFF:= TYP_1 - TYP_2]
+# 
+# View(ACTC[DIFF != 0])
 
 ```
 
-## Sales scope
 
-```{r}
-#| label: 'Sales Data',
-#| eval:   false
-
-# Establish a connection to DuckDB
-con <- dbConnect(duckdb::duckdb())
-
-# Query the file and load it into a data.table
-system.time({
-  ISLS <- 
-    dbGetQuery(
-      con, 
-      paste0(
-        "SELECT 
-          MATL.PRDH1, MATL.PRDH1_TMD, MATL.PRDH2_TMD,
-          ISLS.SALESORG,
-          CALMONTH,
-          sum(SLS_QT_SO + SLS_QT_FOC + SLS_QT_DIR) as DEMND_QTY
-         FROM 
-          read_parquet('", FN_ISLS, "') AS ISLS
-         INNER JOIN 
-          read_parquet('", FN_MATL, "') AS MATL
-         ON 
-          ISLS.MATERIAL = MATL.MATERIAL
-         WHERE 
-          SALESORG    IN ('FR30', 'NL10') AND
-          PRDH1       IN ('07'  , '08'  , '10', 
-                          '15'  , '53'  , '65'
-                          )
-         GROUP BY 
-          MATL.PRDH1,
-          MATL.PRDH1_TMD,
-          MATL.PRDH2_TMD,
-          ISLS.SALESORG,
-          CALMONTH
-         ORDER BY 
-          MATL.PRDH1,
-          MATL.PRDH1_TMD,
-          MATL.PRDH2_TMD,
-          ISLS.SALESORG,
-          CALMONTH"
-      )
-    )                                                                  %>%
-    setDT()
-
-  # View the data.table
-  View(ISLS[0:100])
-})
-
-ISLS <- 
-  ISLS[!PRDH1_TMD %chin% c(
-    'Sud Ouest Café',
-    'PATAKS',
-    'TIEN SHAN',
-    'DR.RITTER',
-    'MERZA'
-  )]
-
-# Disconnect from DuckDB
-dbDisconnect(con)
-
-```
-
-## All Sales
-
-```{r}
-# ph1 <- c('07'  , '08'  , '10'  , '15'  , '53'  , '64'  , '65')
-# ph2 <- c('2010', '2020', '2030', '2040', '2060')
-# ph3 <- c('4010', '4013', '4020', '4023', '4030', '4032', '4040', '4062', '4066')
-```
 
 ## PH1
 

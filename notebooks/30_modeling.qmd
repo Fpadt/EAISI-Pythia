@@ -58,43 +58,7 @@ pimg <- file.path('.', 'fig')
 
 ```
 
-```{r}
-#| label: 'Get Sales in PA scope '
-#| eval:   true
 
-IALL <- fGet_PA_sales()
-```
-
-```{r}
-#| label: 'Get DYN data from SDSFRPRx '
-#| eval:   true
-
-FCST <- 
-  fGet_MP_FCST('FR30','10023') 
-
-ACTL <- 
-  fGet_DYN_Actuals(material = '10023', salesorg = 'FR30', apply_scope = TRUE)
-
-
-FCST <- 
-  fGet_DYN_Forecast(
-    material = '10023', salesorg = 'FR30', 
-    step_low = 1      , step_high = 3) 
-
-# ACTC <- 
-#   dcast.data.table(
-#     ACTL, 
-#     ... ~ paste0("TYP_", FTYPE),  
-#     value.var = "A"
-#   ) %>%
-#   .[, DIFF:= TYP_1 - TYP_2]
-# 
-# View(ACTC[DIFF != 0])
-
-
-
-
-```
 
 ## Graph Functions
 
