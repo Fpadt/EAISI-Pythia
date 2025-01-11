@@ -80,6 +80,9 @@ shell.exec(file.path(PS01, SYS, "B4","IB_OB_FLD.xlsx"))
 Use following code to check Pipelines and Transformations
 
 ```{r}
+shell.exec(file.path(PS01, SYS, "B4", "B4_PIPELINE_ORG.csv"))
+shell.exec(file.path(PS01, SYS, "B4", "B4_PIPELINE_MOD.csv"))
+
 View(fGetPipeLines())
 ```
 
