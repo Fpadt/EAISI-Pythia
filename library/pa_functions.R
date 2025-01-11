@@ -43,6 +43,114 @@ SCOPE_PLNT <-
      )
   "
 
+fDescribe_Parquet <- 
+  function(
+    .fn = NULL
+  ){
+    
+    # Establish a connection to DuckDB
+    con <- .get_duckdb_conn()
+    
+    # construct Query 
+    query <- 
+      glue_sql("
+        DESCRIBE 
+        SELECT 
+          *
+        FROM 
+          read_parquet({`.fn`})
+      ", .con = con)
+    
+    # Execute and fetch results
+    dbGetQuery(con, query) %>%
+      print()
+    
+  }
+
+#' Retrieve DuckDB Config Parts
+#'
+#' This internal helper function returns a list of three elements:
+#' \enumerate{
+#'   \item \code{duckdb_con} - The DuckDB connection.
+#'   \item \code{cte_scope_materials} - The CTE (common table expression) snippet
+#'         for scope materials, constructed if needed.
+#'   \item \code{where_clause} - A character vector of one or more WHERE clauses,
+#'         built according to the provided parameters.
+#' }
+#'
+#' @param .material A character vector of materials to filter on. If \code{NULL},
+#'   no material-based filter is applied (beyond scope constraints).
+#' @param .salesorg A character vector of sales organizations to filter on. If \code{NULL},
+#'   no salesorg-based filter is applied (beyond scope constraints).
+#' @param .scope_matl Logical. If \code{TRUE}, the returned \code{cte_scope_materials}
+#'   (and any relevant WHERE clauses) will restrict to materials in the scope definition.
+#' @param .scope_sorg Logical. If \code{TRUE}, where clauses will restrict to
+#'   the provided sales organization scope (if \code{.salesorg} is not \code{NULL}).
+#' @param .cm_min Character. Minimum YYYYMM to apply in date-based filtering. Defaults to
+#'   '202101'.
+#' @param .cm_max Character. Maximum YYYYMM to apply in date-based filtering. Defaults to
+#'   '202512'.
+#' @param .step_low Numeric. Minimum step filter. Defaults to -999.
+#' @param .step_high Numeric. Maximum step filter. Defaults to 999.
+#' @param .n Numeric or Inf. The maximum number of materials to return (if that logic
+#'   is implemented in the underlying queries). Defaults to \code{Inf}.
+#'
+#' @return A named \code{list} with three elements:
+#'   \itemize{
+#'     \item \code{duckdb_con} - The active DuckDB connection.
+#'     \item \code{cte_scope_materials} - SQL snippet for scope materials (may be an
+#'            empty string if \code{.scope_matl=FALSE}).
+#'     \item \code{where_clause} - A character vector of WHERE clauses.
+#'   }
+#'
+#' @details
+#' This function centralizes the logic of creating a DuckDB connection,
+#' constructing the \code{cte_scope_materials} snippet, and building the \code{where_clause}.
+#' Other functions can call this to avoid repeating code.
+#'
+#' @keywords internal
+.get_duckdb_parts <- function(
+    .material    = NULL,
+    .salesorg    = NULL,
+    .scope_matl  = NULL,
+    .scope_sorg  = FALSE,
+    .cm_min      = NULL,
+    .cm_max      = NULL,
+    .step_low    = NULL,
+    .step_high   = NULL
+) {
+  
+  # -- 1) Get or create a DuckDB connection --
+  con <- .get_duckdb_conn()   
+  
+  # -- 2) Build the CTE snippet for scope materials --
+  cte_scope_materials <- .get_cte_scope_materials(
+    .scope_matl = .scope_matl,
+    .con        = con
+  )
+  
+  # -- 3) Build the WHERE clause according to the given parameters --
+  where_clause <- .get_where_clause(
+    .material   = .material,
+    .salesorg   = .salesorg,
+    .scope_matl = .scope_matl,
+    .scope_sorg = .scope_sorg,
+    .cm_min     = .cm_min,
+    .cm_max     = .cm_max,
+    .step_low   = .step_low,
+    .step_high  = .step_high,
+    .con        = con
+  )
+  
+  # Return as a named list
+  list(
+    duckdb_con          = con,
+    cte_scope_materials = cte_scope_materials,
+    where_clause        = where_clause
+  )
+}
+
+
 #' Construct a Scope Materials CTE Clause
 #'
 #' Internal helper function that returns a SQL snippet (CTE) for scope materials 
@@ -158,11 +266,15 @@ SCOPE_PLNT <-
 #'
 #' @keywords internal
 .get_where_clause <- 
-  function(.clauses     = list(),
-           .material    = NULL,
-           .salesorg    = NULL,       
-           .scope_matl  = FALSE,
-           .scope_sorg  = FALSE,
+  function(.clauses     = list()  , # Existing WHERE clauses
+           .material    = NULL    , # NULL wont apply any filter
+           .salesorg    = NULL    , # NULL wont apply any filter      
+           .scope_matl  = FALSE   , # FALSE wont apply any filter
+           .scope_sorg  = FALSE   , # FALSE wont apply any filter
+           .cm_min      = NULL    , # NULL wont apply any filter
+           .cm_max      = NULL    , # NULL wont apply any filter
+           .step_low    = NULL    , # NULL wont apply any filter
+           .step_high   = NULL    , # NULL wont apply any filter
            .con         = NULL) {
 
     # Ensure the list has "TRUE" in case no other where clauses exist.
@@ -214,17 +326,150 @@ SCOPE_PLNT <-
       )
     }
     
-    # (d) Always apply CALMONTH filter
-    # where_clauses <- c(
-    #   where_clauses,
-    #   glue_sql("CALMONTH BETWEEN {cm_min} AND {cm_max}", .con = con)
-    # )
+    # If .cm_min or .cm_max is given, filter on CALMONTH
+    if (
+      (!is.null(.cm_min) && length(.cm_min) > 0) |
+      (!is.null(.cm_max) && length(.cm_max) > 0)
+    ){
+      
+      # If only .cm_max is given, set .cm_min to -Inf
+      if (is.null(.cm_min) || length(.cm_min) == 0) {
+        .cm_min <- '1000.01'
+      }
+      
+      # If only .cm_min is given, set .cm_max to Inf
+      if (is.null(.cm_max) || length(.cm_max) == 0) {
+        .cm_max <- '9999.12'
+      }
+
+      .clauses <- c(
+        .clauses,
+        glue::glue_sql(
+          "CALMONTH BETWEEN {.cm_min} AND {.cm_max}",  
+          .con = .con)
+      )
+    }
+    
+    # If .step_low or .step_high is given, filter on STEP
+    if (
+      (!is.null(.step_low)  && length(.step_low)  > 0) |
+      (!is.null(.step_high) && length(.step_high) > 0)
+    ){
+      
+      # If only .cm_max is given, set .cm_min to -Inf
+      if (is.null(.step_low) || length(.step_low) == 0) {
+        .step_low <- -999
+      }
+      
+      # If only .cm_min is given, set .cm_max to Inf
+      if (is.null(.step_high) || length(.step_high) == 0) {
+        .step_high <- 999
+      }
+      
+      .clauses <- c(
+        .clauses,
+        glue::glue_sql(
+          "STEP BETWEEN {.step_low} AND {.step_high}",  
+          .con = .con)
+      )
+    }
 
     # collapse list of where_clasues to 1 clause with AND
     where_clause <- paste(.clauses, collapse = " AND ")
     
   # Return the updated list
   return(where_clause)
+}
+
+#' Return Parquet Paths by VTYPE and FTYPE
+#'
+#' An internal helper function that uses a data.table lookup for valid vtype-ftype-path
+#' combinations. By default, it returns all available paths if no arguments are supplied.
+#'
+#' @param .vtype A character vector of valid vtype codes. Defaults to \code{c("010", "060")}.
+#' @param .ftype A numeric (or integer) vector of valid ftype codes. Defaults to \code{c(1,2)}.
+#'
+#' @return A character vector of parquet paths corresponding to all
+#'   \code{(.vtype, .ftype)} pairs in the lookup.
+#' @keywords internal
+.get_parquet_paths <- 
+  function(
+    .vtype = c("010", "060"), 
+    .ftype = c(1, 2)) {
+    
+  if(is.null(.vtype)){ .vtype <- c("010", "060")}  
+  if(is.null(.ftype)){ .ftype <- c(1    , 2    )}    
+
+  # Filter using data.table syntax
+  # %chin% is for character matching, %in% for numeric
+  result <- paths_parquet_files[
+    vtype %chin% .vtype &
+      ftype %in% .ftype,
+    path
+  ]
+  
+  # Return the matching paths
+  return(result)
+}
+
+
+.make_sql_query_dyn <- 
+  function(
+    .vtype       = NULL , # NULL will get both 010 and 060
+    .ftype       = NULL , # NULL will get all ftypes
+    .material    = NULL , # NULL wont apply any filter
+    .salesorg    = NULL , # NULL wont apply any filter      
+    .scope_matl  = FALSE, # FALSE wont apply any filter
+    .scope_sorg  = FALSE    # FALSE wont apply any filter
+    ) {
+    
+  # Get Centralized config
+  config <- .get_duckdb_parts(
+    .material    = .material,
+    .salesorg    = .salesorg,
+    .scope_matl  = .scope_matl,
+    .scope_sorg  = .scope_sorg
+  )  
+  
+  # Determine Files to read
+  file_list <- 
+    paste0(
+      "'", .get_parquet_paths(.vtype = .vtype, .ftype = .ftype), "'", 
+      collapse = ", "
+    )
+  
+  # Construct the query using glue_sql()
+  query <- glue::glue_sql("
+    {DBI::SQL(config$cte_scope_materials)}
+    
+    SELECT 
+      SALESORG,
+      PLANT,
+      MATERIAL,
+      date_diff(
+        'month',
+        -- Parse VERSMON as YYYYMM + '01' into a date
+        strptime(VERSMON  || '01', '%Y%m%d'),
+        -- Parse CALMONTH as YYYYMM + '01' into a date
+        strptime(CALMONTH || '01', '%Y%m%d')
+      ) AS STEP,
+      CALMONTH,
+      VERSMON,
+      FTYPE,
+      VTYPE,
+      BASE_UOM, 
+      SUM(DEMND_QTY) AS Q
+    FROM 
+      read_parquet([{DBI::SQL(file_list)}])
+    WHERE 
+      {DBI::SQL(config$where_clause)}
+    GROUP BY 
+      ALL
+    ORDER BY 
+      ALL
+  ", .con = config$duckdb_con)
+  
+  return(query)
 }
 
 # Master data Functions ####
@@ -235,43 +480,26 @@ fGet_MATL <-
     .n           = Inf   # number of materials to return
     ){
   
-    # ---- get duckdb connection ----
-    # Establish a connection to DuckDB
-    con <- .get_duckdb_conn()
-    
-    # ---- get c Table Expression ----
-    # (CTE) for scope materials
-    cte_scope_materials <- 
-      .get_cte_scope_materials(
-        .scope_matl = .scope_matl,
-        .con = con)
-    
-    # ---- build where clause ----
-    # based upon parameters given
-    where_clause <- 
-      .get_where_clause(
-        .material   = .material,
-        .salesorg   = NULL,
-        .scope_matl = .scope_matl,
-        .scope_sorg = NULL,
-        .con        = con
-      )
+    # Get Centralized config
+    config <- .get_duckdb_parts(
+      .material   = .material,
+      .scope_matl = .scope_matl
+    )
 
-    # ---- construct Query ----
+    # construct Query using glue package
     query <- 
       glue_sql("
-          {DBI::SQL(cte_scope_materials)}
+          {DBI::SQL(config$cte_scope_materials)}
           SELECT 
             *
           FROM 
             read_parquet({`FN_MATL`})
                   WHERE 
-          {DBI::SQL(where_clause)} 
-        ", .con = con)
+          {DBI::SQL(config$where_clause)} 
+        ", .con = config$duckdb_con)
     
-    # ---- fetch results ----
-    # return .n records as data.table 
-    dbGetQuery(con, query, n = .n) %>%
+    # fetch .n results and return as data.table 
+    dbGetQuery(config$duckdb_con, query, n = .n) %>%
       setDT()
     
   }
@@ -285,42 +513,28 @@ fGet_MATS <-
     .n           = Inf   # number of materials to return
   ){
     
-    # ---- get duckdb connection ----
-    # Establish a connection to DuckDB
-    con <- .get_duckdb_conn()
+    # Get Centralized config
+    config <- .get_duckdb_parts(
+      .material    = .material,
+      .salesorg    = .salesorg,
+      .scope_matl  = .scope_matl,
+      .scope_sorg  = .scope_sorg
+    )
     
-    # ---- get c Table Expression ----
-    # (CTE) for scope materials
-    cte_scope_materials <- 
-      .get_cte_scope_materials(
-        .scope_matl = .scope_matl,
-        .con = con)
-    
-    # ---- build where clause ----
-    # based upon parameters given
-    where_clause <- 
-      .get_where_clause(
-        .material   = .material,
-        .salesorg   = .salesorg,
-        .scope_matl = .scope_matl,
-        .scope_sorg = .scope_sorg,
-        .con        = con
-      )
-    
-    # ---- construct Query ----    
+    # construct Query using glue package 
     query <- 
       glue_sql("
-          {DBI::SQL(cte_scope_materials)}
+          {DBI::SQL(config$cte_scope_materials)}
           SELECT 
             *
           FROM 
             read_parquet({`FN_MATS`})
           WHERE 
-            {DBI::SQL(where_clause)}
-        ", .con = con)
+            {DBI::SQL(config$where_clause)}
+        ", .con = config$duckdb_con)
     
-    # Fetch results as a data.table
-    dbGetQuery(con, query, n = .n) %>%
+    # fetch .n results and return as data.table 
+    dbGetQuery(config$duckdb_con, query, n = .n) %>%
       setDT()
     
   }
@@ -332,250 +546,166 @@ fGet_MATP <-
     .n           = Inf   # number of materials to return
   ){
     
-    # ---- get duckdb connection ----
-    # Establish a connection to DuckDB
-    con <- .get_duckdb_conn()
+    # Get Centralized config
+    config <- .get_duckdb_parts(
+      .material   = .material,
+      .scope_matl = .scope_matl
+    )
     
-    # ---- get c Table Expression ----
-    # (CTE) for scope materials
-    cte_scope_materials <- 
-      .get_cte_scope_materials(
-        .scope_matl = .scope_matl,
-        .con = con)
-    
-    # ---- build where clause ----
-    # based upon parameters given
-    where_clause <- 
-      .get_where_clause(
-        .material   = .material,
-        .salesorg   = NULL,
-        .scope_matl = .scope_matl,
-        .scope_sorg = NULL,
-        .con        = con
-      )
-    
-    # ---- construct Query ----  
+    # construct Query using glue package
     query <- 
       glue_sql("
-          {DBI::SQL(cte_scope_materials)}
+          {DBI::SQL(config$cte_scope_materials)}
           SELECT 
             *
           FROM 
             read_parquet({`FN_MATP`})
           WHERE 
-            {DBI::SQL(where_clause)}
-        ", .con = con)
+            {DBI::SQL(config$where_clause)}
+        ", .con = config$duckdb_con)
     
-    # Fetch results as a data.table
-    dbGetQuery(con, query, n = .n) %>%
+    # fetch .n results and return as data.table 
+    dbGetQuery(config$duckdb_con, query, n = .n) %>%
       setDT()
     
   }
 
 
-# Get DYN Actuals ####
+
+# Transaction Data Functions ####
+
+## DYN from Dynasys ####
 fGet_DYN_Actuals <- 
   function(
     .material    = NULL    , # Optional user-supplied material
     .salesorg    = NULL    , # Optional user-supplied salesorg
     .scope_matl  = TRUE    , # restrict to Pythia Scope
     .scope_sorg  = TRUE    , # restrict to Pythia Scope
-    .cm_min      = '202101', 
-    .cm_max      = '202512',
-    .step_low    = -Inf    , 
-    .step_high   = Inf     ,
+    .cm_min      = '202101', # no data available before this date
+    .cm_max      = '202512', # no data available after this date
+    .step_low    = -999    , # no data available before this step
+    .step_high   = 999     , # no data available before this step
     .n           = Inf       # number of materials to return
   ){
     
-    # ---- get duckdb connection ----
-    # Establish a connection to DuckDB
-    con <- .get_duckdb_conn()
-    
-    # ---- get c Table Expression ----
-    # (CTE) for scope materials
-    cte_scope_materials <- 
-      .get_cte_scope_materials(
-        .scope_matl = .scope_matl,
-        .con        = con)
-    
-    # ---- build where clause ----
-    # based upon parameters given
-    where_clause <- 
-      .get_where_clause(
-        .material   = .material,
-        .salesorg   = NULL,
-        .scope_matl = .scope_matl,
-        .scope_sorg = NULL,
-        .con        = con
-      )
-    
-    # ---- construct Query ----
-    query <- 
-      glue_sql("
-        {DBI::SQL(cte_scope_materials)}
-        SELECT 
-          SALESORG,
-          PLANT,
-          MATERIAL,
-          date_diff(
-            'month',
-            -- Parse VERSMON as YYYYMM + '01' into a date
-            strptime(VERSMON  || '01', '%Y%m%d'),
-            -- Parse CALMONTH as YYYYMM + '01' into a date
-            strptime(CALMONTH || '01', '%Y%m%d')
-          ) AS STEP,
-          CALMONTH,
-          VERSMON,
-          FTYPE,
-          VTYPE,
-          BASE_UOM, 
-          SUM(DEMND_QTY) AS Q
-        FROM 
-          read_parquet([{`FN_FRPR1`}, {`FN_FRPR3`}]) 
-        WHERE 
-          {DBI::SQL(where_clause)}
-        GROUP BY 
-          ALL
-        ORDER BY 
-          ALL
-      ", .con = con)
-    
-    dbGetQuery(con, query, n = .n) %>%
+    # construct Query
+    query <- .make_sql_query_dyn(
+      .vtype       = '010', 
+      .material    = .material,
+      .salesorg    = .salesorg,
+      .scope_matl  = .scope_matl,
+      .scope_sorg  = .scope_sorg
+    )
+
+    # fetch .n results and return as data.table 
+    dbGetQuery(.get_duckdb_conn(), query, n = .n) %>%
       setDT()
     
   }
 
-# Get DYN Forecast ####
+fGet_DYN <- 
+  function(
+    .vtype       = NULL    , # NULL will get all vtypes
+    .ftype       = NULL    , # NULL will get all ftypes
+    .material    = NULL    , # Optional user-supplied material
+    .salesorg    = NULL    , # Optional user-supplied salesorg
+    .scope_matl  = TRUE    , # restrict to Pythia Scope
+    .scope_sorg  = TRUE    , # restrict to Pythia Scope
+    .cm_min      = '202101', 
+    .cm_max      = '202506',
+    .step_low    = 1       , 
+    .step_high   = 36      ,
+    .n           = Inf       # number of materials to return
+  ){
+  
+    # construct Query
+    query <- .make_sql_query_dyn(
+      .vtype       = .vtype, 
+      .ftype       = .ftype,
+      .material    = .material,
+      .salesorg    = .salesorg,
+      .scope_matl  = .scope_matl,
+      .scope_sorg  = .scope_sorg
+    )
+    
+    # fetch .n results and return as data.table 
+    dbGetQuery(.get_duckdb_conn(), query, n = .n) %>%
+      setDT()
+    
+  }
+
 fGet_DYN_Forecast <- 
   function(
     .material    = NULL    , # Optional user-supplied material
     .salesorg    = NULL    , # Optional user-supplied salesorg
     .scope_matl  = TRUE    , # restrict to Pythia Scope
     .scope_sorg  = TRUE    , # restrict to Pythia Scope
-    .cm_min      = '202401', 
-    .cm_max      = '202506',
-    .step_low    = 1       , 
-    .step_high   = 18      ,
+    .cm_min      = '202101', # no data available before this date
+    .cm_max      = '202506', # no data available after this date
+    .step_low    = -999    , # no data available before this step
+    .step_high   = 999     , # no data available before this step
     .n           = Inf       # number of materials to return
   ){
     
-    # ---- get duckdb connection ----
-    # Establish a connection to DuckDB
-    con <- .get_duckdb_conn()
+    # construct Query
+    query <- .make_sql_query_dyn(
+      .vtype       = '060', 
+      .material    = .material,
+      .salesorg    = .salesorg,
+      .scope_matl  = .scope_matl,
+      .scope_sorg  = .scope_sorg
+    )
     
-    # ---- get c Table Expression ----
-    # (CTE) for scope materials
-    cte_scope_materials <- 
-      .get_cte_scope_materials(
-        .scope_matl = .scope_matl,
-        .con        = con)
-    
-    # ---- build where clause ----
-    # based upon parameters given
-    where_clause <- 
-      .get_where_clause(
-        .material   = .material,
-        .salesorg   = NULL,
-        .scope_matl = .scope_matl,
-        .scope_sorg = NULL,
-        .con        = con
-      )
-    
-    # ---- construct Query ----    
-    query <- 
-      glue_sql("
-        {DBI::SQL(cte_scope_materials)}
-        SELECT 
-          SALESORG,
-          PLANT,
-          MATERIAL,
-          date_diff(
-           'month',
-           -- Parse VERSMON as YYYYMM + '01' into a date
-           strptime(VERSMON  || '01', '%Y%m%d'),
-           -- Parse CALMONTH as YYYYMM + '01' into a date
-           strptime(CALMONTH || '01', '%Y%m%d')
-          ) AS STEP,
-          CALMONTH,
-          VERSMON,
-          FTYPE,
-          VTYPE,
-          BASE_UOM, 
-          SUM(DEMND_QTY) AS Q
-        FROM 
-          read_parquet([{`FN_FRPR2`}, {`FN_FRPR4`}]) 
-        WHERE 
-          {DBI::SQL(where_clause)}
-        GROUP BY 
-          ALL
-        ORDER BY 
-          ALL
-      ", .con = con)
-    
-    dbGetQuery(con, query, n = .n) %>%
+    # fetch .n results and return as data.table 
+    dbGetQuery(.get_duckdb_conn(), query, n = .n) %>%
       setDT()
     
   }
 
-# Get RTP Actuals ####
+## RTP to Dynasys  ####
 fGet_RTP_Actuals <- 
   function(
     .material    = NULL    , # Optional user-supplied material
     .salesorg    = NULL    , # Optional user-supplied salesorg
     .scope_matl  = TRUE    , # restrict to Pythia Scope
     .scope_sorg  = TRUE    , # restrict to Pythia Scope
-    .cm_min      = '202101', 
-    .cm_max      = '202512',
-    .step_low    = -Inf    , 
-    .step_high   = Inf     ,
+    .cm_min      = '202101', # no data available before this date
+    .cm_max      = '202506', # no data available after this date
+    .step_low    = -999    , # no data available before this step
+    .step_high   = 999     , # no data available before this step
     .n           = Inf       # number of materials to return
   ){
     
-    # ---- get duckdb connection ----
-    # Establish a connection to DuckDB
-    con <- .get_duckdb_conn()
+    # Get Centralized config
+    config <- .get_duckdb_parts(
+      .material   = .material,
+      .scope_matl = .scope_matl
+    )
     
-    # ---- get c Table Expression ----
-    # (CTE) for scope materials
-    cte_scope_materials <- 
-      .get_cte_scope_materials(
-        .scope_matl = .scope_matl,
-        .con        = con)
-    
-    # ---- build where clause ----
-    # based upon parameters given
-    where_clause <- 
-      .get_where_clause(
-        .material   = .material,
-        .salesorg   = NULL,
-        .scope_matl = .scope_matl,
-        .scope_sorg = NULL,
-        .con        = con
-      )
-    
-    # ---- construct Query ----    
+    # construct Query  
     query <- 
       glue_sql("
-        {DBI::SQL(cte_scope_materials)}
+        {DBI::SQL(config$cte_scope_materials)}
+        
         SELECT 
           SALESORG,
           PLANT,
           MATERIAL,
+          0 AS STEP,
           CALMONTH,
-          0 AS FTYPE,
-        --  BASE_UOM, 
           sum(SLS_QT_SO + SLS_QT_FOC) as Q
         FROM 
-          read_parquet([{`FN_ISLS`}]) 
+          read_parquet([{`FN_IRTP`}]) 
         WHERE 
-          {DBI::SQL(where_clause)}
+          {DBI::SQL(config$where_clause)}
         GROUP BY 
           ALL
         ORDER BY 
           ALL
-      ", .con = con)
+      ", .con = config$duckdb_con)
     
-    dbGetQuery(con, query, n = .n) %>%
+    # fetch .n results and return as data.table 
+    dbGetQuery(config$duckdb_con, query, n = .n) %>%
       setDT()
     
   }

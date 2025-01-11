@@ -72,6 +72,29 @@ if( file.exists(lsrc)){source(lsrc)}
 MATL <- fGet_MATL() # MARA/0MATERIAL
 MATS <- fGet_MATS() # MVKE/0MAT_SALES
 MATP <- fGet_MATP() # MARC/0MAT_PLANT
+
+
+MATL <- fGet_MATL(.scope_matl = TRUE)  # 2314
+MATL <- fGet_MATL(.scope_matl = FALSE) # 6009
+MATL <- fGet_MATL(.scope_matl = FALSE, .material = '10023') # MARA/0MATERIAL
+
+MATS <- fGet_MATS()                   # 2148
+MATS <- fGet_MATS(.scope_matl = TRUE) # 2148
+MATS <- fGet_MATS(.scope_matl = TRUE, .scope_sorg = TRUE)   # 2148
+MATS <- fGet_MATS(.scope_matl = TRUE, .scope_sorg = FALSE)  # 3351
+MATS <- fGet_MATS(.scope_matl = FALSE, .scope_sorg = TRUE)  # 3178
+MATS <- fGet_MATS(.scope_matl = FALSE, .scope_sorg = FALSE) # 7943
+MATS <- fGet_MATS(.scope_matl = FALSE, .scope_sorg = FALSE) # 7943
+MATS <- fGet_MATS(.scope_matl = FALSE, .scope_sorg = FALSE, 
+                  .material = '10023') # 2
+MATS <- fGet_MATS(.scope_matl = FALSE, .scope_sorg = FALSE, 
+                  .material = '10023', .salesorg   = 'FR30') # 1
+
+MATP <- fGet_MATP()                    # 3286
+MATP <- fGet_MATP(.scope_matl = TRUE)  # 3286
+MATP <- fGet_MATP(.scope_matl = FALSE) # 8065
+MATP <- fGet_MATP(.scope_matl = FALSE, .material = '10023') # 2
+
 ```
 
 
@@ -83,35 +106,46 @@ MATP <- fGet_MATP() # MARC/0MAT_PLANT
 #| label: 'Get DYN data from SDSFRPRx '
 #| eval:   true
 
-ACTL_DYN <- 
-  fGet_DYN_Actuals(
-    .material    = NULL    , # Optional user-supplied material
-    .salesorg    = NULL    , # Optional user-supplied salesorg
-    .scope_matl  = TRUE    , # restrict to Pythia Scope
-    .scope_sorg  = TRUE    , # restrict to Pythia Scope
-    .cm_min      = '202101', 
-    .cm_max      = '202512',
-    .step_low    = -Inf    , 
-    .step_high   = Inf     ,
-    .n           = Inf  
-  )
-
-ACTL_RTP <- 
+ACTL_RTP <-                    # 59
   fGet_RTP_Actuals(
-    .material    = '10023' , # Optional user-supplied material
-    .salesorg    = NULL    , # Optional user-supplied salesorg
-    .scope_matl  = TRUE    , # restrict to Pythia Scope
-    .scope_sorg  = TRUE    , # restrict to Pythia Scope
-    .cm_min      = '202101', 
-    .cm_max      = '202512',
-    .step_low    = -Inf    , 
-    .step_high   = Inf     ,
+    .material    = '10023'   , # Optional user-supplied material
+    .salesorg    = 'FR30'    , # Optional user-supplied salesorg
+    .scope_matl  = TRUE      , # restrict to Pythia Scope
+    .scope_sorg  = TRUE      , # restrict to Pythia Scope
+    .cm_min      = '202101'  , 
+    .cm_max      = '202512'  ,
+    .step_low    = NULL      , 
+    .step_high   = NULL      ,
     .n           = Inf  
   )
 
+ACTL_DYN <-                    # 95
+  fGet_DYN(
+    .material    = '10023'   , # Optional user-supplied material
+    .salesorg    = 'FR30'    , # Optional user-supplied salesorg
+    .scope_matl  = TRUE      , # restrict to Pythia Scope
+    .scope_sorg  = TRUE      , # restrict to Pythia Scope
+    .cm_min      = '202101'  , 
+    .cm_max      = '202512'  ,
+    .step_low    = NULL      , 
+    .step_high   = NULL      ,
+    .n           = Inf  
+  )
 
+ACTL_DYN <-                    # 95
+  fGet_DYN_Actuals(
+    .material    = '10023'   , # Optional user-supplied material
+    .salesorg    = 'FR30'    , # Optional user-supplied salesorg
+    .scope_matl  = TRUE      , # restrict to Pythia Scope
+    .scope_sorg  = TRUE      , # restrict to Pythia Scope
+    .cm_min      = '202101'  , 
+    .cm_max      = '202512'  ,
+    .step_low    = NULL      , 
+    .step_high   = NULL      ,
+    .n           = Inf  
+  )
 
-FCST_DYN <- 
+FCST_DYN <-                  # 1140
   fGet_DYN_Forecast(
     .material    = '10023' , # Optional user-supplied material
     .salesorg    = 'FR30'  , # Optional user-supplied salesorg

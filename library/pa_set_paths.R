@@ -8,7 +8,7 @@ PRTP <- file.path(PS02, SYS, "RTP")
 PSTK <- file.path(PS02, SYS, "STK")
 PDYN <- file.path(PS02, SYS, "DYN")
 
-# Material 
+# Master Data
 FN_MATL <- 
   file.path(PRTP, "MD_MATERIAL.parquet") %>% 
   normalizePath() 
@@ -25,37 +25,46 @@ FN_CUST <-
   file.path(PRTP, "MD_SOLD_TO_CUSTOMER.parquet") %>% 
   normalizePath() 
 
-# Sales
-FN_ISLS <- 
+# Transaction Data
+
+## Invoiced Sales for Dynasys Cloud RTP
+FN_IRTP <-                # pre-Demand review 
+  file.path(PRTP, paste0("DD_SALES_QTY_202*")) 
+
+## Invoiced Sales for Dynasys on-premise 2018
+FN_IIPM <-                # pre-Demand review 
   file.path(PRTP, paste0("DD_SALES_QTY_202*")) 
 
 # Stock
 FN_STCK <- 
   file.path(PSTK, paste0("IMP03SM1*")) 
 
+# from Dynasys
 
-# # [
-# #   'C:/PW/OneDrive/ET/pythia/dat/S2S/WPB/DYN/IB/SDSFRPR2.parquet', 
-# #   'C:/PW/OneDrive/ET/pythia/dat/S2S/WPB/DYN/IB/SDSFRPR4.parquet'
-# # ]
-# 
-# # Dynasys 2018
-# FN_FCST <- paste(
-#   'C:/PW/OneDrive/ET/pythia/dat/S2S/WPB/DYN/IB/SDSFRPR2.parquet',
-#   'C:/PW/OneDrive/ET/pythia/dat/S2S/WPB/DYN/IB/SDSFRPR4.parquet',
-#   sep = "', '"
-# )
+## Actuals
 
-  
-FN_FRPR1 <- 
-  file.path(PDYN, paste0("SDSFRPR1*.parquet")) 
+paths_parquet_files <- fread("
+   stype,vtype,ftype,path
+   DYN,010,1,SDSFRPR1*.parquet
+   DYN,010,2,SDSFRPR3*.parquet
+   DYN,060,1,SDSFRPR2*.parquet
+   DYN,060,2,SDSFRPR4*.parquet
+   ",
+  colClasses = list(character = "vtype"))  %>%    
+  .[, path := file.path(PDYN, path)]
 
-FN_FRPR2 <- 
-  file.path(PDYN, paste0("SDSFRPR2*.parquet"))
+FN_FRPR1 <-               # pre-Demand review 
+  paths_parquet_files[vtype == '010' & ftype == 1, path]
 
-FN_FRPR3 <- 
-  file.path(PDYN, paste0("SDSFRPR3*.parquet"))
+FN_FRPR3 <-               # pst-Demand review
+  paths_parquet_files[vtype == '010' & ftype == 2, path]
 
-FN_FRPR4 <- 
-  file.path(PDYN, paste0("SDSFRPR4*.parquet")) 
+## Forecasts
+
+FN_FRPR2 <-               # pre-Demand review
+  paths_parquet_files[vtype == '060' & ftype == 1, path]
+
+FN_FRPR4 <-               # pst-Demand review
+  paths_parquet_files[vtype == '060' & ftype == 2, path]
+
 

@@ -106,7 +106,7 @@ Transform .csv files in Bronze to .parquet in Silver
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "RTP"),
   output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^DD_SALES_QTY_202[45].*\\.csv$",   
+  file_pattern = "^DD_SALES_QTY_202[12345].*\\.csv$",   
   ohdest       = "DSCP_TRAN",
   verbose      = TRUE
 )
