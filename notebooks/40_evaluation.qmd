@@ -1,0 +1,237 @@
+---
+title   : EAISI - Pythia
+subtitle: EVALUATION
+author  : "F.J. Padt"
+date    : "`r format(Sys.time(), '%B %d, %Y')`"
+output  :
+  pdf_document:
+    df_print: paged
+    toc: yes
+    toc_depth: 1      
+editor_options:
+  chunk_output_type: console
+  markdown: 
+    wrap: 80  
+---
+
+\newpage
+
+![Logo](../images/logo.png)
+
+# Setup
+
+```{r}
+#| label: 'setup'
+#| eval:   true
+
+
+# knitr::opts_chunk$set(
+#   cache   = FALSE,
+#   echo    = TRUE,     # include R source code in the output  
+#   eval    = TRUE,
+#   message = FALSE,
+#   warning = FALSE,
+#   results = "markup",
+#   image   = TRUE,  
+#   include = TRUE      # include the chunk output in the output 
+# )
+
+# SID <- "WPB500"
+# SYS <- substr(SID, 1, 3)
+
+# public functions ---------------------------------------------------------
+invisible(source('library/KnitR_SetUp.R'))
+
+# setwd("C:/RW/EAISI-Pythia/notebooks")
+lsrc <- "notebooks/40_evaluation.R"  
+if( file.exists(lsrc)){source(lsrc)}
+
+# location for generated figures
+pimg <- file.path('.', 'fig')
+
+MAN <-  FALSE
+VAR <- 'EPA'
+# MAT <- MATN1('10023')
+```
+
+# Forecast Accuracy
+
+```{r}
+#| label: 'display sales'
+#| eval: false
+
+
+ggplot(ACT, aes(x = CALMONTH, y = ACT)) +
+  geom_col(colour = "white", fill = ET_CG) +
+  labs(
+    x = "Month",
+    y = "Quantity EA", 
+    title = paste("Sales of SKU:", RL0(MAT), "per month")
+    )                 +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r}
+#| label: 'violin plot of Forecast Accuracy'
+#| eval: true
+
+ACC <- .calc_accuracy(
+  tab = DYN, act_ftype = 1, fct_ftype = 2)
+
+DT <- ACC[get(VAR) >0,.(STEP, ACC = get(VAR))]
+
+# Violin plot: STEP on x-axis (treat as discrete), ACC on y-axis
+ggplot(DT, aes(x = factor(STEP), y = ACC)) +
+  # Violin layer to show the distribution
+  geom_violin(
+    trim           = TRUE, 
+    draw_quantiles = c(0.25, 0.5, 0.75),
+    color          = ET_FG
+    ) +
+  geom_jitter(
+    height = 0, 
+    width  = 0.15, 
+    color  = ET_LG,
+    size   = 0.2,
+    alpha  = 0.3
+    ) +
+  # Optional: a summary point for the mean on each violin
+  stat_summary(
+    fun   = mean, 
+    geom  = "point", 
+    shape = 23,   # diamond shape
+    size  = 3, 
+    fill  = ET_CG, 
+    color = ET_CG
+  ) +
+  labs(
+    x     = "Step",
+    y     = "Ecotone Accuracy",
+    title = glue("Distribution of Forecast Accuracy ({`VAR`}) by Step")
+  ) +
+  coord_cartesian(ylim = c(40, 100))
+
+```
+
+```{r}
+#| label:  'SC-113B for M-1, M-2, M-3'
+#| eval:   true
+
+dtFA_melt  <- 
+  copy(ACC[STEP <4])                   %>%
+  melt.data.table(
+    measure.vars  = c("APA", "EPA"),
+    variable.name = "PE_TYPE",
+    value.name    = "PE"
+    )                                  %T>% 
+  setorder(CALMONTH)
+
+ggplot(
+  data = dtFA_melt[
+    CALMONTH >='202401' & 
+      MATERIAL == MAT   &  
+      PE_TYPE == VAR], 
+  aes(
+    x     = CALMONTH, 
+    y     = PE, 
+    group = factor(STEP), 
+    color = factor(STEP)
+    )
+  ) +
+  geom_line(linewidth = 2) +
+  geom_point() +
+  geom_label(aes(label = round(PE, 1))) +
+  scale_color_manual(
+    labels = c("M-1", "M-2", "M-3"),
+    values = c(ET_CG, ET_FG, ET_LG)) +
+  labs(
+    x     = "Year Month",
+    y     = "Accuracy Academic",
+    title = glue("SC-113B {RL0(`MAT`)} - Forecast Accuracy ({`VAR`}) M-1, M-2, M-3"),
+    color = "Forecast Period"
+  ) +
+    guides(color = guide_legend(
+      override.aes = 
+        list(
+          fill  = c(ET_CG, ET_FG, ET_LG), 
+          color = c(ET_CG, ET_FG, ET_LG)
+        )
+    )
+    ) +
+  coord_cartesian(ylim = c(0, 100)) +
+  theme_minimal()
+  
+if(MAN){
+  if(rstudioapi::showQuestion(
+    title   = "SAC",
+    message = "Do you want to open SC-113B?"
+  ) == TRUE) {
+    browseURL(url = "https://wessanen.eu10.sapanalytics.cloud/link/SC113B")
+  }
+}
+```
+
+```{r}
+#| label:  'APE vs ECO'
+#| eval:   false
+
+ggplot(
+  data = ACC[STEP == 1], 
+  aes(x = APA, y = EPA)
+) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1) +
+  # geom_label(aes(label = round(PE, 1))) +
+  # facet_wrap(~ PLANT + MATERIAL, scales = "free_y") +
+  # scale_color_manual(values=c(ET_CG, ET_FG))+
+  theme_minimal()
+```
+
+```{r}
+library(ggplot2)
+library(ggrepel)
+
+ggplot(
+  data = dtFA_melt[
+    CALMONTH >= '202401' & 
+      MATERIAL == MAT &  
+      PE_TYPE == VAR
+  ], 
+  aes(
+    x     = CALMONTH, 
+    y     = PE, 
+    group = factor(STEP), 
+    color = factor(STEP)
+  )
+) +
+  geom_line(linewidth = 2) +
+  geom_point() +
+  # Instead of geom_label(), use geom_label_repel()
+  geom_label_repel(aes(label = round(PE, 1)),
+                   # optional parameters to tweak repel behavior
+                   force         = 2,
+                   max.overlaps  = Inf,
+                   box.padding   = 0.3,
+                   point.padding = 0.3
+  ) +
+  scale_color_manual(
+    labels = c("M-1", "M-2", "M-3"),
+    values = c(ET_CG, ET_FG, ET_LG)
+  ) +
+  labs(
+    x     = "Year Month",
+    y     = "Accuracy Academic",
+    title = glue("SC-113B {RL0(`MAT`)} - Forecast Accuracy ({`VAR`}) M-1, M-2, M-3"),
+    color = "Forecast Period"
+  ) +
+  guides(color = guide_legend(
+    override.aes = list(
+      fill  = c(ET_CG, ET_FG, ET_LG), 
+      color = c(ET_CG, ET_FG, ET_LG)
+    )
+  )) +
+  coord_cartesian(ylim = c(25, 100)) +
+  theme_minimal()
+
+```
+

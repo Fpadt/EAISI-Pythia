@@ -817,7 +817,11 @@ fOpen_as_xlsx <-
     }
     
     FFN <- file.path(pPath, pFN)
-    write.xlsx(x = pDT, file = FFN, asTable = pasTable, tableStyle = "TableStyleMedium4") 
+    openxlsx::write.xlsx(
+      x          = pDT, 
+      file       = FFN, 
+      asTable    = pasTable, 
+      tableStyle = "TableStyleMedium4") 
     openXL(FFN)
     
   }

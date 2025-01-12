@@ -103,60 +103,25 @@ MATP <- fGet_MATP(.scope_matl = FALSE, .material = '10023') # 2
 ## Sales 
 
 ```{r}
-#| label: 'Get DYN data from SDSFRPRx '
+#| label: 'Get DYN data'
 #| eval:   true
 
-ACTL_RTP <-                    # 59
-  fGet_RTP_Actuals(
-    .material    = '10023'   , # Optional user-supplied material
-    .salesorg    = 'FR30'    , # Optional user-supplied salesorg
-    .scope_matl  = TRUE      , # restrict to Pythia Scope
-    .scope_sorg  = TRUE      , # restrict to Pythia Scope
-    .cm_min      = '202101'  , 
-    .cm_max      = '202512'  ,
-    .step_low    = NULL      , 
-    .step_high   = NULL      ,
-    .n           = Inf  
-  )
-
-ACTL_DYN <-                    # 95
+DYN <-                    # 95
   fGet_DYN(
-    .material    = '10023'   , # Optional user-supplied material
-    .salesorg    = 'FR30'    , # Optional user-supplied salesorg
-    .scope_matl  = TRUE      , # restrict to Pythia Scope
-    .scope_sorg  = TRUE      , # restrict to Pythia Scope
-    .cm_min      = '202101'  , 
-    .cm_max      = '202512'  ,
-    .step_low    = NULL      , 
-    .step_high   = NULL      ,
+    .vtype       = c('010', '010'), # 010 = Actuals, 060 = Forecast
+    .ftype       = c(1, 1)        , # 1 = PreDR, 2 = PostDR 
+    .material    = 10023        , # Optional user-supplied material
+    .salesorg    = 'FR30'         , # Optional user-supplied salesorg
+    .scope_matl  = TRUE           , # restrict to Pythia Scope
+    .scope_sorg  = TRUE           , # restrict to Pythia Scope
+    .cm_min      = '202101'       , # minimal Cal Month
+    .cm_max      = '202412'       , # maximal Cal Month
+    .step_min    = 1           , # minimal forecast step ahead
+    .step_max    = 18           , # maximal forecast step ahead
+    .lagg_min    = NULL           , # minimal diff. between VERSMON & MONTH
+    .lagg_max    = NULL           , # maximal diff. between VERSMON & MONTH  
     .n           = Inf  
   )
-
-ACTL_DYN <-                    # 95
-  fGet_DYN_Actuals(
-    .material    = '10023'   , # Optional user-supplied material
-    .salesorg    = 'FR30'    , # Optional user-supplied salesorg
-    .scope_matl  = TRUE      , # restrict to Pythia Scope
-    .scope_sorg  = TRUE      , # restrict to Pythia Scope
-    .cm_min      = '202101'  , 
-    .cm_max      = '202512'  ,
-    .step_low    = NULL      , 
-    .step_high   = NULL      ,
-    .n           = Inf  
-  )
-
-FCST_DYN <-                  # 1140
-  fGet_DYN_Forecast(
-    .material    = '10023' , # Optional user-supplied material
-    .salesorg    = 'FR30'  , # Optional user-supplied salesorg
-    .scope_matl  = TRUE    , # restrict to Pythia Scope
-    .scope_sorg  = TRUE    , # restrict to Pythia Scope
-    .cm_min      = '202401', 
-    .cm_max      = '202506',
-    .step_low    = 1       , 
-    .step_high   = 3       ,
-    .n           = Inf          
-  ) 
 
 # ACTC <- 
 #   dcast.data.table(
@@ -171,6 +136,7 @@ FCST_DYN <-                  # 1140
 ```
 
 
+# Analysis
 
 ## PH1
 

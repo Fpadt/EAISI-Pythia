@@ -1131,7 +1131,9 @@ B4_MATERIAL_P <-
 ```
 
 
-# Forecast Accuracy
+# Evaluation
+
+## Forecast Accuracy
 
 ```{r}
 #| label: 'replicate_SC113B'
@@ -1232,7 +1234,6 @@ ggplot(ACTS, aes(x = CALMONTH, y = ACTS)) +
 
 
 ```
-
 
 ```{r}
 #| label:  'APE vs ECO'

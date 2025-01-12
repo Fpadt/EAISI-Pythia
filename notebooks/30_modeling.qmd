@@ -1,6 +1,6 @@
 ---
 title   : EAISI - Pythia
-subtitle: mODELING
+subtitle: MODELING
 author  : "F.J. Padt"
 date    : "`r format(Sys.time(), '%B %d, %Y')`"
 output  :
@@ -57,8 +57,6 @@ if( file.exists(lsrc)){source(lsrc)}
 pimg <- file.path('.', 'fig')
 
 ```
-
-
 
 ## Graph Functions
 
@@ -344,5 +342,74 @@ tsMat_fc |>
   guides(colour = guide_legend(title = "Forecast"))
 
 augment(tsMat_fit)
+
+```
+
+# Modeling
+
+### 10023
+
+```{r}
+#| label: 'SLS_10023'
+#| eval: true
+
+ts10023 <- 
+  copy(DYN)                                                %>%
+  .[, .(MATERIAL, PLANT,  CALMONTH, ACT = Q)]              %>%
+  .[, CALMONTH:= yearmonth(CALMONTH, format = "%Y%m")]     %>% 
+  as_tsibble(
+    key   = c(MATERIAL, PLANT), 
+    index = CALMONTH
+  ) 
+
+train <- 
+  ts10023 %>%
+  filter(CALMONTH < yearmonth("202401", format("%Y%m"))) 
+
+fit <- 
+  train %>% 
+  model(
+    `Mean`           = MEAN(ACT)          ,
+    `Naïve`          = NAIVE(ACT)         ,
+    `Seasonal naïve` = SNAIVE(ACT)        ,
+    `RW`             = RW(ACT ~ drift())  ,
+    `ETS`            = ETS(ACT)           ,
+    `Trend Model`    = TSLM(ACT ~ trend())
+  )
+
+# gg_tsresiduals() must be used with a mable containing only one model
+# fit %>% gg_tsresiduals()
+
+FCT10023 <- 
+  fit                      %>%
+  forecast(h = "1 months") 
+
+FCT10023 %>%
+  autoplot(ts10023, level = NULL)
+
+accuracy(FCT10023, ts10023)  
+```
+
+
+```{r}
+#| label: 'cross validation'
+#| eval: true
+
+train_tr <- 
+  train  %>%
+  stretch_tsibble(.init = 24, .step = 1)
+
+acc <- 
+  train_tr           %>%
+  model(
+    `Mean`           = MEAN(ACT)          ,
+    `Naïve`          = NAIVE(ACT)         ,
+    `Seasonal naïve` = SNAIVE(ACT)        ,
+    `RW`             = RW(ACT ~ drift())  ,
+    `ETS`            = ETS(ACT)           ,
+    `Trend Model`    = TSLM(ACT ~ trend())
+  ) %>%
+  forecast(h = 18)    %>%
+  accuracy(ts10023)
 
 ```

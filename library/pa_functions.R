@@ -9,6 +9,13 @@
 #   )
 #   ]
 
+CM_MIN   <- '2021.01'
+CM_MAX   <- '2025.06'
+STEP_MIN <- 1
+STEP_MAX <- 24
+LAGG_MIN <- -999
+LAGG_MAX <- 999
+
 # duckdb environment
 .duckdb_env <- new.env(parent = emptyenv())
 
@@ -90,8 +97,8 @@ fDescribe_Parquet <-
 #'   '202101'.
 #' @param .cm_max Character. Maximum YYYYMM to apply in date-based filtering. Defaults to
 #'   '202512'.
-#' @param .step_low Numeric. Minimum step filter. Defaults to -999.
-#' @param .step_high Numeric. Maximum step filter. Defaults to 999.
+#' @param .step_min Numeric. Minimum step filter. Defaults to -999.
+#' @param .step_max Numeric. Maximum step filter. Defaults to 999.
 #' @param .n Numeric or Inf. The maximum number of materials to return (if that logic
 #'   is implemented in the underlying queries). Defaults to \code{Inf}.
 #'
@@ -116,8 +123,11 @@ fDescribe_Parquet <-
     .scope_sorg  = FALSE,
     .cm_min      = NULL,
     .cm_max      = NULL,
-    .step_low    = NULL,
-    .step_high   = NULL
+    .step_min    = NULL,
+    .step_max    = NULL,
+    .lagg_min    = NULL, 
+    .lagg_max    = NULL
+    
 ) {
   
   # -- 1) Get or create a DuckDB connection --
@@ -137,8 +147,10 @@ fDescribe_Parquet <-
     .scope_sorg = .scope_sorg,
     .cm_min     = .cm_min,
     .cm_max     = .cm_max,
-    .step_low   = .step_low,
-    .step_high  = .step_high,
+    .step_min   = .step_min,
+    .step_max   = .step_max,
+    .lagg_min   = .lagg_min, 
+    .lagg_max   = .lagg_max,    
     .con        = con
   )
   
@@ -265,18 +277,20 @@ fDescribe_Parquet <-
 #' my_clauses
 #'
 #' @keywords internal
-.get_where_clause <- 
-  function(.clauses     = list()  , # Existing WHERE clauses
-           .material    = NULL    , # NULL wont apply any filter
-           .salesorg    = NULL    , # NULL wont apply any filter      
-           .scope_matl  = FALSE   , # FALSE wont apply any filter
-           .scope_sorg  = FALSE   , # FALSE wont apply any filter
-           .cm_min      = NULL    , # NULL wont apply any filter
-           .cm_max      = NULL    , # NULL wont apply any filter
-           .step_low    = NULL    , # NULL wont apply any filter
-           .step_high   = NULL    , # NULL wont apply any filter
-           .con         = NULL) {
-
+.get_where_clause <- function(
+    .clauses     = list()  , # Existing WHERE clauses
+    .material    = NULL    , # NULL wont apply any filter
+    .salesorg    = NULL    , # NULL wont apply any filter      
+    .scope_matl  = FALSE   , # FALSE wont apply any filter
+    .scope_sorg  = FALSE   , # FALSE wont apply any filter
+    .cm_min      = NULL    , # NULL wont apply any filter
+    .cm_max      = NULL    , # NULL wont apply any filter
+    .step_min    = NULL    , # NULL wont apply any filter
+    .step_max    = NULL    , # NULL wont apply any filter
+    .lagg_min    = NULL    , # NULL wont apply any filter
+    .lagg_max    = NULL    , # NULL wont apply any filter
+    .con         = NULL) {
+  
     # Ensure the list has "TRUE" in case no other where clauses exist.
     if (!any(
           vapply(.clauses, function(x) identical(x, "TRUE"), logical(1))
@@ -326,22 +340,19 @@ fDescribe_Parquet <-
       )
     }
     
-    # If .cm_min or .cm_max is given, filter on CALMONTH
-    if (
-      (!is.null(.cm_min) && length(.cm_min) > 0) |
-      (!is.null(.cm_max) && length(.cm_max) > 0)
-    ){
-      
-      # If only .cm_max is given, set .cm_min to -Inf
-      if (is.null(.cm_min) || length(.cm_min) == 0) {
-        .cm_min <- '1000.01'
-      }
-      
-      # If only .cm_min is given, set .cm_max to Inf
-      if (is.null(.cm_max) || length(.cm_max) == 0) {
-        .cm_max <- '9999.12'
-      }
+    # If .cm_min or .cm_max are given, filter on CALMONTH
+    if(!is.null(.cm_min) || !is.null(.cm_max)){
 
+      # If only .cm_max is given, set .cm_min 
+      if (is.null(.cm_min) || length(.cm_min) == 0) {
+        .cm_min <- CM_MIN
+      }
+      
+      # If only .cm_min is given, set .cm_max 
+      if (is.null(.cm_max) || length(.cm_max) == 0) {
+        .cm_max <- CM_MAX
+      }
+      
       .clauses <- c(
         .clauses,
         glue::glue_sql(
@@ -350,26 +361,41 @@ fDescribe_Parquet <-
       )
     }
     
-    # If .step_low or .step_high is given, filter on STEP
-    if (
-      (!is.null(.step_low)  && length(.step_low)  > 0) |
-      (!is.null(.step_high) && length(.step_high) > 0)
-    ){
-      
-      # If only .cm_max is given, set .cm_min to -Inf
-      if (is.null(.step_low) || length(.step_low) == 0) {
-        .step_low <- -999
+    # If  one of the variables is not NULL add a filter
+    if(!all(
+      vapply(
+        list(.step_min, .step_min, .lagg_min, .lagg_max), 
+        is.null, logical(1)))){
+    
+      # set .step_min if NULL
+      if (is.null(.step_min) || length(.step_min) == 0) {
+        .step_min <- STEP_MIN
+      }
+    
+      # set .step_max if NULL
+      if (is.null(.step_max) || length(.step_max) == 0) {
+        .step_max <- STEP_MAX
       }
       
-      # If only .cm_min is given, set .cm_max to Inf
-      if (is.null(.step_high) || length(.step_high) == 0) {
-        .step_high <- 999
+      # set .lagg_min if NULL
+      if (is.null(.lagg_min) || length(.lagg_min) == 0) {
+        .lagg_min <- LAGG_MIN
+      }
+      
+      # set .lagg_max if NULL
+      if (is.null(.lagg_max) || length(.lagg_max) == 0) {
+        .lagg_max <- LAGG_MAX
       }
       
       .clauses <- c(
         .clauses,
         glue::glue_sql(
-          "STEP BETWEEN {.step_low} AND {.step_high}",  
+          "((VTYPE = '060' AND 
+            STEP BETWEEN {.step_min} AND {.step_max}
+           ) OR
+           (VTYPE = '010' AND 
+            STEP BETWEEN {.lagg_min} AND {.lagg_max}
+           ))",  
           .con = .con)
       )
     }
@@ -415,12 +441,18 @@ fDescribe_Parquet <-
 
 .make_sql_query_dyn <- 
   function(
-    .vtype       = NULL , # NULL will get both 010 and 060
-    .ftype       = NULL , # NULL will get all ftypes
-    .material    = NULL , # NULL wont apply any filter
-    .salesorg    = NULL , # NULL wont apply any filter      
-    .scope_matl  = FALSE, # FALSE wont apply any filter
-    .scope_sorg  = FALSE    # FALSE wont apply any filter
+    .vtype       = NULL    , # NULL will get both 010 and 060
+    .ftype       = NULL    , # NULL will get all ftypes
+    .material    = NULL    , # NULL wont apply any filter
+    .salesorg    = NULL    , # NULL wont apply any filter      
+    .scope_matl  = FALSE   , # FALSE wont apply any filter
+    .scope_sorg  = FALSE   ,  # FALSE wont apply any filter
+    .cm_min      = '202101', # minimal Cal Month
+    .cm_max      = '202506', # maximal Cal Month
+    .step_min    = NULL    , # minimal forecast step ahead
+    .step_max    = NULL    , # maximal forecast step ahead
+    .lagg_min    = NULL    , # minimal diff. between VERSMON & MONTH
+    .lagg_max    = NULL      # maximal diff. between VERSMON & MONTH      
     ) {
     
   # Get Centralized config
@@ -428,7 +460,13 @@ fDescribe_Parquet <-
     .material    = .material,
     .salesorg    = .salesorg,
     .scope_matl  = .scope_matl,
-    .scope_sorg  = .scope_sorg
+    .scope_sorg  = .scope_sorg,
+    .cm_min      = .cm_min,
+    .cm_max      = .cm_max,
+    .step_min    = .step_min,
+    .step_max    = .step_max,
+    .lagg_min    = .lagg_min,
+    .lagg_max    = .lagg_max 
   )  
   
   # Determine Files to read
@@ -575,33 +613,33 @@ fGet_MATP <-
 # Transaction Data Functions ####
 
 ## DYN from Dynasys ####
-fGet_DYN_Actuals <- 
-  function(
-    .material    = NULL    , # Optional user-supplied material
-    .salesorg    = NULL    , # Optional user-supplied salesorg
-    .scope_matl  = TRUE    , # restrict to Pythia Scope
-    .scope_sorg  = TRUE    , # restrict to Pythia Scope
-    .cm_min      = '202101', # no data available before this date
-    .cm_max      = '202512', # no data available after this date
-    .step_low    = -999    , # no data available before this step
-    .step_high   = 999     , # no data available before this step
-    .n           = Inf       # number of materials to return
-  ){
-    
-    # construct Query
-    query <- .make_sql_query_dyn(
-      .vtype       = '010', 
-      .material    = .material,
-      .salesorg    = .salesorg,
-      .scope_matl  = .scope_matl,
-      .scope_sorg  = .scope_sorg
-    )
-
-    # fetch .n results and return as data.table 
-    dbGetQuery(.get_duckdb_conn(), query, n = .n) %>%
-      setDT()
-    
-  }
+# fGet_DYN_Actuals <- 
+#   function(
+#     .material    = NULL    , # Optional user-supplied material
+#     .salesorg    = NULL    , # Optional user-supplied salesorg
+#     .scope_matl  = TRUE    , # restrict to Pythia Scope
+#     .scope_sorg  = TRUE    , # restrict to Pythia Scope
+#     .cm_min      = '202101', # no data available before this date
+#     .cm_max      = '202512', # no data available after this date
+#     .step_min    = -999    , # no data available before this step
+#     .step_max   = 999     , # no data available before this step
+#     .n           = Inf       # number of materials to return
+#   ){
+#     
+#     # construct Query
+#     query <- .make_sql_query_dyn(
+#       .vtype       = '010', 
+#       .material    = .material,
+#       .salesorg    = .salesorg,
+#       .scope_matl  = .scope_matl,
+#       .scope_sorg  = .scope_sorg
+#     )
+# 
+#     # fetch .n results and return as data.table 
+#     dbGetQuery(.get_duckdb_conn(), query, n = .n) %>%
+#       setDT()
+#     
+#   }
 
 fGet_DYN <- 
   function(
@@ -611,10 +649,12 @@ fGet_DYN <-
     .salesorg    = NULL    , # Optional user-supplied salesorg
     .scope_matl  = TRUE    , # restrict to Pythia Scope
     .scope_sorg  = TRUE    , # restrict to Pythia Scope
-    .cm_min      = '202101', 
-    .cm_max      = '202506',
-    .step_low    = 1       , 
-    .step_high   = 36      ,
+    .cm_min      = NULL    , # minimal Cal Month
+    .cm_max      = NULL    , # maximal Cal Month
+    .step_min    = NULL    , # minimal forecast step ahead
+    .step_max    = NULL    , # maximal forecast step ahead
+    .lagg_min    = NULL    , # minimal diff. between VERSMON & MONTH
+    .lagg_max    = NULL    , # maximal diff. between VERSMON & MONTH      
     .n           = Inf       # number of materials to return
   ){
   
@@ -625,7 +665,13 @@ fGet_DYN <-
       .material    = .material,
       .salesorg    = .salesorg,
       .scope_matl  = .scope_matl,
-      .scope_sorg  = .scope_sorg
+      .scope_sorg  = .scope_sorg,
+      .cm_min      = .cm_min,
+      .cm_max      = .cm_max,
+      .step_min    = .step_min,
+      .step_max    = .step_max,
+      .lagg_min    = .lagg_min,
+      .lagg_max    = .lagg_max    
     )
     
     # fetch .n results and return as data.table 
@@ -634,33 +680,33 @@ fGet_DYN <-
     
   }
 
-fGet_DYN_Forecast <- 
-  function(
-    .material    = NULL    , # Optional user-supplied material
-    .salesorg    = NULL    , # Optional user-supplied salesorg
-    .scope_matl  = TRUE    , # restrict to Pythia Scope
-    .scope_sorg  = TRUE    , # restrict to Pythia Scope
-    .cm_min      = '202101', # no data available before this date
-    .cm_max      = '202506', # no data available after this date
-    .step_low    = -999    , # no data available before this step
-    .step_high   = 999     , # no data available before this step
-    .n           = Inf       # number of materials to return
-  ){
-    
-    # construct Query
-    query <- .make_sql_query_dyn(
-      .vtype       = '060', 
-      .material    = .material,
-      .salesorg    = .salesorg,
-      .scope_matl  = .scope_matl,
-      .scope_sorg  = .scope_sorg
-    )
-    
-    # fetch .n results and return as data.table 
-    dbGetQuery(.get_duckdb_conn(), query, n = .n) %>%
-      setDT()
-    
-  }
+# fGet_DYN_Forecast <- 
+#   function(
+#     .material    = NULL    , # Optional user-supplied material
+#     .salesorg    = NULL    , # Optional user-supplied salesorg
+#     .scope_matl  = TRUE    , # restrict to Pythia Scope
+#     .scope_sorg  = TRUE    , # restrict to Pythia Scope
+#     .cm_min      = '202101', # no data available before this date
+#     .cm_max      = '202506', # no data available after this date
+#     .step_min    = -999    , # no data available before this step
+#     .step_max   = 999     , # no data available before this step
+#     .n           = Inf       # number of materials to return
+#   ){
+#     
+#     # construct Query
+#     query <- .make_sql_query_dyn(
+#       .vtype       = '060', 
+#       .material    = .material,
+#       .salesorg    = .salesorg,
+#       .scope_matl  = .scope_matl,
+#       .scope_sorg  = .scope_sorg
+#     )
+#     
+#     # fetch .n results and return as data.table 
+#     dbGetQuery(.get_duckdb_conn(), query, n = .n) %>%
+#       setDT()
+#     
+#   }
 
 ## RTP to Dynasys  ####
 fGet_RTP_Actuals <- 
@@ -671,8 +717,8 @@ fGet_RTP_Actuals <-
     .scope_sorg  = TRUE    , # restrict to Pythia Scope
     .cm_min      = '202101', # no data available before this date
     .cm_max      = '202506', # no data available after this date
-    .step_low    = -999    , # no data available before this step
-    .step_high   = 999     , # no data available before this step
+    .step_min    = -999    , # no data available before this step
+    .step_max   = 999     , # no data available before this step
     .n           = Inf       # number of materials to return
   ){
     
