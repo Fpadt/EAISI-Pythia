@@ -53,10 +53,1257 @@ use_condaenv("sapyr")
 
 # public functions ---------------------------------------------------------
 invisible(source('library/KnitR_SetUp.R'))
+source("C:/RW/ETRMK/00_RProj/00_Global/KnitR_SetUp.R")
 
 lsrc <- "notebooks/05_data_ingestion.R"  
 if( file.exists(lsrc)){source(lsrc)}
 
+# MASP
+## MATERIAL
+fltMATL_TYPE      <- c('HAWA', 'FERT', 'VOLL')
+
+## MAT_SALES
+fltVMSTA          <- c('SE', 'SQ', 'SK', 'SW', 'SA', 'SC', 'SF', 'SX', 'SY')
+
+## MAT_PLANT
+fltDISMM          <- c('ZC', 'ZD', 'ZG', 'ZH', 'ZI', 'ZJ', 'ZN', 'ZP')
+fltPERKZ          <- c('W') 
+fltMMSTA          <- c('PE', 'PN', 'PH', 'PX', 'PA', 'PZ')
+fltSTGY_GRP       <- c('Z1')
+
+# Customer
+fltACCNT_GRP      <- c('0001', 'CPD' , 'ZINC')
+
+```
+
+# Master Data
+
+## Material
+
+```{r}
+#| label: Additional Material Data
+#| eval: true
+
+# General Material Data #### 
+S4_MARA <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPE500",
+     pTable    = "MARA",
+     pOptions  = list(
+       paste0("MTART IN (", paste0("'", fltMATL_TYPE, "'", collapse = ", "), ")"),
+       "AND",
+       "SPART = '10'"
+     ),
+     pFields   = list(
+        # "MANDT"                    , # Client                                                        X
+        "MATNR"                    , # Material Number                                               X
+        # "ERSDA"                    , # Created On                                                    
+        # "CREATED_AT_TIME"          , # Time of Creation                                              
+        # "ERNAM"                    , # Name of Person Responsible for Creating the Object            
+        # "LAEDA"                    , # Date of Last Change                                           
+        # "AENAM"                    , # Name of Person Who Changed Object                             
+        # "VPSTA"                    , # Maintenance status of complete material                       
+        # "PSTAT"                    , # Maintenance status                                            
+        "LVORM"                    #, # Flag Material for Deletion at Client Level
+        # "MTART"                    , # Material Type                                                 
+        # "MBRSH"                    , # Industry                                                      
+        # "MATKL"                    , # Material Group                                                
+        # "BISMT"                    , # Old material number                                           
+        # "MEINS"                    , # Base Unit of Measure                                          
+        # "BSTME"                    , # Purchase Order Unit of Measure                                
+        # "ZEINR"                    , # Document number (without document management system)          
+        # "ZEIAR"                    , # Document type (without Document Management system)            
+        # "ZEIVR"                    , # Document version (without Document Management system)         
+        # "ZEIFO"                    , # Page Format of Document (without Document Management system)  
+        # "AESZN"                    , # Document change number (without document management system)   
+        # "BLATT"                    , # Page Number of document (without Document Management system)  
+        # "BLANZ"                    , # Number Of Sheets (without Document Management system)         
+        # "FERTH"                    , # Production/inspection memo                                    
+        # "FORMT"                    , # Page Format of Production Memo                                
+        # "GROES"                    , # Size/dimensions                                               
+        # "WRKST"                    , # Basic Material                                                
+        # "NORMT"                    , # Industry Standard Description (such as ANSI or ISO)           
+        # "LABOR"                    , # Laboratory/Design Office                                      
+        # "EKWSL"                    , # Purchasing Value Key                                          
+        # "BRGEW"                    , # Gross Weight                                                  
+        # "NTGEW"                    , # Net Weight                                                    
+        # "GEWEI"                    , # Unit of Weight                                                
+        # "VOLUM"                    , # Volume                                                        
+        # "VOLEH"                    , # Volume Unit                                                   
+        # "BEHVO"                    , # Container requirements                                        
+        # "RAUBE"                    , # Storage conditions                                            
+        # "TEMPB"                    , # Temperature conditions indicator                              
+        # "DISST"                    , # Low-Level Code                                                
+        # "TRAGR"                    , # Transportation Group                                          
+        # "STOFF"                    , # Hazardous material number                                     
+        # "SPART"                    , # Division                                                      
+        # "KUNNR"                    , # Competitor                                                    
+        # "EANNR"                    , # European Article Number (EAN) - obsolete!!!!!                 
+        # "WESCH"                    , # Quantity: Number of GR/GI slips to be printed                 
+        # "BWVOR"                    , # Procurement rule                                              
+        # "BWSCL"                    , # Source of Supply                                              
+        # "SAISO"                    , # Season Category                                               
+        # "ETIAR"                    , # Label type                                                    
+        # "ETIFO"                    , # Label form                                                    
+        # "ENTAR"                    , # Deactivated                                                   
+        # "EAN11"                    , # International Article Number (EAN/UPC)                        
+        # "NUMTP"                    , # Category of International Article Number (EAN)                
+        # "LAENG"                    , # Length                                                        
+        # "BREIT"                    , # Width                                                         
+        # "HOEHE"                    , # Height                                                        
+        # "MEABM"                    , # Unit of Dimension for Length/Width/Height                     
+        # "PRDHA"                    , # Product Hierarchy                                             
+        # "AEKLK"                    , # Stock Transfer Net Change Costing                             
+        # "CADKZ"                    , # CAD Indicator                                                 
+        # "QMPUR"                    , # QM in Procurement Is Active                                   
+        # "ERGEW"                    , # Allowed packaging weight                                      
+        # "ERGEI"                    , # Unit of weight (allowed packaging weight)                     
+        # "ERVOL"                    , # Allowed packaging volume                                      
+        # "ERVOE"                    , # Volume unit (allowed packaging volume)                        
+        # "GEWTO"                    , # Excess Weight Tolerance for Handling unit                     
+        # "VOLTO"                    , # Excess Volume Tolerance of the Handling Unit                  
+        # "VABME"                    , # Variable Purchase Order Unit Active                           
+        # "KZREV"                    , # Revision Level Has Been Assigned to the Material              
+        # "KZKFG"                    , # Configurable Material                                         
+        # "XCHPF"                    , # Batch Management Requirement Indicator                        
+        # "VHART"                    , # Packaging Material Type                                       
+        # "FUELG"                    , # Maximum level (by volume)                                     
+        # "STFAK"                    , # Stacking factor                                               
+        # "MAGRV"                    , # Material Group: Packaging Materials                           
+        # "BEGRU"                    , # Authorization Group                                           
+        # "DATAB"                    , # Valid-From Date                                               
+        # "LIQDT"                    , # Deletion date                                                 
+        # "SAISJ"                    , # Season Year                                                   
+        # "PLGTP"                    , # Price Band Category                                           
+        # "MLGUT"                    , # Empties Bill of Material                                      
+        # "EXTWG"                    , # External Material Group                                       
+        # "SATNR"                    , # Cross-Plant Configurable Material                             
+        # "ATTYP"                    , # Material Category                                             
+        # "KZKUP"                    , # Co-Product                                                    
+        # "KZNFM"                    , # Indicator: The material has a follow-up material              
+        # "PMATA"                    , # Pricing Reference Material                                    
+        # "MSTAE"                    , # Cross-Plant Material Status                                   
+        # "MSTAV"                    , # Cross-Distribution-Chain Material Status                      
+        # "MSTDE"                    , # Date from which the cross-plant material status is valid      
+        # "MSTDV"                    , # Date from which the X-distr.-chain material status is valid   
+        # "TAKLV"                    , # Tax classification of the material                            
+        # "RBNRM"                    , # Catalog Profile                                               
+        # "MHDRZ"                    , # Minimum Remaining Shelf Life                                  
+        # "MHDHB"                    , # Total shelf life                                              
+        # "MHDLP"                    , # Storage percentage                                            
+        # "INHME"                    , # Content unit                                                  
+        # "INHAL"                    , # Net Contents                                                  
+        # "VPREH"                    , # Comparison price unit                                         
+        # "ETIAG"                    , # IS-R Labeling: material grouping (deactivated in 4.0)         
+        # "INHBR"                    , # Gross contents                                                
+        # "CMETH"                    , # Quantity Conversion Method                                    
+        # "CUOBF"                    , # Internal object number                                        
+        # "KZUMW"                    , # Environmentally Relevant                                      
+        # "KOSCH"                    , # Product allocation determination procedure                    
+        # "SPROF"                    , # Pricing profile for variants                                  
+        # "NRFHG"                    , # Material qualifies for discount in kind                       
+        # "MFRPN"                    , # Manufacturer Part Number                                      
+        # "MFRNR"                    , # Number of a Manufacturer                                      
+        # "BMATN"                    , # Number of firm's own (internal) inventory-managed material    
+        # "MPROF"                    , # Mfr Part Profile                                              
+        # "KZWSM"                    , # Units of measure usage                                        
+        # "SAITY"                    , # Rollout in a Season                                           
+        # "PROFL"                    , # Dangerous Goods Indicator Profile                             
+        # "IHIVI"                    , # Indicator: Highly Viscous                                     
+        # "ILOOS"                    , # Indicator: In Bulk/Liquid                                     
+        # "SERLV"                    , # Level of Explicitness for Serial Number                       
+        # "KZGVH"                    , # Packaging Material is Closed Packaging                        
+        # "XGCHP"                    , # Approved Batch Record Required                                
+        # "KZEFF"                    , # Assign effectivity parameter values/ override change numbers  
+        # "COMPL"                    , # Material completion level                                     
+        # "IPRKZ"                    , # Period Indicator for Shelf Life Expiration Date               
+        # "RDMHD"                    , # Rounding rule for calculation of SLED                         
+        # "PRZUS"                    , # Indicator: Product composition printed on packaging           
+        # "MTPOS_MARA"               , # General item category group                                   
+        # "BFLME"                    , # Generic Material with Logistical Variants                     
+        # "MATFI"                    , # Material Is Locked                                            
+        # "CMREL"                    , # Relevant for Configuration Management                         
+        # "BBTYP"                    , # Assortment List Type                                          
+        # "SLED_BBD"                 , # Expiration Date                                               
+        # "GTIN_VARIANT"             , # Global Trade Item Number Variant                              
+        # "GENNR"                    , # Material Number of the Generic Material in Prepack Materials  
+        # "RMATP"                    , # Reference material for materials packed in same way           
+        # "GDS_RELEVANT"             , # Indicator: Global Data Synchronization-Relevant               
+        # "WEORA"                    , # Acceptance At Origin                                          
+        # "HUTYP_DFLT"               , # Standard HU Type                                              
+        # "PILFERABLE"               , # Pilferable                                                    
+        # "WHSTC"                    , # Warehouse Storage Condition                                   
+        # "WHMATGR"                  , # Warehouse Material Group                                      
+        # "HNDLCODE"                 , # Handling Indicator                                            
+        # "HAZMAT"                   , # Relevant for Hazardous Substances                             
+        # "HUTYP"                    , # Handling Unit Type                                            
+        # "TARE_VAR"                 , # Variable Tare Weight                                          
+        # "MAXC"                     , # Maximum Allowed Capacity of Packaging Material                
+        # "MAXC_TOL"                 , # Overcapacity Tolerance of the Handling Unit                   
+        # "MAXL"                     , # Maximum Packing Length of Packaging Material                  
+        # "MAXB"                     , # Maximum Packing Width of Packaging Material                   
+        # "MAXH"                     , # Maximum Packing Height of Packaging Material                  
+        # "MAXDIM_UOM"               , # Unit of Measure for Maximum Packing Length/Width/Height       
+        # "HERKL"                    , # Country/Region of Origin of Material (Non-Preferential Ori.)  
+        # "MFRGR"                    , # Material Freight Group                                        
+        # "QQTIME"                   , # Quarantine Period                                             
+        # "QQTIMEUOM"                , # Time Unit for Quarantine Period                               
+        # "QGRP"                     , # Quality Inspection Group                                      
+        # "SERIAL"                   , # Serial Number Profile                                         
+        # "PS_SMARTFORM"             , # Form Name                                                     
+        # "LOGUNIT"                  , # EWM CW: Logistics Unit of Measure                             
+        # "CWQREL"                   , # EWM CW: Material Is a Catch Weight Material                   
+        # "CWQPROC"                  , # EWM CW: Catch Weight Profile for Entering CW Quantity         
+        # "CWQTOLGR"                 , # Catch Weight Tolerance Group                                  
+        # "ADPROF"                   , # Adjustment Profile                                            
+        # "IPMIPPRODUCT"             , # ID for an Intellectual Property (CRM Product)                 
+        # "ALLOW_PMAT_IGNO"          , # Variant Price Allowed (for Material Master)                   
+        # "MEDIUM"                   , # Medium                                                        
+        # "COMMODITY"                , # Commodity                                                     
+        # "ANIMAL_ORIGIN"            , # Indicator: Contains Non-Textile Parts of Animal Origin        
+        # "TEXTILE_COMP_IND"         , # Indicator: New Textile Composition Function                   
+        # "LAST_CHANGED_TIME"        , # Time of Last Change                                           
+        # "MATNR_EXTERNAL"           , # External Representation of Material Number                    
+        # "CHML_CMPLNC_RLVNCE_IND"   , # Chemical Compliance Relevance Indicator                       
+        # "LOGISTICAL_MAT_CATEGORY"  , # Category of a Logistical Material                             
+        # "SALES_MATERIAL"           , # Material Number of a Sales Material                           
+        # "IDENTIFICATION_TAG_TYPE"  , # Identification Tag Type                                       
+        # "PRODUCTOID"               , # Data element for OID of product                               
+        # "SDM_VERSION"              , # Silent Data migration status from MARA table                  
+        # "SGT_CSGR"                 , # Segmentation Structure                                        
+        # "SGT_COVSA"                , # Segmentation Strategy                                         
+        # "SGT_STAT"                 , # Segmentation Material Master Status                           
+        # "SGT_SCOPE"                , # Segmentation Strategy Scope                                   
+        # "SGT_REL"                  , # Segmentation Relevant                                         
+        # "ANP"                      , # ANP Code                                                      
+        # "PSM_CODE"                 , # Code of Protected Species Management                          
+        # "FSH_MG_AT1"               , # Fashion Information Field: 1                                  
+        # "FSH_MG_AT2"               , # Fashion Information Field: 2                                  
+        # "FSH_MG_AT3"               , # Fashion Information Field: 3                                  
+        # "FSH_SEALV"                , # Indicator: Use of Season                                      
+        # "FSH_SEAIM"                , # Indicator: Season Active in Inventory Management              
+        # "FSH_SC_MID"               , # Material Conversion ID for Characteristic Value Conversion    
+        # "DUMMY_PRD_INCL_EEW_PS"    , # Dummy Field                                                   
+        # "SCM_MATID_GUID16"         , # Internal Key for Product                                      
+        # "SCM_MATID_GUID22"         , # Internal Number (UID) for Product                             
+        # "SCM_MATURITY_DUR"         , # Maturation Time                                               
+        # "SCM_SHLF_LFE_REQ_MIN"     , # Obsolete. Use /SAPAPO/MATKEY-/SAPAPO/SHELF_LIFE_REQ_MIN.      
+        # "SCM_SHLF_LFE_REQ_MAX"     , # Required Maximum Shelf Life                                   
+        # "SCM_PUOM"                 , # Preferred Alternative UoM for Warehouse Operations            
+        # "RMATP_PB"                 , # Reference Product for Package Building                        
+        # "PROD_SHAPE"               , # Product Shape                                                 
+        # "MO_PROFILE_ID"            , # Product Orientation Profile                                   
+        # "OVERHANG_TRESH"           , # Overhang Threshold [%]                                        
+        # "BRIDGE_TRESH"             , # Bridge Threshold [%]                                          
+        # "BRIDGE_MAX_SLOPE"         , # Maximum Slope for Bridges [°]                                 
+        # "HEIGHT_NONFLAT"           , # Absolute Height Threshold for Stacking on Non-Flat Surface    
+        # "HEIGHT_NONFLAT_UOM"       , # UoM of Abs. Height Threshold (Stacking on Non-Flat Surface)   
+        # "SCM_KITCOMP"              , # Product for Kit-to-Order                                      
+        # "SCM_PROD_PAOOPT"          , # Product can be used for Procure-to-Order                      
+        # "SCM_BOD_DEPLVL"           , # Carry Out Push Deployment from Supplier                       
+        # "SCM_RESTRICT_INVBAL"      , # Inventory Balancing Not Allowed                               
+        # "SCM_DRP_GL_STOCK"         , # Global Stock on Entry Location DRP                            
+        # "SCM_EXCL_EXPEDITE"        , # Exclude from Express Shipment                                 
+        # "NEWPROD_INDI"             , # New Product                                                   
+        # "PRD_STARTDT"              , # Production Start Date                                         
+        # "PRD_ENDDT"                , # Production End Date                                           
+        # "INV_PLN_MODE"             , # eSPP: Inventory Planning via External Tool                    
+        # "FLAGCLASS"                , # Configuration Relevance of Product                            
+        # "/CWM/XCWMAT"              , # Material Is Activated for CW                                  
+        # "/CWM/VALUM"               , # Valuation Unit of Measure                                     
+        # "/CWM/TOLGR"               , # Tolerance Group for CWM                                       
+        # "/CWM/TARA"                , # Consider Complete Tare for each Reference Unit of Measure     
+        # "/CWM/TARUM"               , # Reference Unit of Measure for the TARE Calculation            
+        # "/BEV1/LULEINH"            , # Loading Units                                                 
+        # "/BEV1/LULDEGRP"           , # Loading Unit Group: IS Beverage                               
+        # "/BEV1/NESTRUCCAT"         , # Structure Category for Material Relationship                  
+        # "/DSD/SL_TOLTYP"           , # Tolerance Type ID                                             
+        # "/DSD/SV_CNT_GRP"          , # Counting Group                                                
+        # "/DSD/VC_GROUP"            , # DSD Grouping                                                  
+        # "/SAPMP/KADU"              , # Cable Diameter                                                
+        # "/SAPMP/ABMEIN"            , # Unit for Dimensions                                           
+        # "/SAPMP/KADP"              , # Cable Diameter Allowance in Percent                           
+        # "/SAPMP/BRAD"              , # Bending Factor                                                
+        # "/SAPMP/SPBI"              , # Inner Width                                                   
+        # "/SAPMP/TRAD"              , # Outer Diameter                                                
+        # "/SAPMP/KEDU"              , # Core Diameter                                                 
+        # "/SAPMP/SPTR"              , # Load Capacity                                                 
+        # "/SAPMP/FBDK"              , # Run-Out Flange Thickness                                      
+        # "/SAPMP/FBHK"              , # R-O Flange Height                                             
+        # "/SAPMP/RILI"              , # Coil Delivery                                                 
+        # "/SAPMP/FBAK"              , # Run-Out Flange                                                
+        # "/SAPMP/AHO"               , # Maximum Number of Vertical Layers                             
+        # "/SAPMP/MIFRR"             , # Smallest Permissible Reel Clearance for a Cable               
+        # "/STTPEC/SERTYPE"          , # Serialization Type                                            
+        # "/STTPEC/SYNCACT"          , # Synchronization Active                                        
+        # "/STTPEC/SYNCTIME"         , # Synchronization Time Stamp                                    
+        # "/STTPEC/SYNCCHG"          , # Indicator Changed Since Integration                           
+        # "/STTPEC/COUNTRY_REF"      , # Profile Relevant Country/Region                               
+        # "/STTPEC/PRDCAT"           , # Product Category                                              
+        # "/VSO/R_TILT_IND"          , # Material may be Tilted (Vehicle Space Optimization)           
+        # "/VSO/R_STACK_IND"         , # Stacking not Allowed (VSO)                                    
+        # "/VSO/R_BOT_IND"           , # Bottom Layer (Vehicle Space Optimization)                     
+        # "/VSO/R_TOP_IND"           , # Top Layer (VSO)                                               
+        # "/VSO/R_STACK_NO"          , # Stacking Factor (Vehicle Space Optimization)                  
+        # "/VSO/R_PAL_IND"           , # Load without Packaging Material (VSO)                         
+        # "/VSO/R_PAL_OVR_D"         , # Permissible Overhang (Depth) of Packaging Material (VSO)      
+        # "/VSO/R_PAL_OVR_W"         , # Permissible Overhang (Width) of Shipping Material (VSO)       
+        # "/VSO/R_PAL_B_HT"          , # Maximum Stacking Height of the Packaging Material (VSO)       
+        # "/VSO/R_PAL_MIN_H"         , # Minimum Stacking Height of the Packaging Material (VSO)       
+        # "/VSO/R_TOL_B_HT"          , # Tolerance to Exceed the Max. Stacking Height (VSO)            
+        # "/VSO/R_NO_P_GVH"          , # Number of Materials for each Closed PKM (VSO)                 
+        # "/VSO/R_QUAN_UNIT"         , # Unit of Measure Vehicle Space Optimization                    
+        # "/VSO/R_KZGVH_IND"         , # Closed Packaging Material Required (VSO)                      
+        # "PACKCODE"                 , # Packaging Code                                                
+        # "DG_PACK_STATUS"           , # Dangerous Goods Packaging Status                              
+        # "SRV_DURA"                 , # Duration of Work                                              
+        # "SRV_DURA_UOM"             , # Unit for Duration of Work                                     
+        # "SRV_SERWI"                , # Service Profile                                               
+        # "SRV_ESCAL"                , # Response Profile                                              
+        # "SOM_CYCLE"                , # Billing Cycle                                                 
+        # "SOM_CYCLE_RULE"           , # Billing Cycle Determination Rule ID                           
+        # "SOM_TC_SCHEMA"            , # Assignment Schema                                             
+        # "SOM_CTR_AUTORENEWAL"      , # Contract Auto Renewal Indicator                               
+        # "MCOND"                    , # Material Condition Management                                 
+        # "RETDELC"                  , # Return Code                                                   
+        # "LOGLEV_RETO"              , # Return to Logistics Level                                     
+        # "NSNID"                    , # NATO Stock Number                                             
+        # "ICFA"                     , # Interchangeability Code for Ammunition                        
+        # "RIC_ID"                   , # Reportable Item Code - Numerical ID                           
+        # "DFS_SENSITIVITY_KEY"      , # Sensitivity for Characteristics                               
+        # "DFS_MFRP2"                , # Long Manufacturer Part Number                                 
+        # "OVLPN"                    , # Overlength Part Number                                        
+        # "ADSPC_SPC"                , # Spare Part Class Code                                         
+        # "VARID"                    , # GUID Variable Object Identification                           
+        # "MSBOOKPARTNO"             , # Manufacturer Book Part Number                                 
+        # "TOLERANCE_TYPE"           , # Tolerance Type                                                
+        # "DPCBT"                    , # Single-Unit Batch Def. Value                                  
+        # "XGRDT"                    , # Goods Receipt to Posted Single-Unit Batch Allowed             
+        # "IMATN"                    , # FFF class                                                     
+        # "PICNUM"                   , # Supersession chain number                                     
+        # "BSTAT"                    , # Creation Status - Seasonal Procurement                        
+        # "COLOR_ATINN"              , # Internal Charactieristic Number for Color Characteristics     
+        # "SIZE1_ATINN"              , # Internal Char. Number for Characteristics for Main Sizes      
+        # "SIZE2_ATINN"              , # Internal Char. Number for Characteristics for Second Sizes    
+        # "COLOR"                    , # Characteristic Value for Colors of Variants                   
+        # "SIZE1"                    , # Characteristic Value for Main Sizes of Variants               
+        # "SIZE2"                    , # Characteristic Value for Second Size for Variants             
+        # "FREE_CHAR"                , # Characteristic Value for Evaluation Purposes                  
+        # "CARE_CODE"                , # Care Codes (such as Washing Code, Ironing Code, etc.)         
+        # "BRAND_ID"                 , # Brand                                                         
+        # "FIBER_CODE1"              , # Fiber Code for Textiles (Component 1)                         
+        # "FIBER_PART1"              , # Percentage Share of Fiber (Component 1)                       
+        # "FIBER_CODE2"              , # Fiber Code for Textiles (Component 2)                         
+        # "FIBER_PART2"              , # Percentage Share of Fiber (Component 2)                       
+        # "FIBER_CODE3"              , # Fiber Code for Textiles (Component 3)                         
+        # "FIBER_PART3"              , # Percentage Share of Fiber (Component 3)                       
+        # "FIBER_CODE4"              , # Fiber Code for Textiles (Component 4)                         
+        # "FIBER_PART4"              , # Percentage Share of Fiber (Component 4)                       
+        # "FIBER_CODE5"              , # Fiber Code for Textiles (Component 5)                         
+        # "FIBER_PART5"              , # Percentage Share of Fiber (Component 5)                       
+        # "FASHGRD"                  , # Fashion Grade                                                 
+        # "ZIS_SPEC"                 , # Composition FP BU Code                                        
+        # "Z_SEND_TO_PLM"              # Indicator to send data to PLM                                 
+    ),
+     pRowcount = Inf
+   ) %>%
+  .[, c("SYSTID", "CLIENT"):= NULL]
+
+# Master Data (Time-Ind.): Characteristic Material #### 
+B4_MATERIAL_P <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BI0/PMATERIAL",
+     pOptions  = list(
+       paste0("MATL_TYPE IN (" , paste0("'", fltMATL_TYPE, "'", collapse = ", "), ")")
+     ),
+     pFields   = list(
+        # "MATERIAL"        , # Material                                          X
+        # "OBJVERS"         , # Object version                                    X
+        # "CHANGED"         , # Change flag ( I inserted / D deleted )            
+        # "/BIC/PRODH1"     , # Brand responsibility type                         
+        # "/BIC/PRODH2"     , # Brand                                             
+        # "/BIC/PRODH3"     , # Category                                          
+        # "/BIC/PRODH4"     , # Family                                            
+        # "APO_PROD"        , # Product                                           
+        # "BASE_UOM"        , # Base Unit of Measure                              
+        # "BASIC_MATL"      , # Basic material (basic constituent of a material)  
+        # "COMPETITOR"      , # Competitors                                       
+        # "CONT_UNIT"       , # Content unit                                      
+        # "CREATEDON"       , # Date on which the record was created              
+        # "CRM_PROD"        , # Product                                           
+        # "DIVISION"        , # Division                                          
+        # "EANUPC"          , # European Article Numbers/Universal Product Code   
+        # "EXTMATLGRP"      , # External material group                           
+        # "GROSS_CONT"      , # Gross contents                                    
+        # "GROSS_WT"        , # Gross weight                                      
+        # "HEIGHT"          , # Height                                            
+        # "IND_SECTOR"      , # Industry sector                                   
+        # "LENGHT"          , # Length                                            
+        # "LOC_CURRCY"      , # Local currency                                    
+        # "LOGSYS"          , # Source System                                     
+        # "MANUFACTOR"      , # Manufacturer                                      
+        # "MANU_MATNR"      , # Manufacturer Part Number                          
+        # "MATL_CAT"        , # Material category                                 
+        # "MATL_GROUP"      , # Material group                                    
+        # "MATL_TYPE"       , # Material type                                     
+        # "MSA_USAGE"       , # Usage                                             
+        # "NET_CONT"        , # Net contents                                      
+        # "NET_WEIGHT"      , # Net weight of item                                
+        # "PO_UNIT"         , # Order unit                                        
+        # "PROD_HIER"       , # Product hierarchy                                 
+        # "SIZE_DIM"        , # Size/dimension                                    
+        # "STD_DESCR"       , # Industry Standard Description (such as DIN)       
+        # "UNIT_DIM"        , # Unit of dimension for length/width/height         
+        # "UNIT_OF_WT"      , # Weight unit                                       
+        # "VENDOR"          , # Vendor                                            
+        # "VOLUME"          , # Volume                                            
+        # "VOLUMEUNIT"      , # Volume unit                                       
+        # "WIDTH"           , # Width                                             
+        # "/BIC/MG_L1"      , # Old Material group level 1                        
+        # "/BIC/MG_L2"      , # Old Material group level 2                        
+        # "/BIC/MG_L3"      , # Old Material group level 3                        
+        # "/BIC/MIN_RSL"    , # Minimum remaining shelf life (PO)                 
+        # "/BIC/MSTAE"      , # X-plant status                                    
+        # "/BIC/MSTAV"      , # X-distribution chain status                       
+        # "/BIC/OLD_MATNR"  , # Old material number                               
+        # "AF_COLOR"        , # AFS Elementary Field "Color"                      
+        # "AF_FCOCO"        , # AFS Fabric Content Code                           
+        # "AF_GENDER"       , # AFS Target Group                                  
+        # "AF_GRID"         , # AFS Grid                                          
+        # "AF_STYLE"        , # AFS Intersection                                  
+        # "BBP_PROD"        , # Product                                           
+        # "HC_AGENT1"       , # Active Ingredient 1 (Main Active Ingredient)      
+        # "HC_AGENT2"       , # Active Ingredient 2                               
+        # "HC_AGENT3"       , # Active Ingredient 3                               
+        # "HC_ANESIND"      , # Anesthetic Indicator                              
+        # "HC_APPRTYP"      , # Approval Type                                     
+        # "HC_ATCCODE"      , # ATC Code                                          
+        # "HC_ATCMTYP"      , # Type of Med. Category for ATC Code                
+        # "HC_CATIND1"      , # Catalog 1 Indicator                               
+        # "HC_CATIND2"      , # Catalog 2 Indicator                               
+        # "HC_CATIND3"      , # Catalog 3 Indicator                               
+        # "HC_HAZMIND"      , # Hazardous Substance Indicator                     
+        # "HC_IMPMIND"      , # Import Material Indicator                         
+        # "RPA_WGH1"        , # Material Group Hierarchy Level 1                  
+        # "RPA_WGH2"        , # Material Group Hierarchy Level 2                  
+        # "RPA_WGH3"        , # Material Group Hierarchy Level 3                  
+        # "RPA_WGH4"        , # Material Group Hierarchy Level 4                  
+        # "RTPLCST"         , # Planned Purchase Price                            
+        # "RT_COLOR"        , # Color                                             
+        # "RT_CONFMAT"      , # Cross-Plant Configur. Material                    
+        # "RT_FASHGRD"      , # Fashion Grade                                     
+        # "RT_MDRELST"      , # Master Data Release Status                        
+        # "RT_PRBAND"       , # Price Band Category                               
+        # "RT_PRRULE"       , # Procurement Rule                                  
+        # "RT_SEAROLL"      , # Collection                                        
+        # "RT_SEASON"       , # Season Category                                   
+        # "RT_SEASYR"       , # Season Year                                       
+        # "RT_SEAYR"        , # Season Year                                       
+        # "RT_SIZE"         , # Size                                              
+        # "RT_SUPS"         , # Source of Supply                                  
+        # "UCCERTIFTY"      , # Certification Type                                
+        # "UCCONSTCLA"      , # Construction Class                                
+        # "UCFUNCCLAS"      , # Function Class                                    
+        # "DF_DGNR"         , # Hazardous Material Number                         
+        # "DF_PROFILE"      , # Profile for Dangerous Goods Indicator             
+        # "RF_SIZE2"        , # Size 2                                            
+        # "RF_BNDID"        , # Brand                                             
+        # "RF_FRECHAR"      , # General Analysis Characteristic                   
+        # "RT_COLRNGE"      , # Color Characteristic range                        
+        # "RT_SIZRNGE"      , # Size Characteristic range                         
+        # "/BIC/MATLGRP71"  , # Categ. Mgr NL40 Natudis                           
+        # "/BIC/MATLGRP72"  , # Categ. Mgr NL10 Foodprints                        
+        # "/BIC/MATLGRP73"  , # Categ. Mgr GB10 Kallo                             
+        # "/BIC/MATLGRP74"  , # Categ. Mgr FR30 Distriborg France                 
+        # "/BIC/MATLGRP75"  , # Categ. Mgr FR40 Bonneterre                        
+        # "/BIC/MATLGRP76"  , # Categ. Mgr BE10 Hagor                             
+        # "/BIC/MATLGRP77"  , # Categ. Mgr DE20 Fachhandel                        
+        # "/BIC/MATLGRP78"  , # Categ. Mgr DE30 CoSA Naturprodukte                
+        # "/BIC/MATLGRP79"  , # Categ. Mgr DE*                                    
+        # "/BIC/STRAT_BUY"  , # Family                                            
+        # "/BIC/EA_PAL"     , # Eaches per Pallet                                 
+        # "/BIC/SR_RSPO"    , # RSPO indicator                                    
+        # "/BIC/SR_SUST"    , # Sustainability Indicator                          
+        # "/BIC/SR_FAIRTR"  , # Fair Trade                                        
+        # "/BIC/SR_NUTRI"   , # Nutritional                                       
+        # "/BIC/SR_ORG"     , # Organic                                           
+        # "/BIC/SR_VEGI"    , # Vegetarian                                        
+        # "/BIC/PRDH1"      , # Name of the Brand                                 
+        # "/BIC/PRDH2"      , # Main Category                                     
+        # "/BIC/PRDH3"      , # Product Sub Category                              
+        # "/BIC/PRDH4"      , # Product Family                                    
+        # "/BIC/BRANDTYP"   , # Marke                                             
+        # "/BIC/BRANDNAME"  , # Full brand Name                                   
+        # "PLANT"           , # Plant                                             
+        # "/BIC/LVORM"      , # DF at client level                                
+        # "DEL_FLAG"        , # Deletion flag for all material data of a plant    
+        # "/BIC/M_GLTNFRE"  , # Gluten free                                       
+        # "/BIC/EA_CS"      , # Eaches per Case                                   
+        # "/BIC/MTPOS"      , # Item Category Group                               
+        # "CH_ON"           , # Last changed on                                   
+        # "/BIC/MGL1"       , # Material group level 1                            
+        # "/BIC/MGL2"       , # Material group level 2                            
+        # "/BIC/MGL3"       , # Material group level 3                            
+        # "/BIC/MGL4"       , # Material group level 4                            
+        # "/BIC/CATTYP"     , # Category type                                     
+        # "/BIC/ZIS_SPEC"   , # Interspec Specification Number                    
+        # "NT_WT_KG"        , # Net weight in kilograms                           
+        # "GR_WT_KG"        , # Gross weight in kilograms                         
+        # "/BIC/EA_LAY"     , # EA per Layer                                      
+        # "/BIC/TEMPCOND"   , # Temperature Conditions                            
+        # "/BIC/TEMPC"      , # Temperature class                                 
+        # "CREATEDBY"         # Name of person who created the object             
+    ),
+     pRowcount = Inf
+   )  %>%
+  .[, c("SYSTID", "CLIENT"):= NULL]
+
+B4_MATL <- 
+  B4_MATERIAL_P[S4_MARA, on = .(
+    MATERIAL == MATNR
+    ), 
+    nomatch = 0] 
+
+B4_MATL <- 
+  B4_MATL[, ( fTA(B4_MATL)[UCOUNT == 1, FLDNM]):= NULL] %T>%
+  setnames(
+  old = c("BASE_UOM"   , "PO_UNIT"   , "PROD_HIER"   , "PLANT"   , "MTPOS"   , "LVORM"),
+  new = c("BASE_UOM_ML", "PO_UNIT_ML", "PROD_HIER_ML", "PLANT_ML", "MTPOS_ML", "LVORM_ML"),  
+)
+
+saveRDS(
+  object = B4_MATL, 
+  file   = file.path(PS02, SYS, "B4", "B4_MATL.rds")
+  )
+```
+
+## Mat Sales
+
+```{r}
+#| label: Additional Mat Sales Data
+#| eval: true
+
+# Sales Data for Material #### 
+S4_MVKE <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPE500",
+     pTable    = "MVKE",
+     pOptions  = list(
+       paste0("VMSTA IN (", paste0("'", fltVMSTA, "'", collapse = ", "), ")"),
+       "AND",
+       "VTWEG = '10'"
+     ),
+     pFields   = list(
+        # "MANDT"                   , # Client                                                        X
+        "MATNR"                   , # Material Number                                               X
+        "VKORG"                   , # Sales Organization                                            X
+        "VTWEG"                   ,  # Distribution Channel                                          X
+        # "LVORM"                   , # Ind.: Flag material for deletion at distribution chain level  
+        # "VERSG"                   , # Material statistics group                                     
+        # "BONUS"                   , # Volume rebate group                                           
+        # "PROVG"                   , # Commission Group                                              
+        # "SKTOF"                   , # Cash Discount Indicator                                       
+        # "VMSTA"                   , # Distribution-chain-specific material status                   
+        # "VMSTD"                   , # Date from which distr.-chain-spec. material status is valid   
+        # "AUMNG"                   , # Minimum order quantity in base unit of measure                
+        # "LFMNG"                   , # Minimum Delivery Quantity in Delivery Note Processing         
+        # "EFMNG"                   , # Minimum make-to-order quantity                                
+        # "SCMNG"                   , # Delivery unit                                                 
+        # "SCHME"                   , # Unit Of Measure Of Delivery Unit                              
+        # "VRKME"                   , # Sales Unit                                                    
+        # "MTPOS"                   , # Item Category Group from Material Master                      
+        "DWERK"                   #, # Delivering Plant (Own or External)
+        # "PRODH"                   , # Product Hierarchy                                             
+        # "PMATN"                   , # Pricing Reference Material                                    
+        # "KONDM"                   , # Material Price Group                                          
+        # "KTGRM"                   , # Account Assignment Group for Material                         
+        # "MVGR1"                   , # Material Group 1                                              
+        # "MVGR2"                   , # Material Group 2                                              
+        # "MVGR3"                   , # Material Group 3                                              
+        # "MVGR4"                   , # Material Group 4                                              
+        # "MVGR5"                   , # Material Group 5                                              
+        # "IS_ENTLMNT_RLVT"         , # Relevant for Entitlement Generation                           
+        # "SSTUF"                   , # Assortment grade                                              
+        # "PFLKS"                   , # External assortment priority                                  
+        # "LSTFL"                   , # Listing procedure for store or other assortment categories    
+        # "LSTVZ"                   , # Listing procedure for distr. center assortment categories     
+        # "LSTAK"                   , # Listing functions (assortments) are active                    
+        # "LDVFL"                   , # Date from which listed in the store                           
+        # "LDBFL"                   , # Date to which listed in the store                             
+        # "LDVZL"                   , # Date from which listed in the distribution center             
+        # "LDBZL"                   , # Date to which listed in the central warehouse/distr. center   
+        # "VDVFL"                   , # Date from which sold in the store                             
+        # "VDBFL"                   , # Date to which sold in the store                               
+        # "VDVZL"                   , # Date from which sold in the distribution center               
+        # "VDBZL"                   , # Date to which sold in the distribution center                 
+        # "ZMVGR6"                  , # Sub category                                                  
+        # "ZMVGR7"                  , # Segment                                                       
+        # "ZMVGR8"                  , # ready to be sold                                              
+        # "PRAT1"                   , # Innovation                                                    
+        # "PRAT2"                   , # Organic                                                       
+        # "PRAT3"                   , # Pack tax relevant                                             
+        # "PRAT4"                   , # Homeopatic License                                            
+        # "PRAT5"                   , # NWO formula                                                   
+        # "PRAT6"                   , # Hauschka Certified                                            
+        # "PRAT7"                   , # Promo                                                         
+        # "PRAT8"                   , # Competitor                                                    
+        # "PRAT9"                   , # Export only                                                   
+        # "PRATA"                   , # Schaer                                                        
+        # "RDPRF"                   , # Rounding Profile                                              
+        # "MEGRU"                   , # Unit of Measure Group                                         
+        # "LFMAX"                   , # Maximum delivery quantity in store order processing           
+        # "RJART"                   , # Flag rackjobber material                                      
+        # "PBIND"                   , # Indicator for price fixing                                    
+        # "VAVME"                   , # Variable Sales Unit Not Allowed                               
+        # "MATKC"                   , # Competition characterization of a material                    
+        # "PVMSO"                   , # Material sorting in product proposal                          
+        # "DUMMY_SALD_INCL_EEW_PS"  , # MD Product Sales Delivery                                     
+        # "/BEV1/EMLGRP"            , # Empties Group                                                 
+        # "/BEV1/EMDRCKSPL"         , # Print Column Empties Returns Block                            
+        # "/BEV1/RPBEZME"           , # Base Unit of Measure for Statistics Totals List/Planning      
+        # "/BEV1/RPSNS"             , # No Allocation to Totals Field (Do not Total)                  
+        # "/BEV1/RPSFA"             , # Assignment to Totals Field Category 1                         
+        # "/BEV1/RPSKI"             , # Assignment to Totals Field Category 2                         
+        # "/BEV1/RPSCO"             , # Assignment to Totals Field Category 3                         
+        # "/BEV1/RPSSO"             , # Assignment to Totals Field Category 4                         
+        # "NF_FLAG"                 , # Indicator: Material Contains NF Metals                        
+        # "CTR_TERM_DEF"            , # Default Contract Term                                         
+        # "CTR_TERM_ALT1"           , # Alternative Contract Term 1                                   
+        # "CTR_TERM_ALT2"           , # Alternative Contract Term 2                                   
+        # "CTR_TERM_UNIT"           , # Unit for Contract Term                                        
+        # "EXT_PERIOD_DEF"          , # Default Extension Period                                      
+        # "EXT_PERIOD_ALT1"         , # Alternative Extension Period 1                                
+        # "EXT_PERIOD_ALT2"         , # Alternative Extension Period 2                                
+        # "EXT_PERIOD_UNIT"         , # Unit for Extension Period                                     
+        # "PACKAGE_TYPE"            , # Package Type                                                  
+        # "PACKAGE_SIZE"            , # Package Size                                                  
+        # "PLGTP"                   , # Price Band Category                                           
+        # "STAVL"                   , # Start availability date                                       
+        # "ENDAVL"                  , # End availability date                                         
+        # "ZCERT_COUNTRY"           , # Country of certification                                      
+        # "ZCERT_REGION"            , # Region of certification                                       
+        # "ZZ_DEMPL"                , # Demand planner                                                
+        # "ZZ_LBL_SPEC"               # Label specification no.                                       
+    ),
+     pRowcount = Inf
+   )
+
+# Master Data (Time-Ind.): Characteristic Material (Sales) #### 
+B4_MAT_SALES_P <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BI0/PMAT_SALES",
+     pOptions  = list(
+       "DISTR_CHAN = '10'", "AND",
+       "SALESORG  <> ''"  , "AND",
+       "MAT_SALES <> ''"  , "AND",
+       paste0("/BIC/VMSTA IN (", paste0("'", fltVMSTA, "'", collapse = ", "), ")")       
+     ),
+     pFields   = list(
+        # "SALESORG"        , # Sales Organization                              X
+        # "DISTR_CHAN"      , # Distribution Channel                            X
+        # "MAT_SALES"       , # Material (Sales)                                X
+        # "OBJVERS"         , # Object version                                  X
+        # "CHANGED"         , # Change flag ( I inserted / D deleted )          
+        # "BASE_UOM"        , # Base Unit of Measure                            
+        # "MATL_GRP_1"      , # Material group 1                                
+        # "PROD_HIER"       , # Product hierarchy                               
+        # "PROV_GROUP"      , # Commission group                                
+        # "REBATE_GRP"      , # Volume rebate group                             
+        # "PH_REFNR"        , # Pharma Central Number                           
+        # "DEL_FLAG"        , # Deletion flag for all material data of a plant  
+        # "MATL_GRP_2"      , # Material group 2                                
+        # "MATL_GRP_3"      , # Material group 3                                
+        # "MATL_GRP_4"      , # Material group 4                                
+        # "MATL_GRP_5"      , # Material group 5                                
+        # "MAT_STGRP"       , # Material Statistics Group                       
+        # "RT_ASSGRAD"      , # Assortment Grade                                
+        # "AF_VASMG"        , # AFS VAS Material Group                          
+        # "AF_PRIND"        , # AFS Price Indicator                             
+        # "RT_PRBAND"       , # Price Band Category                             
+        # "MAT_KONDM"       , # Material Pricing Group                          
+        # "/BIC/PRAT1"      , # Innovative Indicator                            
+        # "/BIC/PRAT2"      , # Organic                                         
+        # "/BIC/PRAT3"      , # Pack tax relevant                               
+        # "/BIC/PRAT4"      , # Homeopatic License                              
+        # "/BIC/PRAT5"      , # NWO formula                                     
+        # "/BIC/PRAT6"      , # Hauschka Certified                              
+        # "/BIC/PRAT7"      , # Material trend                                  
+        # "/BIC/PRAT8"      , # Goody food                                      
+        # "/BIC/PRAT9"      , # Export only                                     
+        # "/BIC/VMSTA"      , # DChain-spec status                              
+        # "/BIC/MATLGRP6"   , # Segment                                         
+        # "/BIC/MATLGRP7"   , # Segment                                         
+        # "/BIC/MATLGRP8"   , # Ready to be sold                                
+        # "/BIC/MATLG61"    , # Category                                        
+        # "/BIC/MATLG62"    , # Sub-category                                    
+        # "/BIC/MAT_OOI"    , # Origin of Ingredients                           
+        # "/BIC/MAT_ORIG"   , # Origin of the material                          
+        # "/BIC/MAT_PRSP"   , # Product Specification                           
+        # "/BIC/MTL_GRP"    , # Agricultural type                               
+        # "/BIC/MAT_TRND"   , # Material trend                                  
+        # "/BIC/MTPOS"      , # Item Category Group                             
+        # "/BIC/AUMNG"      , # Min. Order Qty (MINAU) in EA                    
+        # "/BIC/LOW_DAT"    , # Lower date                                      
+        # "/BIC/LOWERDATE"  , # First time ordered                              
+        # "FISCVARNT"       , # Fiscal year variant                             
+        # "FISCPER"         , # Fiscal year / period                            
+        # "/BIC/KBETR_VAT"  , # VAT amount %                                    
+        # "/BIC/PRODH1"     , # Brand responsibility type                       
+        # "/BIC/PRODH2"     , # Brand                                           
+        # "/BIC/PRODH3"     , # Category                                        
+        # "/BIC/PRODH4"     , # Family                                          
+        # "SALES_UNIT"      , # Sales unit                                      
+        # "ACCNT_ASGN"      , # Customer Account Assignment Group               
+        # "/BIC/SL_VALDAT"  , # Date from sales status                          
+        # "/BIC/TAXKM"      , # Tax Classification VAT                          
+        # "/BIC/ZDMND_PLN"  , # Demand Planner                                  
+        # "/BIC/PRODCLASS"  , # CRM product classification                      
+        # "/BIC/CRM_ACT"    , # CRM activity                                    
+        # "/BIC/LSTSLDATE"  , # Last sell Date                                  
+        # "/BIC/LO_YEAR"    , # Lower year                                      
+        # "/BIC/HI_YEAR"    , # Upper year                                      
+        # "/BIC/MATCLASS"     # Material Classification                         
+    ),
+     pRowcount = Inf
+   ) %>%
+  .[, c("SYSTID", "CLIENT"):= NULL]
+
+# Inner-join, filtering out Invalid BW records
+B4_MATS <- 
+  B4_MAT_SALES_P[S4_MVKE, on = .(
+    SALESORG   == VKORG, 
+    MAT_SALES  == MATNR,
+    DISTR_CHAN == VTWEG
+  ), nomatch = 0] 
+
+B4_MATS <- 
+  B4_MATS[, ( fTA(B4_MATS)[UCOUNT == 1, FLDNM]):= NULL]
+
+saveRDS(
+  object = B4_MATS, 
+  file   = file.path(PS02, SYS, "B4", "B4_MATS.rds")
+  )
+```
+
+## Mat Plant
+
+```{r}
+#| label: Additional Mat Plant Data
+#| eval: true
+
+# Plant Data for Material #### 
+S4_MARC <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPE500",
+     pTable    = "MARC",
+     pOptions  = list(
+       paste0(    "MMSTA IN (", paste0("'", fltMMSTA   , "'", collapse = ", "), ")"),
+       "AND",
+       paste0(    "DISMM IN (", paste0("'", fltDISMM   , "'", collapse = ", "), ")"),
+       "AND",
+       paste0(    "PERKZ IN (", paste0("'", fltPERKZ   , "'", collapse = ", "), ")"),
+       "AND",
+       paste0("STRGR NOT IN (", paste0("'", fltSTGY_GRP, "'", collapse = ", "), ")")
+     ),
+     pFields   = list(
+        # "MANDT"                   , # Client                                                        X
+        "MATNR"                   , # Material Number                                               X
+        "WERKS"                   #, # Plant                                                         X
+        # "PSTAT"                   , # Maintenance status                                            
+        # "LVORM"                   , # Flag Material for Deletion at Plant Level                     
+        # "BWTTY"                   , # Valuation Category                                            
+        # "XCHAR"                   , # Batch management indicator (internal)                         
+        # "MMSTA"                   , # Plant-Specific Material Status                                
+        # "MMSTD"                   , # Date from Which the Plant-Specific Material Status Is Valid   
+        # "MAABC"                   , # ABC Indicator                                                 
+        # "KZKRI"                   , # Indicator: Critical part                                      
+        # "EKGRP"                   , # Purchasing Group                                              
+        # "AUSME"                   , # Unit of Issue                                                 
+        # "DISPR"                   , # Material: MRP profile                                         
+        # "DISMM"                   , # MRP Type                                                      
+        # "DISPO"                   , # MRP Controller                                                
+        # "KZDIE"                   , # Indicator: MRP controller is buyer (deactivated)              
+        # "PLIFZ"                   , # Planned Delivery Time in Days                                 
+        # "WEBAZ"                   , # Goods receipt processing time in days                         
+        # "PERKZ"                   , # Period Indicator                                              
+        # "AUSSS"                   , # Assembly scrap in percent                                     
+        # "DISLS"                   , # Lot Sizing Procedure in Materials Planning                    
+        # "BESKZ"                   , # Procurement Type                                              
+        # "SOBSL"                   , # Special Procurement Type                                      
+        # "MINBE"                   , # Reorder Point                                                 
+        # "EISBE"                   , # Safety Stock                                                  
+        # "BSTMI"                   , # Minimum Lot Size                                              
+        # "BSTMA"                   , # Maximum Lot Size                                              
+        # "BSTFE"                   , # Fixed lot size                                                
+        # "BSTRF"                   , # Rounding value for purchase order quantity                    
+        # "MABST"                   , # Maximum Stock Level                                           
+        # "LOSFX"                   , # Lot-Size-Independent Costs                                    
+        # "SBDKZ"                   , # Indicator for Individual and Collective Requirements          
+        # "LAGPR"                   , # Storage Costs Percentage Code                                 
+        # "ALTSL"                   , # Method for Selecting Alternative Bills of Material            
+        # "KZAUS"                   , # Discontinuation indicator                                     
+        # "AUSDT"                   , # Effective-Out Date                                            
+        # "NFMAT"                   , # Follow-Up Material                                            
+        # "KZBED"                   , # Indicator for Requirements Grouping                           
+        # "MISKZ"                   , # Mixed MRP indicator                                           
+        # "FHORI"                   , # Scheduling Margin Key for Floats                              
+        # "PFREI"                   , # Indicator: automatic fixing of planned orders                 
+        # "FFREI"                   , # Release indicator for production orders                       
+        # "RGEKZ"                   , # Indicator: Backflush                                          
+        # "FEVOR"                   , # Production Supervisor                                         
+        # "BEARZ"                   , # Processing time                                               
+        # "RUEZT"                   , # Setup and teardown time                                       
+        # "TRANZ"                   , # Interoperation time                                           
+        # "BASMG"                   , # Base quantity                                                 
+        # "DZEIT"                   , # In-house production time                                      
+        # "MAXLZ"                   , # Maximum Storage Period                                        
+        # "LZEIH"                   , # Unit for maximum storage period                               
+        # "KZPRO"                   , # Indicator: withdrawal of stock from production bin            
+        # "GPMKZ"                   , # Indicator: Material Included in Rough-Cut Planning            
+        # "UEETO"                   , # Overdelivery Tolerance Limit                                  
+        # "UEETK"                   , # Indicator: Unlimited Overdelivery Allowed                     
+        # "UNETO"                   , # Underdelivery Tolerance Limit                                 
+        # "WZEIT"                   , # Total replenishment lead time (in workdays)                   
+        # "ATPKZ"                   , # Replacement part                                              
+        # "VZUSL"                   , # Surcharge factor for cost in percent                          
+        # "HERBL"                   , # State of manufacture                                          
+        # "INSMK"                   , # Post to Inspection Stock                                      
+        # "SPROZ"                   , # Sample for quality inspection (in %) (deactivated)            
+        # "QUAZT"                   , # Quarantine period (deactivated)                               
+        # "SSQSS"                   , # Control Key for Quality Management in Procurement             
+        # "MPDAU"                   , # Mean inspection duration (deactivated)                        
+        # "KZPPV"                   , # Indicator for inspection plan (deactivated)                   
+        # "KZDKZ"                   , # Documentation required indicator                              
+        # "WSTGH"                   , # Active substance content (deactivated)                        
+        # "PRFRQ"                   , # Interval Until Next Recurring Inspection                      
+        # "NKMPR"                   , # Date according to check sampling inspection (deactivated)     
+        # "UMLMC"                   , # Stock in transfer (plant to plant)                            
+        # "LADGR"                   , # Loading Group                                                 
+        # "XCHPF"                   , # Batch Management Requirement Indicator for Plant              
+        # "USEQU"                   , # Quota arrangement usage                                       
+        # "LGRAD"                   , # Service level                                                 
+        # "AUFTL"                   , # Splitting Indicator                                           
+        # "PLVAR"                   , # Plan Version                                                  
+        # "OTYPE"                   , # Object Type                                                   
+        # "OBJID"                   , # Object ID                                                     
+        # "MTVFP"                   , # Checking Group for Availability Check                         
+        # "PERIV"                   , # Fiscal Year Variant                                           
+        # "KZKFK"                   , # Indicator: take correction factors into account               
+        # "VRVEZ"                   , # Shipping setup time                                           
+        # "VBAMG"                   , # Base quantity for capacity planning in shipping               
+        # "VBEAZ"                   , # Shipping processing time                                      
+        # "LIZYK"                   , # Deactivated                                                   
+        # "BWSCL"                   , # Source of Supply                                              
+        # "KAUTB"                   , # Indicator: "automatic purchase order allowed"                 
+        # "KORDB"                   , # Indicator: Source list requirement                            
+        # "STAWN"                   , # Commodity Code                                                
+        # "HERKL"                   , # Country/Region of Origin of Material (Non-Preferential Ori.)  
+        # "HERKR"                   , # Region of Origin of Material (Non-Preferential Origin)        
+        # "EXPME"                   , # Unit of measure for commodity code (foreign trade)            
+        # "MTVER"                   , # Material Group for Intrastat                                  
+        # "PRCTR"                   , # Profit Center                                                 
+        # "TRAME"                   , # Stock in Transit                                              
+        # "MRPPP"                   , # Planning Calendar                                             
+        # "SAUFT"                   , # Indicator: Repetitive Manufacturing Allowed                   
+        # "FXHOR"                   , # Planning time fence                                           
+        # "VRMOD"                   , # Consumption mode                                              
+        # "VINT1"                   , # Consumption period: backward                                  
+        # "VINT2"                   , # Consumption period: forward                                   
+        # "VERKZ"                   , # Version Indicator                                             
+        # "STLAL"                   , # Alternative BOM                                               
+        # "STLAN"                   , # BOM Usage                                                     
+        # "PLNNR"                   , # Key for Task List Group                                       
+        # "APLAL"                   , # Group Counter                                                 
+        # "LOSGR"                   , # Lot Size for Product Costing                                  
+        # "SOBSK"                   , # Special Procurement Type for Costing                          
+        # "FRTME"                   , # Production unit                                               
+        # "LGPRO"                   , # Issue Storage Location                                        
+        # "DISGR"                   , # MRP Group                                                     
+        # "KAUSF"                   , # Component Scrap in Percent                                    
+        # "QZGTP"                   , # Certificate Type                                              
+        # "QMATV"                   , # Inspection Setup Exists for Material/Plant                    
+        # "TAKZT"                   , # Takt time                                                     
+        # "RWPRO"                   , # Range-of-Coverage Profile                                     
+        # "COPAM"                   , # Local field name for CO/PA link to SOP                        
+        # "ABCIN"                   , # Physical Inventory Indicator for Cycle Counting               
+        # "AWSLS"                   , # Variance Key                                                  
+        # "SERNP"                   , # Serial Number Profile                                         
+        # "CUOBJ"                   , # Internal object number                                        
+        # "STDPD"                   , # Configurable Material                                         
+        # "SFEPR"                   , # Repetitive Manufacturing Profile                              
+        # "XMCNG"                   , # Negative stocks allowed in plant                              
+        # "QSSYS"                   , # Required QM System for Supplier                               
+        # "LFRHY"                   , # Planning Cycle                                                
+        # "RDPRF"                   , # Rounding Profile                                              
+        # "VRBMT"                   , # Reference material for consumption                            
+        # "VRBWK"                   , # Reference plant for consumption                               
+        # "VRBDT"                   , # To date of the material to be copied for consumption          
+        # "VRBFK"                   , # Multiplier for reference material for consumption             
+        # "AUTRU"                   , # Reset Forecast Model Automatically                            
+        # "PREFE"                   , # Customs Preference                                            
+        # "PRENC"                   , # Exemption certificate: Indicator for legal control            
+        # "PRENO"                   , # Exemption certificate number for legal control                
+        # "PREND"                   , # Exemption certificate: Issue date of exemption certificate    
+        # "PRENE"                   , # Indicator: Vendor declaration exists                          
+        # "PRENG"                   , # Validity date of vendor declaration                           
+        # "ITARK"                   , # Indicator: Military goods                                     
+        # "SERVG"                   , # IS-R service level                                            
+        # "KZKUP"                   , # Co-Product                                                    
+        # "STRGR"                   , # Planning Strategy Group                                       
+        # "CUOBV"                   , # Internal object number of configurable material for planning  
+        # "LGFSB"                   , # Default Storage Location for External Procurement             
+        # "SCHGT"                   , # Indicator: bulk material                                      
+        # "CCFIX"                   , # CC indicator is fixed                                         
+        # "EPRIO"                   , # Stock determination group                                     
+        # "QMATA"                   , # Material Authorization Group for Activities in QM             
+        # "RESVP"                   , # Period of adjustment for planned independent requirements     
+        # "PLNTY"                   , # Task List Type                                                
+        # "UOMGR"                   , # Unit of Mearsure Group (Oil, Natural Gas,...)                 
+        # "UMRSL"                   , # Conversion Group (Oil, Natural Gas,..)                        
+        # "ABFAC"                   , # Air Bouyancy Factor                                           
+        # "SFCPF"                   , # Production Scheduling Profile                                 
+        # "SHFLG"                   , # Safety Time Indicator (with or Without Safety Time)           
+        # "SHZET"                   , # Safety Time (in Workdays)                                     
+        # "MDACH"                   , # Action Control: Planned Order Processing                      
+        # "KZECH"                   , # Determination of batch entry in the production/process order  
+        # "MEGRU"                   , # Unit of Measure Group                                         
+        # "MFRGR"                   , # Material Freight Group                                        
+        # "SFTY_STK_METH"           , # MRP Safety Stock Method                                       
+        # "PROFIL"                  , # Name of Backflush Profile                                     
+        # "VKUMC"                   , # Stock transfer sales value (plant to plant) for VO material   
+        # "VKTRW"                   , # Transit value at sales price for value-only material          
+        # "KZAGL"                   , # Indicator: smooth promotion consumption                       
+        # "FVIDK"                   , # Production Version To Be Costed                               
+        # "FXPRU"                   , # Fixed-Price Co-Product                                        
+        # "LOGGR"                   , # Logistics handling group for workload calculation             
+        # "FPRFM"                   , # Distribution profile of material in plant                     
+        # "GLGMG"                   , # Tied Empties Stock                                            
+        # "VKGLG"                   , # Sales value of tied empties stock                             
+        # "INDUS"                   , # Material CFOP category                                        
+        # "MOWNR"                   , # CAP: Number of CAP products list                              
+        # "MOGRU"                   , # Common Agricultural Policy: CAP products group-Foreign Trade  
+        # "CASNR"                   , # CAS number for pharmaceutical products in foreign trade       
+        # "GPNUM"                   , # Production statistics: PRODCOM number for foreign trade       
+        # "STEUC"                   , # Control code for consumption taxes in foreign trade           
+        # "FABKZ"                   , # JIT Delivery Schedules                                        
+        # "MATGR"                   , # Group of Materials for Transition Matrix                      
+        # "VSPVB"                   , # Proposed Supply Area in Material Master Record                
+        # "DPLFS"                   , # Fair share rule                                               
+        # "DPLPU"                   , # Indicator: push distribution                                  
+        # "DPLHO"                   , # Deployment horizon in days                                    
+        # "MINLS"                   , # Minimum lot size for Supply Demand Match                      
+        # "MAXLS"                   , # Maximum lot size for Supply Demand Match                      
+        # "FIXLS"                   , # Fixed lot size for Supply Demand Match                        
+        # "LTINC"                   , # Lot size increment for  Supply Demand Match                   
+        # "COMPL"                   , # This field is no longer used                                  
+        # "CONVT"                   , # Conversion types for production figures                       
+        # "SHPRO"                   , # Period Profile for Safety Time                                
+        # "AHDIS"                   , # MRP relevancy for dependent requirements                      
+        # "DIBER"                   , # Indicator: MRP area exists                                    
+        # "KZPSP"                   , # Indicator for Cross-Project Material                          
+        # "OCMPF"                   , # Overall profile for order change management                   
+        # "APOKZ"                   , # Indicator: Is material relevant for APO                       
+        # "MCRUE"                   , # MARDH rec. already exists for per. before last of MARD per.   
+        # "LFMON"                   , # Current period (posting period)                               
+        # "LFGJA"                   , # Fiscal Year of Current Period                                 
+        # "EISLO"                   , # Minimum Safety Stock                                          
+        # "NCOST"                   , # Do Not Cost                                                   
+        # "ROTATION_DATE"           , # Strategy for Putaway and Stock Removal                        
+        # "UCHKZ"                   , # Indicator for Original Batch Management                       
+        # "UCMAT"                   , # Reference Material for Original Batches                       
+        # "EXCISE_TAX_RLVNCE"       , # Excise Tax Relevance Indicator                                
+        # "TEMP_CTRL_MAX"           , # Maximum Temperature                                           
+        # "TEMP_CTRL_MIN"           , # Minimum Temperature                                           
+        # "TEMP_UOM"                , # Unit of Measure of Temperature                                
+        # "JITPRODNCONFPROFILE"     , # JIT Production Confirmation Profile                           
+        # "BWESB"                   , # Valuated Goods Receipt Blocked Stock                          
+        # "SGT_COVS"                , # Segmentation Strategy                                         
+        # "SGT_STATC"               , # Segmentation Status                                           
+        # "SGT_SCOPE"               , # Segmentation Strategy Scope                                   
+        # "SGT_MRPSI"               , # Sort Stock Based on Segment                                   
+        # "SGT_PRCM"                , # Consumption Priority [Obsolete]                               
+        # "SGT_CHINT"               , # Discrete Batch Number [Obsolete]                              
+        # "SGT_STK_PRT"             , # Stock Protection Indicator [Obsolete]                         
+        # "SGT_DEFSC"               , # Default Stock Segment Value                                   
+        # "SGT_MRP_ATP_STATUS"      , # ATP/MRP Status for Material and Segment [Obsolete]            
+        # "SGT_MMSTD"               , # Date from which the plant-spcific mat. status is valid [OBS]  
+        # "FSH_MG_ARUN_REQ"         , # Supply Assignment (ARun)                                      
+        # "FSH_SEAIM"               , # Indicator: Season Active in Inventory Management              
+        # "FSH_VAR_GROUP"           , # Variant Group                                                 
+        # "FSH_KZECH"               , # Indicator: Batch Assignt. during TR to TO conv [OBSOLETE]     
+        # "FSH_CALENDAR_GROUP"      , # Calendar Group                                                
+        # "ARUN_FIX_BATCH"          , # Assign Batches in Supply Assignment (ARun)                    
+        # "PPSKZ"                   , # Indicator for Advanced Planning                               
+        # "CONS_PROCG"              , # Consignment Control                                           
+        # "GI_PR_TIME"              , # Goods Issue Processing Time in Days                           
+        # "MULTIPLE_EKGRP"          , # Purchasing Across Purchasing Group                            
+        # "REF_SCHEMA"              , # Reference Determination Schema                                
+        # "MIN_TROC"                , # Minimum Target Range of Coverage                              
+        # "MAX_TROC"                , # Maximum Target Range of Coverage                              
+        # "TARGET_STOCK"            , # Target Stock                                                  
+        # "NF_FLAG"                 , # Indicator: Material Contains NF Metals                        
+        # "/CWM/UMLMC"              , # Stock in transfer (plant to plant)                            
+        # "/CWM/TRAME"              , # Stock in Transit                                              
+        # "/CWM/BWESB"              , # Valuated Goods Receipt Blocked Stock                          
+        # "SCM_MATLOCID_GUID16"     , # Internal Key for Product                                      
+        # "SCM_MATLOCID_GUID22"     , # Internal Number (UID) for Location Product                    
+        # "SCM_GRPRT"               , # Goods Receipt Processing Time                                 
+        # "SCM_GIPRT"               , # Goods Issue Processing Time                                   
+        # "SCM_SCOST"               , # Product-Dependent Storage Costs                               
+        # "SCM_RELDT"               , # Replenishment Lead Time in Calendar Days                      
+        # "SCM_RRP_TYPE"            , # PP Planning Procedure                                         
+        # "SCM_HEUR_ID"             , # PPC Heuristics                                                
+        # "SCM_PACKAGE_ID"          , # Planning Package to Which Product Belongs                     
+        # "SCM_SSPEN"               , # Penalty Costs for Safety Stock Violation                      
+        # "SCM_GET_ALERTS"          , # Alert Relevance of Product                                    
+        # "SCM_RES_NET_NAME"        , # Resource Network                                              
+        # "SCM_CONHAP"              , # Handling Capacity Consumption in Unit of Measure (Gds Rcpt)   
+        # "SCM_HUNIT"               , # Unit of Measure: Handling Capacity in Goods Receipt           
+        # "SCM_CONHAP_OUT"          , # Handling Capacity Consumption in Unit of Measure (Gds Issue)  
+        # "SCM_HUNIT_OUT"           , # Unit of Measure: Handling Capacity in Goods Issue             
+        # "SCM_SHELF_LIFE_LOC"      , # Use Location-Dependent Shelf Life of Product when Planning    
+        # "SCM_SHELF_LIFE_DUR"      , # Location-Dependent Shelf Life                                 
+        # "SCM_MATURITY_DUR"        , # Location-Dependent Maturation Time                            
+        # "SCM_SHLF_LFE_REQ_MIN"    , # Minimum Shelf Life Required: Location-Dependent               
+        # "SCM_SHLF_LFE_REQ_MAX"    , # Maximum Shelf Life Required: Location-Dependent               
+        # "SCM_LSUOM"               , # Unit of Measure of Lot Size                                   
+        # "SCM_REORD_DUR"           , # Reorder Days' Supply (in Workdays)                            
+        # "SCM_TARGET_DUR"          , # Target Days' Supply in Workdays                               
+        # "SCM_TSTRID"              , # Planning Calendar for Periodic Lot Sizing Procedure           
+        # "SCM_STRA1"               , # Requirement Strategy                                          
+        # "SCM_PEG_PAST_ALERT"      , # Alert threshold for delayed receipts                          
+        # "SCM_PEG_FUTURE_ALERT"    , # Alert threshold for early receipts                            
+        # "SCM_PEG_STRATEGY"        , # Pegging strategy for dynamic pegging                          
+        # "SCM_PEG_WO_ALERT_FST"    , # Avoid Alerts in Pegging                                       
+        # "SCM_FIXPEG_PROD_SET"     , # Retain Fixed Pegging for Product on Document Change           
+        # "SCM_WHATBOM"             , # Plan Explosion                                                
+        # "SCM_RRP_SEL_GROUP"       , # Planning Group                                                
+        # "SCM_INTSRC_PROF"         , # Profile for Interactive Sourcing                              
+        # "SCM_PRIO"                , # Priority of Product                                           
+        # "SCM_MIN_PASS_AMOUNT"     , # Minimum Passing Amount for Continuous I/O Pegging             
+        # "SCM_PROFID"              , # Conversion Rule                                               
+        # "SCM_GES_MNG_USE"         , # Use/Consume Entire Quantity of a Receipt Element              
+        # "SCM_GES_BST_USE"         , # Use/Consume Entire Quantity of a Stock Element                
+        # "ESPPFLG"                 , # Usage in Extended Service Parts Planning                      
+        # "SCM_THRUPUT_TIME"        , # Throughput Time                                               
+        # "SCM_TPOP"                , # Third-Party Order Processing                                  
+        # "SCM_SAFTY_V"             , # Safety Stock for Virtual Child Location                       
+        # "SCM_PPSAFTYSTK"          , # Safety Stock at Parent Location                               
+        # "SCM_PPSAFTYSTK_V"        , # Safety Stock of Parent Location Virtual Child Location        
+        # "SCM_REPSAFTY"            , # Repair Safety Stock                                           
+        # "SCM_REPSAFTY_V"          , # Repair Safety Stock for Virtual Child Location                
+        # "SCM_REORD_V"             , # Reorder Point for Virtual Child Location                      
+        # "SCM_MAXSTOCK_V"          , # Maximum Stock Level for Virtual Child Locations               
+        # "SCM_SCOST_PRCNT"         , # Cost Factor for Stockholding Costs                            
+        # "SCM_PROC_COST"           , # Procurement Costs for Product                                 
+        # "SCM_NDCOSTWE"            , # Goods Receiving Costs                                         
+        # "SCM_NDCOSTWA"            , # Goods Issue Costs                                             
+        # "SCM_CONINP"              , # Consumption of Storage Capacity per Unit of Material          
+        # "CONF_GMSYNC"             , # Synchronous Posting of Goods Issue                            
+        # "SCM_IUNIT"               , # Unit of Measurement of Size                                   
+        # "SCM_SFT_LOCK"            , # Indicator for Safety Stock Override                           
+        # "DUMMY_PLNT_INCL_EEW_PS"  , # MD product plant extensible field element                     
+        # "/SAPMP/TOLPRPL"          , # Percentage Tolerance Plus                                     
+        # "/SAPMP/TOLPRMI"          , # Percentage Tolerance Minus                                    
+        # "/STTPEC/SERVALID"        , # Serialization Valid From                                      
+        # "/VSO/R_PKGRP"            , # Packing Group of the Material (VSO)                           
+        # "/VSO/R_LANE_NUM"         , # Line within the Automatic Picking Zone (VSO)                  
+        # "/VSO/R_PAL_VEND"         , # Material No. of the Packaging Material of the Vendor (VSO)    
+        # "/VSO/R_FORK_DIR"         , # Pick Packaging Materials only Lengthwise (VSO)                
+        # "IUID_RELEVANT"           , # IUID-Relevant                                                 
+        # "IUID_TYPE"               , # Structure Type of UII                                         
+        # "UID_IEA"                 , # External Allocation of UII                                    
+        # "DPCBT"                   , # Single-Unit Batch Def. Value                                  
+        # "VARWI"                   , # Variable Weight enabled                                       
+        # "TOLVW"                   , # Variable weight Tolerance                                     
+        # "DVWCH"                     # Disable Variable Weight check                                 
+    ),
+     pRowcount = Inf
+   ) %>%
+  .[, c("SYSTID", "CLIENT"):= NULL]
+
+# Master Data (Time-Ind.): Characteristic Material Plant View #### 
+B4_MAT_PLANT_P <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BI0/PMAT_PLANT",
+     pOptions  = list(
+       paste0(       "/BIC/MMSTA IN (", paste0("'", fltMMSTA, "'"   , collapse = ", "), ")"),
+       "AND",
+       paste0(            "DISMM IN (", paste0("'", fltDISMM, "'"   , collapse = ", "), ")"),
+       "AND",
+       paste0(       "/BIC/PERKZ IN (", paste0("'", fltPERKZ, "'"   , collapse = ", "), ")"),
+       "AND",
+       paste0("/BIC/STGY_GRP NOT IN (", paste0("'", fltSTGY_GRP, "'", collapse = ", "), ")")
+     ),
+     pFields   = list(
+        # "PLANT"           , # Plant                                                      X
+        # "MAT_PLANT"       , # Material Plant                                             X
+        # "OBJVERS"         , # Object version                                             X
+        # "CHANGED"         , # Change flag ( I inserted / D deleted )                     
+        # "ABCKEY"          , # ABC indicator                                              
+        # "CO_AREA"         , # Controlling area                                           
+        # "DEL_FLAG"        , # Deletion flag for all material data of a plant             
+        # "DISMM"           , # MRP Type                                                   
+        # "DOC_CURRCY"      , # Document currency                                          
+        # "GR_PR_TIME"      , # Goods receipt processing time in days                      
+        # "INHSEPRODT"      , # In-house production time                                   
+        # "MRP_CONTRL"      , # MRP Controller                                             
+        # "PLND_DELRY"      , # Delivery time                                              
+        # "PROCTIME"        , # Processing time                                            
+        # "PRODSCHED"       , # Production Scheduler                                       
+        # "PROFIT_CTR"      , # Profit Center                                              
+        # "PUR_GROUP"       , # Purchasing Group                                           
+        # "REPLENTIME"      , # Total replenishment lead time                              
+        # "RPA_CURUOM"      , # Currency Unit Basis for Moving Average Valuation Factor    
+        # "RPA_MVF"         , # Valuation Factor for Average Cost Value                    
+        # "RPA_QTYUOM"      , # Unit of Measure Basis for Moving Average Valuation Factor  
+        # "RT_DEPARTM"      , # Department Number                                          
+        # "RT_PURCHAR"      , # Purchasing Area                                            
+        # "RT_SERVLEV"      , # IS-R Service Level                                         
+        # "RT_SSMFGR"       , # Date of First Goods Receipt                                
+        # "RUNOUTDATE"      , # Run-Out Date                                               
+        # "SETUPTIME"       , # Setup and teardown time                                    
+        # "SHIP_PR_TM"      , # Shipping processing time                                   
+        # "STGEPERIOD"      , # Maximum storage period                                     
+        # "STGE_PD_UN"      , # Unit for maximum storage period                            
+        # "TRANSTIME"       , # Interoperation time                                        
+        # "FRE_PLNPUR"      , # Replenishment Planner                                      
+        # "BASE_UOM"        , # Base Unit of Measure                                       
+        # "FRE_MINSTK"      , # Minimum Stock                                              
+        # "FRE_SERLEV"      , # Target Service Level                                       
+        # "FRE_SELCLS"      , # Selling Class                                              
+        # "FRE_REPLST"      , # Replenishment Type                                         
+        # "PRICE_UNIT"      , # Price unit                                                 
+        # "RT_SUPS"         , # Source of Supply                                           
+        # "/BIC/PRODCOM"    , # PRODCOM number for foreign trade                           
+        # "COUNTRY"         , # Country key                                                
+        # "/BIC/ZMAXLZ"     , # Max storage period                                         
+        # "/BIC/GSL_A"      , # GSL-A                                                      
+        # "/BIC/GSL_B"      , # GSL-B                                                      
+        # "/BIC/GSL_C"      , # GSL-C                                                      
+        # "VENDOR"          , # Vendor                                                     
+        # "/BIC/MINRSL"     , # Minimum remaining shelf life                               
+        # "SLL_NSCCC"       , # Numbering Scheme for Commodity Code                        
+        # "SLL_NUCCC"       , # Country for Commodity Code                                 
+        # "SLL_NUMCC"       , # Commodity Code                                             
+        # "CURRENCY"        , # Currency key                                               
+        # "PRICE_AVG"       , # Moving Average Price / Periodic Unit Price                 
+        # "EISBE_QTY"       , # Safety Stock                                               
+        # "/BIC/ZVARLOC"    , # Variable Location Y/N                                      
+        # "/BIC/ZAISLE"     , # Aisle (related to BIN)                                     
+        # "STRGE_BIN"       , # Storage bin                                                
+        # "/BIC/WM_LGBKZ"   , # Stacking class                                             
+        # "/BIC/WM_PLKPT"   , # Warehouse zone                                             
+        # "PO_UNIT"         , # Order unit                                                 
+        # "/BIC/WM_NORBM"   , # Normal order qty                                           
+        # "WHSE_NUM"        , # Warehouse number / warehouse complex                       
+        # "UNIT"            , # Unit of measure                                            
+        # "APO_BSTMI"       , # APO Minimum Lot Size                                       
+        # "/BIC/VARWI"      , # Variable weigth indicator                                  
+        # "/BIC/SOBSL"      , # SpecProcurement                                            
+        # "/BIC/SOBSK"      , # SpecProcType                                               
+        # "/BIC/MMSTA"      , # P-S matl status                                            
+        # "/BIC/PERKZ"      , # Period Indicator                                           
+        # "CFS_SEGMNT"      , # Material-Driver-Segment (MDS)                              
+        # "LOTSIZE"         , # Lot Size                                                   
+        # "/BIC/FEVOR"      , # Supervisor                                                 
+        # "/BIC/STGY_GRP"   , # Strategy Group                                             
+        # "/BIC/FOLW_MAT"   , # Follow-up Material                                         
+        # "/BIC/PLMAT"      , # Planning Material                                          
+        # "MATERIAL"        , # Material                                                   
+        # "SALESORG"        , # Sales Organization                                         
+        # "DISTR_CHAN"      , # Distribution Channel                                       
+        # "MAT_SALES"       , # Material (Sales)                                           
+        # "/BIC/PT_VALDAT"  , # Date from plant status                                     
+        # "/BIC/ALTSL"      , # Selection method                                           
+        # "/BIC/BSTMA"      , # Maximum lot size                                           
+        # "/BIC/BSTMI"      , # Minimum lot size                                           
+        # "/BIC/BSTRF"      , # Rounding value                                             
+        # "/BIC/DISLS"      , # Lot size procedure                                         
+        # "/BIC/FXHOR"      , # Planning time fence                                        
+        # "/BIC/LGFSB"      , # Storage location for EP                                    
+        # "/BIC/LGPRO"      , # Production storage location                                
+        # "/BIC/MRPPP"      , # Planning Calendar                                          
+        # "/BIC/MTVFP"      , # Availability check                                         
+        # "/BIC/SBDKZ"      , # Individual/collective requirements                         
+        # "/BIC/SHZET"      , # Safety leadtime                                            
+        # "/BIC/VINT1"      , # Backwards Consumption                                      
+        # "/BIC/VINT2"      , # Forwards Consumption                                       
+        # "/BIC/VRMOD"      , # Consumption Mode                                           
+        # "/BIC/RWPRO"      , # Coverage Profile                                           
+        # "/BIC/SHPRO"      , # Period Profile for Safety Time                             
+        # "/BIC/BESKZ"      , # Procurement Type                                           
+        # "VAL_CLASS"       , # Valuation class                                            
+        # "/BIC/PG_ATTR"    , # Product Group Attribute A_                                 
+        # "/BIC/MAT_PHIE1"  , # 0Mat_Plant Hierarchy level 1                               
+        # "/BIC/MAT_PHIE2"  , # 0Mat_Plant Hierarchy level 2                               
+        # "/BIC/MAT_PHIE3"  , # 0Mat_Plant Hierarchy level 3                               
+        # "/BIC/MAT_PHIE4"  , # 0Mat_Plant Hierarchy level 4                               
+        # "/BIC/VEND_TYPE"  , # Vendor Type                                                
+        # "/BIC/PLDDELTME"  , # Planned Delivery Time (days)                               
+        # "/BIC/LSTVENDOR"  , # Latest Vendor                                              
+        # "/BIC/LSTVNTYPE"  , # Latest Vendor Type                                         
+        # "/BIC/GSL_D"      , # GSL-D                                                      
+        # "/BIC/GSL_E"      , # GSL-E                                                      
+        # "/BIC/ZMAT_GRWS"    # Material Grouping (Work Schedule)                          
+    ),
+     pRowcount = Inf
+   ) %>%
+  .[, c("SYSTID", "CLIENT"):= NULL]
+
+B4_MATP <- 
+  B4_MAT_PLANT_P[S4_MARC, on = .(
+    MATERIAL == MATNR,
+    PLANT    == WERKS
+  ), nomatch = 0] 
+
+B4_MATP <- 
+  B4_MATP[, ( fTA(B4_MATP)[UCOUNT == 1, FLDNM]):= NULL] %T>%
+  setnames(
+  old = c("DEL_FLAG"   , "BASE_UOM"   , "MAT_SALES"   , "SALESORG"   , "MATERIAL"),
+  new = c("DEL_FLAG_MP", "BASE_UOM_MP", "MAT_SALES_MP", "SALESORG_MP", "MATERIAL_MP")
+)
+
+saveRDS(
+  object = B4_MATP, 
+  file   = file.path(PS02, SYS, "B4", "B4_MATP.rds")
+  )
+
+```
+
+## Mat Combined
+
+```{r}
+#| label:  Combined Master Data of Material
+#| eval:   true
+
+B4_MAT <- 
+  B4_MATS[, `:=` (MAT_PLANT = MAT_SALES, PLANT = DWERK)][
+    B4_MATP, on = .(MAT_PLANT, PLANT), nomatch = 0][
+      B4_MATL[, MAT_PLANT:= MATERIAL], 
+      on =.(MAT_PLANT), nomatch = 0]
+  
+B4_MAT <- 
+  B4_MAT[, ( fTA(B4_MAT)[UCOUNT == 1, FLDNM]):= NULL]
+
+COL_KEY <- c("SALESORG", "PLANT", "MATERIAL")
+COL_ORD <- c(COL_KEY, 
+             setdiff(names(B4_MAT), COL_KEY) %>% sort()
+)
+setcolorder(B4_MAT, COL_ORD, after = "MAT_PLANT")
+
+saveRDS(
+  object = B4_MAT, 
+  file   = file.path(PS02, SYS, "B4", "B4_MAT.rds")
+  )
+
+# View(
+#   B4_MAT[, .N, by = .(SALESORG, PLANT, DWERK)] %T>%
+#     setorder(SALESORG, PLANT, DWERK)
+#   )
 ```
 
 # OB - Open Hub

@@ -1,0 +1,869 @@
+---
+title   : SCOPING
+subtitle: ORG-MAT-CUST
+author  : "F.J. Padt"
+date    : "`r format(Sys.time(), '%B %d, %Y')`"
+output  :
+  pdf_document:
+    df_print: paged
+    toc: yes
+    toc_depth: 1      
+editor_options:
+  chunk_output_type: inline
+  markdown: 
+    wrap: 80  
+---
+
+\newpage
+
+![Logo](C:/Users/floris.padt/OneDrive%20-%20Wessanen/Pictures/ECOTONE/Logo.png)
+
+# Setup
+
+```{r Setup, eval=TRUE}
+
+knitr::opts_chunk$set(
+  cache   = FALSE,
+  echo    = TRUE,     # include R source code in the output  
+  eval    = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  results = "markup",
+  image   = TRUE,  
+  include = TRUE      # include the chunk output in the output 
+)
+
+# KnitR SetUp location
+KS <- 
+  file.path("..", "..", "ETRMK", "00_RProj", 
+    "00_Global", "KnitR_SetUp.R")
+
+
+library(reticulate)
+use_condaenv("sapyr")
+
+# public functions ---------------------------------------------------------
+invisible(source(KS))
+if( file.exists("functions.R")){source("functions.R")}
+
+
+lst <- list()
+
+FLD <- file.path(IMM, "SLM")
+wbt <- "" # workbook Title
+wbc <- "" # workbook Category
+wbf <- "" # workbook FileName
+
+```
+
+## Set Filters
+
+```{r DSCP_FILTERS, eval=TRUE}
+
+source("C:/RW/ETRMK/20_Notebooks/forecast-R/functions.R")
+
+# Rounding number of decimals
+RND <- 0
+
+# DSCP
+DSCP_AMB_PLANT    <- fGetPlantDSCP()
+DSCP_WERKS        <- f_or(DSCP_AMB_PLANT, "WERKS")
+DSCP_PLANT        <- f_or(DSCP_AMB_PLANT, "PLANT")
+
+DSCP_AMB_SALESORG <-fGetSalesorgDSCP()
+DSCP_SALESORG     <- f_or(DSCP_AMB_SALESORG, "VKORG") 
+
+# MASP
+## MATERIAL
+fltMATL_TYPE      <- c('HAWA', 'FERT', 'HALB', 'VOLL')
+
+## MAT_SALES
+fltVMSTA          <- c('SE', 'SQ', 'SK', 'SW', 'SA', 'SC', 'SF', 'SX', 'SY')
+
+## MAT_PLANT
+fltDISMM          <- c('PD'  , 'ZC'  , 'ZD'  , 'ZG', 
+                       'ZH'  , 'ZI'  , 'ZJ'  , 'ZN', 'ZP')
+fltPERKZ          <- c('W'   , 'T') 
+fltMMSTA          <- c('PE'  , 'PN'  , 'PH'  , 'PX', 'PA', 'PZ')
+
+
+# Customer
+fltACCNT_GRP      <- c('0001', 'CPD' , 'ZINC')
+
+# TD
+fltDLV_STSO       <- c('C')
+fltDOC_TYPE       <- c('KB'  , 'KL'  , 'RE'  , 'TA', 'ZCR', 
+                       'ZDR' , 'ZE'  , 'ZFD' , 'ZRE') 
+
+# ALL
+fltPLANT          <- c(DSCP_AMB_PLANT)
+fltSLORG          <- c(DSCP_AMB_SALESORG)
+
+
+
+
+
+## Add empty
+# fltDLV_STSO       <- c('', fltDLV_STSO)
+# fltMATL_TYPE      <- c('', fltMATL_TYPE)
+# fltDISMM          <- c('', fltDISMM)
+# fltPERKZ          <- c('', fltPERKZ)
+# fltACCNT_GRP      <- c('', fltACCNT_GRP)
+# fltDOC_TYPE       <- c('', fltDOC_TYPE) 
+# fltPLANT          <- c('', fltPLANT)
+
+```
+
+# ZFJP_DSCP_MATS
+
+## S4 Material
+
+```{r MATERIALS, eval = TRUE}
+
+MARA <-
+  fRead_and_Union(
+    pSIDCLNT = WPE,
+    pTable   = "MARA"   ,
+    pOptions = list("MTART IN ('HAWA', 'FERT', 'HALB', 'VOLL')"),
+    pFields  = list(
+      "MATNR", # Material Number
+      "LVORM", # Flag Material for Deletion at Client Level
+      "MTART", # Material type
+      "MATKL", # Material Group
+      "MEINS", # Base Unit of Measure
+      "PRDHA" #, # Product hierarchy
+      # "MHDRZ", # Minimum Remaining Shelf Life
+      # "MHDHB", # Total shelf life
+      # "MSTAE"  # Cross-Plant Material Status
+    ),
+    pRowcount = Inf
+  )
+
+MAKT <-
+  fRead_and_Union(
+    pSIDCLNT = WTE,
+    pTable   = "MAKT"   ,
+    pOptions = list("SPRAS = 'E'"),
+    pFields  = list(
+      "MATNR", #	Material Number
+      "MAKTX"  #	Material Description
+    ),
+    pRowcount = Inf
+  )
+
+MARA <- 
+  MAKT[MARA, on = .(SYSTID, CLIENT, MATNR)]
+
+MVKE <-
+  fRead_and_Union(
+    pSIDCLNT  = WTE,
+    pTable    = "MVKE",
+    pOptions  = list(),
+    pFields   = list(),
+    pRowcount = Inf
+  )
+```
+
+## ZFJP_MASP
+
+```{r}
+# Master Data (Time-Ind.): Characteristic MaterialUnit Measure #### 
+B4_MAT_UNIT_P <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WTB500",
+     pTable    = "/BI0/PMAT_UNIT",
+     pOptions  = f_or(c('PAL', 'CCG', 'LAY', 'CS', 'PAC', 'L', 'KG', 'DS', 'CNT', 'EA'), "MAT_UNIT"),
+     pFields   = list(
+        "MATERIAL"    , # Material                                                     X
+        "MAT_UNIT"    , # Units of Measure for Material                                X
+        "OBJVERS"     , # Object version                                               X
+        # "CHANGED"     , # Change flag ( I inserted / D deleted )
+        "DENOMINTR"   , # Denominator (divisor) for conversion of sales qty. into SKU
+        # "EANUPC"      , # European Article Numbers/Universal Product Code
+        # "EAN_NUMTYP"  , # Number Type for European Article Number
+        # "GROSS_WT"    , # Gross weight
+        # "HEIGHT"      , # Height
+        # "LEN"         , # Length
+        "NUMERATOR"   # , # Numerator(Factor) for Conversion of Sales Quantity Into SKU
+        # "UNIT"        , # Unit of measure
+        # "UNIT_DIM"    , # Unit of dimension for length/width/height
+        # "UNIT_OF_WT"  , # Weight unit
+        # "VOLUME"      , # Volume
+        # "VOLUMEUNIT"  , # Volume unit
+        # "WIDTH"         # Width
+    ),
+     pRowcount = Inf
+   ) %>% .[OBJVERS == 'A']
+
+
+```
+
+### P4 - Projection
+
+```{r 0MATERIAL, eval=TRUE}
+
+# Master Data (Time-Ind.): Characteristic Material #### 
+B4_MATERIAL_P <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BI0/PMATERIAL",
+     pOptions  = list(
+       "MATL_TYPE IN ('HAWA', 'FERT', 'VOLL')"
+     ),
+     pFields   = list(
+        # "MATERIAL"        , # Material                                          X
+        # "OBJVERS"         , # Object version                                    X
+        # "CHANGED"         , # Change flag ( I inserted / D deleted )            
+        # "/BIC/PRODH1"     , # Brand responsibility type                         
+        # "/BIC/PRODH2"     , # Brand                                             
+        # "/BIC/PRODH3"     , # Category                                          
+        # "/BIC/PRODH4"     , # Family                                            
+        # "APO_PROD"        , # Product                                           
+        # "BASE_UOM"        , # Base Unit of Measure                              
+        # "BASIC_MATL"      , # Basic material (basic constituent of a material)  
+        # "COMPETITOR"      , # Competitors                                       
+        # "CONT_UNIT"       , # Content unit                                      
+        # "CREATEDON"       , # Date on which the record was created              
+        # "CRM_PROD"        , # Product                                           
+        # "DIVISION"        , # Division                                          
+        # "EANUPC"          , # European Article Numbers/Universal Product Code   
+        # "EXTMATLGRP"      , # External material group                           
+        # "GROSS_CONT"      , # Gross contents                                    
+        # "GROSS_WT"        , # Gross weight                                      
+        # "HEIGHT"          , # Height                                            
+        # "IND_SECTOR"      , # Industry sector                                   
+        # "LENGHT"          , # Length                                            
+        # "LOC_CURRCY"      , # Local currency                                    
+        # "LOGSYS"          , # Source System                                     
+        # "MANUFACTOR"      , # Manufacturer                                      
+        # "MANU_MATNR"      , # Manufacturer Part Number                          
+        # "MATL_CAT"        , # Material category                                 
+        # "MATL_GROUP"      , # Material group                                    
+        # "MATL_TYPE"       , # Material type                                     
+        # "MSA_USAGE"       , # Usage                                             
+        # "NET_CONT"        , # Net contents                                      
+        # "NET_WEIGHT"      , # Net weight of item                                
+        # "PO_UNIT"         , # Order unit                                        
+        # "PROD_HIER"       , # Product hierarchy                                 
+        # "SIZE_DIM"        , # Size/dimension                                    
+        # "STD_DESCR"       , # Industry Standard Description (such as DIN)       
+        # "UNIT_DIM"        , # Unit of dimension for length/width/height         
+        # "UNIT_OF_WT"      , # Weight unit                                       
+        # "VENDOR"          , # Vendor                                            
+        # "VOLUME"          , # Volume                                            
+        # "VOLUMEUNIT"      , # Volume unit                                       
+        # "WIDTH"           , # Width                                             
+        # "/BIC/MG_L1"      , # Old Material group level 1                        
+        # "/BIC/MG_L2"      , # Old Material group level 2                        
+        # "/BIC/MG_L3"      , # Old Material group level 3                        
+        # "/BIC/MIN_RSL"    , # Minimum remaining shelf life (PO)                 
+        # "/BIC/MSTAE"      , # X-plant status                                    
+        # "/BIC/MSTAV"      , # X-distribution chain status                       
+        # "/BIC/OLD_MATNR"  , # Old material number                               
+        # "AF_COLOR"        , # AFS Elementary Field "Color"                      
+        # "AF_FCOCO"        , # AFS Fabric Content Code                           
+        # "AF_GENDER"       , # AFS Target Group                                  
+        # "AF_GRID"         , # AFS Grid                                          
+        # "AF_STYLE"        , # AFS Intersection                                  
+        # "BBP_PROD"        , # Product                                           
+        # "HC_AGENT1"       , # Active Ingredient 1 (Main Active Ingredient)      
+        # "HC_AGENT2"       , # Active Ingredient 2                               
+        # "HC_AGENT3"       , # Active Ingredient 3                               
+        # "HC_ANESIND"      , # Anesthetic Indicator                              
+        # "HC_APPRTYP"      , # Approval Type                                     
+        # "HC_ATCCODE"      , # ATC Code                                          
+        # "HC_ATCMTYP"      , # Type of Med. Category for ATC Code                
+        # "HC_CATIND1"      , # Catalog 1 Indicator                               
+        # "HC_CATIND2"      , # Catalog 2 Indicator                               
+        # "HC_CATIND3"      , # Catalog 3 Indicator                               
+        # "HC_HAZMIND"      , # Hazardous Substance Indicator                     
+        # "HC_IMPMIND"      , # Import Material Indicator                         
+        # "RPA_WGH1"        , # Material Group Hierarchy Level 1                  
+        # "RPA_WGH2"        , # Material Group Hierarchy Level 2                  
+        # "RPA_WGH3"        , # Material Group Hierarchy Level 3                  
+        # "RPA_WGH4"        , # Material Group Hierarchy Level 4                  
+        # "RTPLCST"         , # Planned Purchase Price                            
+        # "RT_COLOR"        , # Color                                             
+        # "RT_CONFMAT"      , # Cross-Plant Configur. Material                    
+        # "RT_FASHGRD"      , # Fashion Grade                                     
+        # "RT_MDRELST"      , # Master Data Release Status                        
+        # "RT_PRBAND"       , # Price Band Category                               
+        # "RT_PRRULE"       , # Procurement Rule                                  
+        # "RT_SEAROLL"      , # Collection                                        
+        # "RT_SEASON"       , # Season Category                                   
+        # "RT_SEASYR"       , # Season Year                                       
+        # "RT_SEAYR"        , # Season Year                                       
+        # "RT_SIZE"         , # Size                                              
+        # "RT_SUPS"         , # Source of Supply                                  
+        # "UCCERTIFTY"      , # Certification Type                                
+        # "UCCONSTCLA"      , # Construction Class                                
+        # "UCFUNCCLAS"      , # Function Class                                    
+        # "DF_DGNR"         , # Hazardous Material Number                         
+        # "DF_PROFILE"      , # Profile for Dangerous Goods Indicator             
+        # "RF_SIZE2"        , # Size 2                                            
+        # "RF_BNDID"        , # Brand                                             
+        # "RF_FRECHAR"      , # General Analysis Characteristic                   
+        # "RT_COLRNGE"      , # Color Characteristic range                        
+        # "RT_SIZRNGE"      , # Size Characteristic range                         
+        # "/BIC/MATLGRP71"  , # Categ. Mgr NL40 Natudis                           
+        # "/BIC/MATLGRP72"  , # Categ. Mgr NL10 Foodprints                        
+        # "/BIC/MATLGRP73"  , # Categ. Mgr GB10 Kallo                             
+        # "/BIC/MATLGRP74"  , # Categ. Mgr FR30 Distriborg France                 
+        # "/BIC/MATLGRP75"  , # Categ. Mgr FR40 Bonneterre                        
+        # "/BIC/MATLGRP76"  , # Categ. Mgr BE10 Hagor                             
+        # "/BIC/MATLGRP77"  , # Categ. Mgr DE20 Fachhandel                        
+        # "/BIC/MATLGRP78"  , # Categ. Mgr DE30 CoSA Naturprodukte                
+        # "/BIC/MATLGRP79"  , # Categ. Mgr DE*                                    
+        # "/BIC/STRAT_BUY"  , # Family                                            
+        # "/BIC/EA_PAL"     , # Eaches per Pallet                                 
+        # "/BIC/SR_RSPO"    , # RSPO indicator                                    
+        # "/BIC/SR_SUST"    , # Sustainability Indicator                          
+        # "/BIC/SR_FAIRTR"  , # Fair Trade                                        
+        # "/BIC/SR_NUTRI"   , # Nutritional                                       
+        # "/BIC/SR_ORG"     , # Organic                                           
+        # "/BIC/SR_VEGI"    , # Vegetarian                                        
+        # "/BIC/PRDH1"      , # Name of the Brand                                 
+        # "/BIC/PRDH2"      , # Main Category                                     
+        # "/BIC/PRDH3"      , # Product Sub Category                              
+        # "/BIC/PRDH4"      , # Product Family                                    
+        # "/BIC/BRANDTYP"   , # Marke                                             
+        # "/BIC/BRANDNAME"  , # Full brand Name                                   
+        # "PLANT"           , # Plant                                             
+        # "/BIC/LVORM"      , # DF at client level                                
+        # "DEL_FLAG"        , # Deletion flag for all material data of a plant    
+        # "/BIC/M_GLTNFRE"  , # Gluten free                                       
+        # "/BIC/EA_CS"      , # Eaches per Case                                   
+        # "/BIC/MTPOS"      , # Item Category Group                               
+        # "CH_ON"           , # Last changed on                                   
+        # "/BIC/MGL1"       , # Material group level 1                            
+        # "/BIC/MGL2"       , # Material group level 2                            
+        # "/BIC/MGL3"       , # Material group level 3                            
+        # "/BIC/MGL4"       , # Material group level 4                            
+        # "/BIC/CATTYP"     , # Category type                                     
+        # "/BIC/ZIS_SPEC"   , # Interspec Specification Number                    
+        # "NT_WT_KG"        , # Net weight in kilograms                           
+        # "GR_WT_KG"        , # Gross weight in kilograms                         
+        # "/BIC/EA_LAY"     , # EA per Layer                                      
+        # "/BIC/TEMPCOND"   , # Temperature Conditions                            
+        # "/BIC/TEMPC"      , # Temperature class                                 
+        # "CREATEDBY"         # Name of person who created the object             
+    ),
+     pRowcount = Inf
+   )
+
+
+# Master Data (Time-Ind.): Characteristic Material #### 
+P4 <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPB500",
+     pTable    = "/BI0/PMATERIAL",
+     pOptions  = list(),
+     pFields   = list(
+        "MATERIAL"        , # Material                                          X
+        ## "OBJVERS"         , # Object version                                    X
+        ## "CHANGED"         , # Change flag ( I inserted / D deleted )            
+        ## "/BIC/PRODH1"     , # Brand responsibility type
+        ## "/BIC/PRODH2"     , # Brand
+        ## "/BIC/PRODH3"     , # Category
+        ## "/BIC/PRODH4"     , # Family
+        ## "APO_PROD"        , # Product                                           
+        "BASE_UOM"        , # Base Unit of Measure
+        ## "BASIC_MATL"      , # Basic material (basic constituent of a material)  
+        ## "COMPETITOR"      , # Competitors                                       
+        ## "CONT_UNIT"       , # Content unit
+        "CREATEDON"       , # Date on which the record was created
+        ## "CRM_PROD"        , # Product                                           
+        "DIVISION"        , # Division
+        "EANUPC"          , # European Article Numbers/Universal Product Code
+        ## "EXTMATLGRP"      , # External material group                           
+        ## "GROSS_CONT"      , # Gross contents                                    
+        ## "GROSS_WT"        , # Gross weight
+        ## "HEIGHT"          , # Height
+        ## "IND_SECTOR"      , # Industry sector                                   
+        ## "LENGHT"          , # Length
+        ## "LOC_CURRCY"      , # Local currency                                    
+        ## "LOGSYS"          , # Source System                                     
+        ## "MANUFACTOR"      , # Manufacturer                                      
+        ## "MANU_MATNR"      , # Manufacturer Part Number                          
+        ## "MATL_CAT"        , # Material category                                 
+        "MATL_GROUP"      , # Material group
+        "MATL_TYPE"       , # Material type
+        ## "MSA_USAGE"       , # Usage                                             
+        ## "NET_CONT"        , # Net contents
+        ## "NET_WEIGHT"      , # Net weight of item
+        "PO_UNIT"         , # Order unit
+        "PROD_HIER"       , # Product hierarchy
+        ## "SIZE_DIM"        , # Size/dimension
+        "STD_DESCR"       , # Industry Standard Description (such as DIN)
+        "UNIT_DIM"        , # Unit of dimension for length/width/height
+        # "UNIT_OF_WT"      , # Weight unit                                       
+        ## "VENDOR"          , # Vendor                                            
+        ## "VOLUME"          , # Volume
+        ## "VOLUMEUNIT"      , # Volume unit                                       
+        ## "WIDTH"           , # Width
+        "/BIC/MG_L1"      , # Old Material group level 1
+        "/BIC/MG_L2"      , # Old Material group level 2
+        "/BIC/MG_L3"      , # Old Material group level 3
+        "/BIC/MIN_RSL"    , # Minimum remaining shelf life (PO)
+        ## "/BIC/MSTAE"      , # X-plant status
+        # "/BIC/MSTAV"      , # X-distribution chain status                       
+        "/BIC/OLD_MATNR"  , # Old material number
+        ## "AF_COLOR"        , # AFS Elementary Field "Color"                      
+        ## "AF_FCOCO"        , # AFS Fabric Content Code                           
+        ## "AF_GENDER"       , # AFS Target Group                                  
+        ## "AF_GRID"         , # AFS Grid                                          
+        ## "AF_STYLE"        , # AFS Intersection                                  
+        ## "BBP_PROD"        , # Product                                           
+        ## "HC_AGENT1"       , # Active Ingredient 1 (Main Active Ingredient)      
+        ## "HC_AGENT2"       , # Active Ingredient 2                               
+        ## "HC_AGENT3"       , # Active Ingredient 3                               
+        ## "HC_ANESIND"      , # Anesthetic Indicator                              
+        ## "HC_APPRTYP"      , # Approval Type                                     
+        ## "HC_ATCCODE"      , # ATC Code                                          
+        ## "HC_ATCMTYP"      , # Type of Med. Category for ATC Code                
+        ## "HC_CATIND1"      , # Catalog 1 Indicator                               
+        ## "HC_CATIND2"      , # Catalog 2 Indicator                               
+        ## "HC_CATIND3"      , # Catalog 3 Indicator                               
+        ## "HC_HAZMIND"      , # Hazardous Substance Indicator                     
+        ## "HC_IMPMIND"      , # Import Material Indicator                         
+        ## "RPA_WGH1"        , # Material Group Hierarchy Level 1                  
+        ## "RPA_WGH2"        , # Material Group Hierarchy Level 2                  
+        ## "RPA_WGH3"        , # Material Group Hierarchy Level 3                  
+        ## "RPA_WGH4"        , # Material Group Hierarchy Level 4                  
+        ## "RTPLCST"         , # Planned Purchase Price                            
+        ## "RT_COLOR"        , # Color                                             
+        ## "RT_CONFMAT"      , # Cross-Plant Configur. Material                    
+        ## "RT_FASHGRD"      , # Fashion Grade                                     
+        ## "RT_MDRELST"      , # Master Data Release Status                        
+        ## "RT_PRBAND"       , # Price Band Category                               
+        ## "RT_PRRULE"       , # Procurement Rule                                  
+        ## "RT_SEAROLL"      , # Collection                                        
+        ## "RT_SEASON"       , # Season Category                                   
+        ## "RT_SEASYR"       , # Season Year                                       
+        ## "RT_SEAYR"        , # Season Year                                       
+        ## "RT_SIZE"         , # Size                                              
+        ## "RT_SUPS"         , # Source of Supply                                  
+        ## "UCCERTIFTY"      , # Certification Type                                
+        ## "UCCONSTCLA"      , # Construction Class                                
+        ## "UCFUNCCLAS"      , # Function Class                                    
+        ## "DF_DGNR"         , # Hazardous Material Number                         
+        ## "DF_PROFILE"      , # Profile for Dangerous Goods Indicator             
+        ## "RF_SIZE2"        , # Size 2                                            
+        ## "RF_BNDID"        , # Brand                                             
+        ## "RF_FRECHAR"      , # General Analysis Characteristic                   
+        ## "RT_COLRNGE"      , # Color Characteristic range
+        ## "RT_SIZRNGE"      , # Size Characteristic range
+        "/BIC/MATLGRP71"  , # Categ. Mgr NL40 Natudis
+        ## "/BIC/MATLGRP72"  , # Categ. Mgr NL10 Foodprints                        
+        ## "/BIC/MATLGRP73"  , # Categ. Mgr GB10 Kallo                             
+        "/BIC/MATLGRP74"  , # Categ. Mgr FR30 Distriborg France
+        "/BIC/MATLGRP75"  , # Categ. Mgr FR40 Bonneterre
+        ## "/BIC/MATLGRP76"  , # Categ. Mgr BE10 Hagor                             
+        ## "/BIC/MATLGRP77"  , # Categ. Mgr DE20 Fachhandel                        
+        ## "/BIC/MATLGRP78"  , # Categ. Mgr DE30 CoSA Naturprodukte                
+        ## "/BIC/MATLGRP79"  , # Categ. Mgr DE*                                    
+        "/BIC/STRAT_BUY"  , # Family
+        "/BIC/EA_PAL"     , # Eaches per Pallet
+        "/BIC/SR_RSPO"    , # RSPO indicator
+        "/BIC/SR_SUST"    , # Sustainability Indicator
+        "/BIC/SR_FAIRTR"  , # Fair Trade
+        "/BIC/SR_NUTRI"   , # Nutritional
+        "/BIC/SR_ORG"     , # Organic
+        "/BIC/SR_VEGI"    , # Vegetarian
+        "/BIC/PRDH1"      , # Name of the Brand
+        "/BIC/PRDH2"      , # Main Category
+        "/BIC/PRDH3"      , # Product Sub Category
+        "/BIC/PRDH4"      , # Product Family
+        "/BIC/BRANDTYP"   , # Marke
+        "/BIC/BRANDNAME"  , # Full brand Name
+        # "PLANT"           , # Plant
+        "/BIC/LVORM"      , # DF at client level
+        ## "DEL_FLAG"        , # Deletion flag for all material data of a plant
+        "/BIC/M_GLTNFRE"  , # Gluten free
+        "/BIC/EA_CS"      , # Eaches per Case
+        "/BIC/MTPOS"      , # Item Category Group
+        "CH_ON"           , # Last changed on
+        "/BIC/MGL1"       , # Material group level 1
+        "/BIC/MGL2"       , # Material group level 2
+        "/BIC/MGL3"       , # Material group level 3
+        "/BIC/MGL4"       , # Material group level 4
+        ## "/BIC/CATTYP"     , # Category type                                     
+        "/BIC/ZIS_SPEC"   , # Interspec Specification Number
+        ## "NT_WT_KG"        , # Net weight in kilograms
+        ## "GR_WT_KG"        , # Gross weight in kilograms
+        "/BIC/EA_LAY"     , # EA per Layer
+        "/BIC/TEMPCOND"   , # Temperature Conditions
+        "/BIC/TEMPC"      , # Temperature class
+        ## "CREATEDBY"       , # Name of person who created the object
+        "/BIC/EAN_CS"       # EAN Code for Case
+    ),
+     pRowcount = Inf
+   )                                                                      %T>%
+  setnames(paste("MA", names(.), sep = "_"))                              %T>%
+  setnames(
+    c('MA_SYSTID', 'MA_CLIENT', 'MA_MATERIAL'), 
+    c('SYSTID'   , 'CLIENT'   , 'MATERIAL'), 
+  )                                                                       %>%
+  .[, MASP:= MATERIAL]
+
+```
+
+```{r}
+# Master Data (Time-Ind.): Characteristic Material Plant ####
+B4_MATL <- 
+  B4_MATERIAL_P[MARA, on = .(MATERIAL == MATNR), nomatch = 0] 
+
+View(fTA(B4_MATL))
+to_delete <- fTA(B4_MATL)[UCOUNT == 1, FLDNM]
+B4_MATL <- B4_MATL[, (to_delete):= NULL]
+```
+
+### P3 - Projection
+
+```{r 0MAT_PLANT, eval=TRUE}
+# P3 - SQL Filter: 
+# "0DEL_FLAG" =''  AND "MMSTA" <> ''  AND  "PERKZ" <> ''
+# Master Data (Time-Ind.): Characteristic Material Plant View #### 
+P3 <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WTB500",
+     pTable    = "/BI0/PMAT_PLANT",
+     # "MMSTA" <> ''  AND "0DEL_FLAG" =''  AND PERKZ <> ''
+     pOptions  = list(
+       "DEL_FLAG    = ''", "AND",
+       "/BIC/MMSTA <> ''", "AND",
+       "/BIC/PERKZ <> ''"
+     ),
+     pFields   = list(
+        "PLANT"           , # Plant                                                      X
+        "MAT_PLANT"       , # Material Plant                                             X
+        ## "OBJVERS"         , # Object version                                             X
+        ## "CHANGED"         , # Change flag ( I inserted / D deleted )                     
+        "ABCKEY"          , # ABC indicator
+        ## "CO_AREA"         , # Controlling area                                           
+        # "DEL_FLAG"        , # Deletion flag for all material data of a plant
+        "DISMM"           , # MRP Type
+        ## "DOC_CURRCY"      , # Document currency                                          
+        "GR_PR_TIME"      , # Goods receipt processing time in days
+        ## "INHSEPRODT"      , # In-house production time                                   
+        "MRP_CONTRL"      , # MRP Controller
+        "PLND_DELRY"      , # Delivery time
+        ## "PROCTIME"        , # Processing time                                            
+        ## "PRODSCHED"       , # Production Scheduler                                       
+        "PROFIT_CTR"      , # Profit Center
+        "PUR_GROUP"       , # Purchasing Group
+        ## "REPLENTIME"      , # Total replenishment lead time                              
+        ## "RPA_CURUOM"      , # Currency Unit Basis for Moving Average Valuation Factor    
+        ## "RPA_MVF"         , # Valuation Factor for Average Cost Value                    
+        ## "RPA_QTYUOM"      , # Unit of Measure Basis for Moving Average Valuation Factor  
+        ## "RT_DEPARTM"      , # Department Number                                          
+        ## "RT_PURCHAR"      , # Purchasing Area                                            
+        ## "RT_SERVLEV"      , # IS-R Service Level                                         
+        ## "RT_SSMFGR"       , # Date of First Goods Receipt                                
+        ## "RUNOUTDATE"      , # Run-Out Date                                               
+        ## "SETUPTIME"       , # Setup and teardown time                                    
+        ## "SHIP_PR_TM"      , # Shipping processing time                                   
+        "STGEPERIOD"      , # Maximum storage period
+        ## "STGE_PD_UN"      , # Unit for maximum storage period                            
+        ## "TRANSTIME"       , # Interoperation time                                        
+        ## "FRE_PLNPUR"      , # Replenishment Planner                                      
+        "BASE_UOM"        , # Base Unit of Measure
+        ## "FRE_MINSTK"      , # Minimum Stock                                              
+        ## "FRE_SERLEV"      , # Target Service Level                                       
+        ## "FRE_SELCLS"      , # Selling Class                                              
+        ## "FRE_REPLST"      , # Replenishment Type                                         
+        "PRICE_UNIT"      , # Price unit
+        ## "RT_SUPS"         , # Source of Supply                                           
+        "/BIC/PRODCOM"    , # PRODCOM number for foreign trade
+        "COUNTRY"         , # Country key
+        "/BIC/ZMAXLZ"     , # Max storage period
+        ## "/BIC/GSL_A"      , # GSL-A
+        ## "/BIC/GSL_B"      , # GSL-B
+        ## "/BIC/GSL_C"      , # GSL-C
+        "VENDOR"          , # Vendor
+        "/BIC/MINRSL"     , # Minimum remaining shelf life
+        ## "SLL_NSCCC"       , # Numbering Scheme for Commodity Code                        
+        "SLL_NUCCC"       , # Country for Commodity Code
+        "SLL_NUMCC"       , # Commodity Code
+        "CURRENCY"        , # Currency key
+        "PRICE_AVG"       , # Moving Average Price / Periodic Unit Price
+        "EISBE_QTY"       , # Safety Stock
+        "/BIC/ZVARLOC"    , # Variable Location Y/N
+        # "/BIC/ZAISLE"     , # Aisle (related to BIN)
+        "STRGE_BIN"       , # Storage bin
+        "/BIC/WM_LGBKZ"   , # Stacking class
+        "/BIC/WM_PLKPT"   , # Warehouse zone
+        "PO_UNIT"         , # Order unit
+        "/BIC/WM_NORBM"   , # Normal order qty
+        ## "WHSE_NUM"        , # Warehouse number / warehouse complex                       
+        ## "UNIT"            , # Unit of measure                                            
+        "APO_BSTMI"       , # APO Minimum Lot Size
+        "/BIC/VARWI"      , # Variable weigth indicator
+        "/BIC/SOBSL"      , # SpecProcurement
+        "/BIC/SOBSK"      , # SpecProcType
+        "/BIC/MMSTA"      , # P-S matl status
+        "/BIC/PERKZ"      , # Period Indicator
+        ## "CFS_SEGMNT"      , # Material-Driver-Segment (MDS)                              
+        ## "LOTSIZE"         , # Lot Size                                                   
+        "/BIC/FEVOR"      , # Supervisor
+        "/BIC/STGY_GRP"   , # Strategy Group
+        "/BIC/FOLW_MAT"   , # Follow-up Material
+        "/BIC/PLMAT"      , # Planning Material
+        # "MATERIAL"        , # Material
+        # "SALESORG"        , # Sales Organization
+        # "DISTR_CHAN"      , # Distribution Channel
+        # "MAT_SALES"       , # Material (Sales)
+        "/BIC/PT_VALDAT"  , # Date from plant status
+        "/BIC/ALTSL"      , # Selection method
+        "/BIC/BSTMA"      , # Maximum lot size
+        "/BIC/BSTMI"      , # Minimum lot size
+        "/BIC/BSTRF"      , # Rounding value
+        "/BIC/DISLS"      , # Lot size procedure
+        "/BIC/FXHOR"      , # Planning time fence
+        "/BIC/LGFSB"      , # Storage location for EP
+        "/BIC/LGPRO"      , # Production storage location
+        "/BIC/MRPPP"      , # Planning Calendar
+        "/BIC/MTVFP"      , # Availability check
+        "/BIC/SBDKZ"      , # Individual/collective requirements
+        "/BIC/SHZET"      , # Safety leadtime
+        "/BIC/VINT1"      , # Backwards Consumption
+        "/BIC/VINT2"      , # Forwards Consumption
+        "/BIC/VRMOD"      , # Consumption Mode
+        "/BIC/RWPRO"      , # Coverage Profile
+        "/BIC/SHPRO"      , # Period Profile for Safety Time
+        "/BIC/BESKZ"      , # Procurement Type
+        "VAL_CLASS"       , # Valuation class
+        "/BIC/PG_ATTR"    , # Product Group Attribute A_
+        "/BIC/MAT_PHIE1"  , # 0Mat_Plant Hierarchy level 1
+        "/BIC/MAT_PHIE2"  , # 0Mat_Plant Hierarchy level 2
+        "/BIC/MAT_PHIE3"  , # 0Mat_Plant Hierarchy level 3
+        "/BIC/MAT_PHIE4"  , # 0Mat_Plant Hierarchy level 4
+        ## "/BIC/VEND_TYPE"  , # Vendor Type
+        "/BIC/PLDDELTME"  #, # Planned Delivery Time (days)
+        ## "/BIC/LSTVENDOR"  , # Latest Vendor
+        ## "/BIC/LSTVNTYPE"  , # Latest Vendor Type
+        ## "/BIC/GSL_D"      , # GSL-D
+        ## "/BIC/GSL_E"        # GSL-E
+    ),
+     pRowcount = Inf
+   )                                                                      %T>%
+  setnames(paste("MP", names(.), sep = "_"))                              %T>%
+  setnames(
+    c('MP_SYSTID', 'MP_CLIENT', 'MP_MAT_PLANT', 'MP_PLANT'), 
+    c('SYSTID'   , 'CLIENT'   , 'MAT_PLANT'   , 'PLANT'), 
+  )                                                                       %>%
+  .[, MASP:= MAT_PLANT]
+                                      
+
+```
+
+### P1 - Projection
+
+```{r 0MAT_SALES,eval=TRUE}
+# P1 - SQL Filter 
+# "0DEL_FLAG" = ''   AND "VMSTA" <> ''  
+
+# Master Data (Time-Ind.): Characteristic Material (Sales) #### 
+P1 <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WTB500",
+     pTable    = "/BI0/PMAT_SALES",
+     pOptions  = list(
+       "/BIC/VMSTA <> ''"   , "AND",
+       "DEL_FLAG   =  ''"
+     ),
+     pFields   = list(
+        # "SALESORG"        , # Sales Organization                              X
+        # "DISTR_CHAN"      , # Distribution Channel                            X
+        # "MAT_SALES"       , # Material (Sales)                                X
+        ## "OBJVERS"         , # Object version                                  X
+        ## "CHANGED"         , # Change flag ( I inserted / D deleted )          
+        # "BASE_UOM"        , # Base Unit of Measure                            
+        # "MATL_GRP_1"      , # Material group 1                                
+        # "PROD_HIER"       , # Product hierarchy                               
+        ## "PROV_GROUP"      , # Commission group                                
+        # "REBATE_GRP"      , # Volume rebate group                             
+        ## "PH_REFNR"        , # Pharma Central Number                           
+        ## "DEL_FLAG"        , # Deletion flag for all material data of a plant  
+        ## "MATL_GRP_2"      , # Material group 2                                
+        # "MATL_GRP_3"      , # Material group 3                                
+        ## "MATL_GRP_4"      , # Material group 4                                
+        ## "MATL_GRP_5"      , # Material group 5                                
+        # "MAT_STGRP"       , # Material Statistics Group                       
+        ## "RT_ASSGRAD"      , # Assortment Grade                                
+        ## "AF_VASMG"        , # AFS VAS Material Group                          
+        ## "AF_PRIND"        , # AFS Price Indicator                             
+        ## "RT_PRBAND"       , # Price Band Category                             
+        # "MAT_KONDM"       , # Material Pricing Group                          
+        # "/BIC/PRAT1"      , # Innovative Indicator                            
+        # "/BIC/PRAT2"      , # Organic                                         
+        # "/BIC/PRAT3"      , # Pack tax relevant                               
+        # "/BIC/PRAT4"      , # Homeopatic License                              
+        # "/BIC/PRAT5"      , # NWO formula                                     
+        # "/BIC/PRAT6"      , # Hauschka Certified                              
+        # "/BIC/PRAT7"      , # Material trend                                  
+        # "/BIC/PRAT8"      , # Goody food                                      
+        # "/BIC/PRAT9"      , # Export only                                     
+        # "/BIC/VMSTA"      , # DChain-spec status                              
+        # "/BIC/MATLGRP6"   , # Segment                                         
+        # "/BIC/MATLGRP7"   , # Segment                                         
+        # "/BIC/MATLGRP8"   , # Ready to be sold                                
+        # "/BIC/MATLG61"    , # Category                                        
+        # "/BIC/MATLG62"    , # Sub-category                                    
+        ## "/BIC/MAT_OOI"    , # Origin of Ingredients                           
+        ## "/BIC/MAT_ORIG"   , # Origin of the material                          
+        ## "/BIC/MAT_PRSP"   , # Product Specification                           
+        ## "/BIC/MTL_GRP"    , # Agricultural type                               
+        ## "/BIC/MAT_TRND"   , # Material trend                                  
+        # "/BIC/MTPOS"      , # Item Category Group                             
+        # "/BIC/AUMNG"      , # Min. Order Qty (MINAU) in EA                    
+        # "/BIC/LOW_DAT"    , # Lower date                                      
+        # "/BIC/LOWERDATE"  , # First time ordered                              
+        # "FISCVARNT"       , # Fiscal year variant                             
+        # "FISCPER"         , # Fiscal year / period                            
+        # "/BIC/KBETR_VAT"  , # VAT amount %                                    
+        # "/BIC/PRODH1"     , # Brand responsibility type                       
+        # "/BIC/PRODH2"     , # Brand                                           
+        # "/BIC/PRODH3"     , # Category                                        
+        # "/BIC/PRODH4"     , # Family                                          
+        # "SALES_UNIT"      , # Sales unit                                      
+        # "ACCNT_ASGN"      , # Customer Account Assignment Group               
+        # "/BIC/SL_VALDAT"  , # Date from sales status                          
+        # "/BIC/TAXKM"      , # Tax Classification VAT                          
+        # "/BIC/ZDMND_PLN"  , # Demand Planner                                  
+        # "/BIC/PRODCLASS"  , # CRM product classification                      
+        # "/BIC/CRM_ACT"    , # CRM activity                                    
+        # "/BIC/LSTSLDATE"  , # Last sell Date                                  
+        # "/BIC/LO_YEAR"    , # Lower year                                      
+        # "/BIC/HI_YEAR"    , # Upper year                                      
+        # "/BIC/MATCLASS"     # Material Classification                         
+    ),
+     pRowcount = Inf
+   )                                                                      %T>%
+  setnames(paste("MS", names(.), sep = "_"))                              %T>%
+  setnames(
+    c('MS_SYSTID', 'MS_CLIENT', 'MS_MAT_SALES', 'MS_SALESORG'), 
+    c('SYSTID'   , 'CLIENT'   , 'MAT_SALES'   , 'SALESORG'), 
+  )                                                                       %>%
+  .[, MASP:= MAT_SALES]                               
+
+
+
+
+```
+
+### J1 - Inner Join \[n:m\]
+
+```{r J1, eval=TRUE}
+
+J1 <- 
+  P3[P1, on = .(SYSTID, CLIENT, MASP),
+     nomatch = 0] 
+
+```
+
+### J2 - Inner Join \[n:1\]
+
+```{r J2, eval=TRUE}
+
+J2 <- 
+  J1[P4, on = .(SYSTID, CLIENT, MASP),
+     nomatch = 0] 
+```
+
+### P2 - Projection
+
+```{r P2, eval=TRUE}
+
+P2 <- 
+  J2 %>%
+  .[, `:=` (
+    CURRENT_DATE = today(),
+    CURRENT_MNTH = paste0(year(today()), LP0(month(today()), 2)),
+    CURRENT_YEAR = paste0(year(today()))
+  )]
+
+```
+
+## Filter
+
+```{r check}
+  #                                                                    %>%
+  # MARA[, .(MATERIAL = MATNR, MATERIAL_TLG = MAKTX)][
+  #   .,on = .(MATERIAL)]                                                   %T>%
+  # setcolorder(
+  #   c(
+  #     "SYSTID"   , "CLIENT"    , "MATERIAL","MATERIAL_TLG", 
+  #     "MATL_TYPE", "MATL_GROUP", "BASE_UOM"
+  # ))
+
+B4_ZFJP_MASP <-
+  openxlsx2::read_xlsx(
+    file = "./data/ZFJP_MASP.xlsx",
+    sheet = "B4"
+  )                                                                       %T>%
+  setDT()                                                                 %>%
+  .[, MATERIAL:= LP0(Material, 18)]
+
+ZFJP_MASP <- 
+  P2                                                                      %>%
+  .[, S4:=ifelse(MASP %chin% MARA$MATNR, TRUE, FALSE)]                    %>%
+  .[MA_DIVISION    %chin% c('10')]                                        %>%
+  .[MS_DISTR_CHAN  %chin% c('10')]                                        %>%
+  .[MA_MATL_TYPE   %chin% fltMATL_TYPE]                                   %>%
+  .[MP_DISMM       %chin% fltDISMM]                                       %>%  
+  .[MP_PERKZ       %chin% fltPERKZ]                                       %>%  
+  .[MS_VMSTA       %chin% fltVMSTA]                                       %>%    # excl ST  
+  .[MP_MMSTA       %chin% fltMMSTA]                                       %>%    # excl PT
+  .[SALESORG       %chin% DSCP_AMB_SALESORG]                              %>%
+  .[PLANT          %chin% DSCP_AMB_PLANT]
+
+# View(
+#   fsetdiff(
+#     ZFJP_MASP[MP_PERKZ == 'W', .(MATERIAL)], 
+#     B4_ZFJP_MASP[, .(MATERIAL)]
+#   )
+# )
+
+```
+
+```{r}
+
+ZFJP_MASP <- 
+  B4_MAT_PLANT_P                                                          %>%
+  B4_MAT_SALES_P[
+    ., on = .(SYSTID, CLIENT, MAT_SALES = MAT_PLANT),
+                 nomatch = 0]                                             %>%
+  B4_MATERIAL_P[., on = .(SYSTID, CLIENT, MATERIAL = MAT_SALES),
+                 nomatch = 0]                                            
+    
+```
+
+```{r Communicate, eval=TRUE}
+
+wb <- 
+  createWorkbook(
+    title    = wbt,
+    subject  = "",
+    category = wbc
+  ) 
+
+for (i in 1:length(lst)) {
+  wsh <- lst[i] %>% names()
+  dt  <- lst[[i]]
+  addWorksheet(  wb = wb, sheet = wsh, gridLines = FALSE, tabColour = ET_CG)
+  writeDataTable(wb = wb, sheet = wsh, x = dt, tableStyle = "TableStyleMedium4")
+  freezePane(    wb = wb, sheet = wsh, firstActiveRow = 2, firstActiveCol = 2)
+  setColWidths(  wb = wb, sheet = wsh, cols = 1:1000, widths = "auto")  
+}
+
+FN <- 
+  wbf %>%
+  paste0(format(Sys.time(), "%Y%m%d%H%M%S"), "-", ., ".xlsx")
+
+FFN <- file.path(FLD, FN)
+
+saveWorkbook(wb, file = FFN, overwrite = TRUE)
+shell.exec(normalizePath(FFN))
+
+```
