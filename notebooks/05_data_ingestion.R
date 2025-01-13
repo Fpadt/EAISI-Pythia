@@ -423,3 +423,60 @@ fTransform_csv_to_parquet <-
       verbose     = verbose
     ) 
   }
+
+fTest <- 
+  function(){
+
+  con <- .get_duckdb_conn()
+  
+  on.exit( .close_duckdb_conn())
+  
+  sql_create_temp_table <- glue_sql("
+    CREATE TABLE SDSFRPR1_1 AS
+    SELECT 
+      *,
+      date_diff(
+        'month',
+        -- Parse VERSMON as YYYYMM + '01' into a date
+        strptime(VERSMON  || '01', '%Y%m%d'),
+        -- Parse CALMONTH as YYYYMM + '01' into a date
+        strptime(CALMONTH || '01', '%Y%m%d')
+      ) as STEP
+    FROM 
+      read_parquet([{`FN_FRPR5`}])
+    WHERE 
+      STEP = -1
+   ", .con = con)
+  
+  dbExecute(con, sql_create_temp_table)
+  
+  FN_FRPR_tmp <- file.path(PDYN, "SDSFRPR1_1.parquet")
+  sql_write_FRPR_tmp_table <- glue_sql("
+    COPY SDSFRPR1_1
+    TO {`FN_FRPR_tmp`}
+    (FORMAT 'parquet', CODEC 'uncompressed')
+    ", .con = con)
+  
+  dbExecute(con, sql_write_FRPR_tmp_table)
+  
+  # delete and rename to original
+  fs::file_delete(FN_FRPR5)
+  fs::file_move(FN_FRPR_tmp, FN_FRPR5)
+  
+  # # Step 2: Read the temporary table
+  # query <- glue_sql("
+  #   SELECT
+  #     *
+  #   FROM 
+  #     read_parquet([{`FN_FRPR5`}])
+  #   ", .con = con)
+  # 
+  # dt <- 
+  #   dbGetQuery(con, query) %>% 
+  #   setDT()
+  # 
+  # 
+  # 
+  # return(dt)
+  
+  }

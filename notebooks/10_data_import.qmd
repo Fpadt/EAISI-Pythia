@@ -97,10 +97,9 @@ MATP <- fGet_MATP(.scope_matl = FALSE, .material = '10023') # 2
 
 ```
 
-
 # Transaction Data
 
-## Sales 
+## Sales
 
 ```{r}
 #| label: 'Get DYN data'
@@ -134,7 +133,6 @@ DYN <-                    # 95
 # View(ACTC[DIFF != 0])
 
 ```
-
 
 # Analysis
 

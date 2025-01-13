@@ -47,10 +47,6 @@ Can be executed outside Ecotone Network as OneDrive ET\Pythia is used
 SID <- "WPB500"
 SYS <- substr(SID, 1, 3)
 
-# SAP Access
-# library(reticulate)
-# use_condaenv("sapyr")
-
 # public functions ---------------------------------------------------------
 invisible(source('library/KnitR_SetUp.R'))
 
@@ -164,6 +160,15 @@ fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "DYN"),
   output_path  = file.path(PS02, SYS, "DYN"),
   file_pattern = "^SDSFRPR([13].*|[24]_202(412|501)).*\\.csv$",   
+  ohdest       = "OH_FRPR1",
+  verbose      = FALSE
+)
+
+# Complete Actuals from 2024.02 till now
+fTransform_csv_to_parquet(
+  source_path  = file.path(PS01, SYS, "DYN"),
+  output_path  = file.path(PS02, SYS, "DYN"),
+  file_pattern = "^SDSFRFA[13].*\\.csv$",   
   ohdest       = "OH_FRPR1",
   verbose      = FALSE
 )

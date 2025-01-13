@@ -654,14 +654,13 @@ if(rstudioapi::showQuestion(
 
 Dynasys pre demand review actuals
 
-Only actuals where the difference between VERSMON and CALMONTH is 1 
+Only actuals where the difference between VERSMON and CALMONTH is 1
 
 Enriched with
 
-- Company Code
-- CalYear
-- CalMonth
-
+-   Company Code
+-   CalYear
+-   CalMonth
 
 ```{r}
 #| label:   'get_data_SDMFRPR1' 
@@ -710,7 +709,6 @@ B4_SDMFRPR12_A <-
    )
 
 ```
-
 
 ### SDSFRPR4 ✔
 
@@ -769,10 +767,10 @@ if(rstudioapi::showQuestion(
 
 Dynasys post demand review forecast
 
-Enriched with 
+Enriched with
 
-- MONTHDIFF
-- Company Code from SalesOrg
+-   MONTHDIFF
+-   Company Code from SalesOrg
 
 ```{r}
 #| label:   'get_data_SDMFRPR42'
@@ -886,7 +884,6 @@ IMP03SM1 <-
   fread(file = file.path(PDAT, "WPB", "IMP03SM1_F.csv"))
 
 ```
-
 
 ## Promotions
 
@@ -1130,7 +1127,6 @@ B4_MATERIAL_P <-
    )
 ```
 
-
 # Evaluation
 
 ## Forecast Accuracy
@@ -1322,7 +1318,6 @@ PTRN <- file.path("C:", "PW", "OneDrive", "ET", "pythia", "dat", "WPB", "TRAN")
 
 ```
 
-
 ```{r}
 #| label: 'RTP SALES', 
 #| eval:  false
@@ -1461,5 +1456,3 @@ saveWorkbook(wb, file = FFN, overwrite = TRUE)
 shell.exec(normalizePath(FFN))
 
 ```
-
-

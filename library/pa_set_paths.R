@@ -46,7 +46,9 @@ FN_STCK <-
 paths_parquet_files <- fread("
    stype,vtype,ftype,path
    DYN,010,1,SDSFRPR1*.parquet
+   DYN,010,5,SDSFRFA1.parquet   
    DYN,010,2,SDSFRPR3*.parquet
+   DYN,010,6,SDSFRFA3.parquet   
    DYN,060,1,SDSFRPR2*.parquet
    DYN,060,2,SDSFRPR4*.parquet
    ",
@@ -56,8 +58,14 @@ paths_parquet_files <- fread("
 FN_FRPR1 <-               # pre-Demand review 
   paths_parquet_files[vtype == '010' & ftype == 1, path]
 
+FN_FRPR5 <-               # pre-Demand review 
+  paths_parquet_files[vtype == '010' & ftype == 5, path]
+
 FN_FRPR3 <-               # pst-Demand review
   paths_parquet_files[vtype == '010' & ftype == 2, path]
+
+FN_FRPR6 <-               # pst-Demand review
+  paths_parquet_files[vtype == '010' & ftype == 6, path]
 
 ## Forecasts
 
