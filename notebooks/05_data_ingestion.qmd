@@ -160,8 +160,7 @@ Transform .csv files in Bronze to .parquet in Silver
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "DYN"),
   output_path  = file.path(PS02, SYS, "DYN"),
-  # file_pattern = "^SDSFRPR([13].*|[24]_202(412|501)).*\\.csv$",
-  file_pattern = "SDSFRPT2_202301.csv",
+  file_pattern = "^SDSFRPR([13].*|[24]_202(412|501)).*\\.csv$",
   file_spec    = FILE_SPEC,
   ohdest       = "OH_FRPR1",
   verbose      = TRUE
@@ -172,8 +171,18 @@ fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "DYN"),
   output_path  = file.path(PS02, SYS, "DYN"),
   file_pattern = "^SDSFRFA[13].*\\.csv$",   
-  ohdest       = "OH_FRPR1",
+  file_spec    = FILE_SPEC,
+  ohdest       = "OH_FRPR3",
   verbose      = FALSE
+)
+
+fTransform_csv_to_parquet(
+  source_path  = file.path(PS01, SYS, "DYN"),
+  output_path  = "c:/temp",
+  file_pattern = "^SDSFRPR([1].*|[24]_202(412|501)).*\\.csv$",
+  file_spec    = FILE_SPEC,
+  ohdest       = "OH_FRPR3",
+  verbose      = TRUE
 )
 
 # 

@@ -51,7 +51,8 @@ EPB <- file.path(ONE, "BI_Documents")
 PET <- file.path("C:", "PW", "OneDrive", "ET")
 
 # Pythia
-PPET <- file.path(Sys.getenv("OneDriveConsumer"), "ET")
+PPET <- normalizePath(
+  file.path(Sys.getenv("OneDriveConsumer"), "ET"), winslash = "/")
 PDAT <- file.path(PPET, "pythia", "dat")
 
 PS01 <- file.path(PDAT, "S1B")    # Staging - Bronze
