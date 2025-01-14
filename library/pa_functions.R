@@ -50,6 +50,30 @@ SCOPE_PLNT <-
      )
   "
 
+fVerbose <- function(
+    function_name   = NULL,
+    function_args   = NULL,
+    function_return = NULL,
+    verbose         = FALSE
+) {
+  if (isTRUE(verbose)) {
+    cat("Function name:\n")
+    cat("  ", function_name, "\n\n")
+    
+    if (!is.null(function_args)) {
+      cat("Function arguments:\n")
+      print(function_args)
+      cat("\n")
+    }
+    
+    if (!is.null(function_return)) {
+      cat("Function return value:\n")
+      print(function_return)
+      cat("\n")
+    }
+  }
+}
+
 fDescribe_Parquet <- 
   function(
     .fn = NULL
@@ -765,3 +789,25 @@ fOpen_Folder <-
     shell.exec(normalizePath(path))
   }
 
+fHeader_PQT <- 
+  function(.fn, .n = 1000){
+    
+    con <- .get_duckdb_conn()
+    
+    on.exit( .close_duckdb_conn())
+    
+    query <- glue_sql("
+    SELECT 
+      *
+    FROM 
+      read_parquet([{`.fn`}])
+    LIMIT {.n}
+   ", .con = con)
+    
+    dt <-
+      dbGetQuery(con, query) %>%
+      setDT()
+    
+    return(dt)
+    
+  }

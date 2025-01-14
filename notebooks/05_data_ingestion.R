@@ -39,49 +39,49 @@
 # OH_VSSL5
 
 
-fGet_FieldNames <- 
-  function(ohdest, sid="WDB100"){
-    
-    if (!exists("dtOHD")){
-      dtOHD <<- 
-        fRead_and_Union(
-          pSIDCLNT = sid,
-          pTable   = "RSBOHFIELDS",
-          pOptions = list("OBJVERS = 'A'")
-        )                                        %T>%
-        .[, FIELDNM:= sub("/BIC/", "", FIELDNM)] %T>%
-        setkey(OHDEST, POSIT)
-      
-    }
-    
-    dtOHD[OHDEST == ohdest, FIELDNM]
-  }
-
-
-
-fLoadOpenHubExport <- 
-  function(
-    pAREA, pCFG = CFG , pENV = 'WPB', pPERKZ = 'perkz_w', 
-    pKEY , pPTH = PYTH, pEXP = 'NEW'){
-   
-   OHD <- pCFG[AREA == pAREA & EXP == pEXP, OHD]   
-   iFN <- pCFG[AREA == pAREA & EXP == pEXP, FNM]
-   wFN <- normalizePath(file.path(pPTH, iFN))
-
-    RETURN <- 
-      fread(
-        # file        = iFN, 
-        header      = FALSE, 
-        cmd         = paste("iconv -f WINDOWS-1252 -t UTF-8", shQuote(wFN)),
-        colClasses  = "character", 
-        strip.white = FALSE
-      )                                                              %T>%
-      setnames(fGet_FieldNames(OHD))
-
-    if(!missing(pKEY)){setkeyv(x = RETURN, pKEY)}
-    
-    RETURN
-  }
+# fGet_FieldNames <- 
+#   function(ohdest, sid="WDB100"){
+#     
+#     if (!exists("dtOHD")){
+#       dtOHD <<- 
+#         fRead_and_Union(
+#           pSIDCLNT = sid,
+#           pTable   = "RSBOHFIELDS",
+#           pOptions = list("OBJVERS = 'A'")
+#         )                                        %T>%
+#         .[, FIELDNM:= sub("/BIC/", "", FIELDNM)] %T>%
+#         setkey(OHDEST, POSIT)
+#       
+#     }
+#     
+#     dtOHD[OHDEST == ohdest, FIELDNM]
+#   }
+# 
+# 
+# 
+# fLoadOpenHubExport <- 
+#   function(
+#     pAREA, pCFG = CFG , pENV = 'WPB', pPERKZ = 'perkz_w', 
+#     pKEY , pPTH = PYTH, pEXP = 'NEW'){
+#    
+#    OHD <- pCFG[AREA == pAREA & EXP == pEXP, OHD]   
+#    iFN <- pCFG[AREA == pAREA & EXP == pEXP, FNM]
+#    wFN <- normalizePath(file.path(pPTH, iFN))
+# 
+#     RETURN <- 
+#       fread(
+#         # file        = iFN, 
+#         header      = FALSE, 
+#         cmd         = paste("iconv -f WINDOWS-1252 -t UTF-8", shQuote(wFN)),
+#         colClasses  = "character", 
+#         strip.white = FALSE
+#       )                                                              %T>%
+#       setnames(fGet_FieldNames(OHD))
+# 
+#     if(!missing(pKEY)){setkeyv(x = RETURN, pKEY)}
+#     
+#     RETURN
+#   }
 
 
 # DSCP --------------------------------------------------------------------
@@ -118,84 +118,84 @@ fGetPlantDSCP <-
   }
 
 ## Salesorg ####
-fGetSalesorgDSCP <- 
-  function(pSIDCLNT = WPB, pType = c("AMB", "SSL") ) {
-    
-    if(missing(pType)) {
-      pType <- pType[1]
-    }
-    
-    if(pType == "AMB") {
-      pOptions <- list("NAME = 'DSCP_AMB_PLANT'")
-    } else if(pType == "SSL") {
-      pOptions <- list("NAME = 'DSCP_SSL_PLANT'")
-    }
-    
-    DSCP_WERKS <- 
-      fGetPlantDSCP(pSIDCLNT, pType) %>%
-      f_or("WERKS")
-    
-    fRead_and_Union(
-      pSIDCLNT  = WPE,
-      pTable    = "T001W",
-      pOptions  = DSCP_WERKS,
-      pFields   = list(
-        
-      ),
-      pRowcount = Inf
-    ) %>%
-      .[, VKORG] %>%
-      unique()
-  }
+# fGetSalesorgDSCP <- 
+#   function(pSIDCLNT = WPB, pType = c("AMB", "SSL") ) {
+#     
+#     if(missing(pType)) {
+#       pType <- pType[1]
+#     }
+#     
+#     if(pType == "AMB") {
+#       pOptions <- list("NAME = 'DSCP_AMB_PLANT'")
+#     } else if(pType == "SSL") {
+#       pOptions <- list("NAME = 'DSCP_SSL_PLANT'")
+#     }
+#     
+#     DSCP_WERKS <- 
+#       fGetPlantDSCP(pSIDCLNT, pType) %>%
+#       f_or("WERKS")
+#     
+#     fRead_and_Union(
+#       pSIDCLNT  = WPE,
+#       pTable    = "T001W",
+#       pOptions  = DSCP_WERKS,
+#       pFields   = list(
+#         
+#       ),
+#       pRowcount = Inf
+#     ) %>%
+#       .[, VKORG] %>%
+#       unique()
+#   }
 
-fSignLeft <- 
-  function(x){
-    ifelse(
-      grepl(pattern = "-", x),
-      paste0(
-        "-",        
-        sub(
-          pattern     = "-", 
-          replacement = "", 
-          x           = x
-        )
-      ),
-      x
-    ) %>%
-      as.numeric()
-  }
+# fSignLeft <- 
+#   function(x){
+#     ifelse(
+#       grepl(pattern = "-", x),
+#       paste0(
+#         "-",        
+#         sub(
+#           pattern     = "-", 
+#           replacement = "", 
+#           x           = x
+#         )
+#       ),
+#       x
+#     ) %>%
+#       as.numeric()
+#   }
 
 # DuckDB ####
 
-helper_for_pipe_line <- 
-  function(x){
-    
-    res <- 
-      fread(file = file.path(PS01, SYS, "B4", "B4_RSBOHFIELDS.csv")) %>%
-      .[OHDEST == x, .(
-        FIELDNM = sub("/BIC/", "", FIELDNM), 
-        DATATYPE, POSIT)]                                            %T>%
-      setorder(POSIT)
-      
-
-    # Calculate the maximum length of FLDNM_IN for alignment
-    res[, no_spc := max(nchar(FIELDNM)) - nchar(FIELDNM) + 3]
-        
-    res <- 
-      res[, glue_data(.SD, 
-                  "{FIELDNM}{strrep(' ', no_spc)}| {DATATYPE} | "
-    )]
-    
-    # Collapse the vector into a single string
-    result <- 
-      paste0(res, collapse = "\n") 
-    
-    clipr::write_clip(result)
-    cat(result) 
-  }
+# helper_for_pipe_line <- 
+#   function(x){
+#     
+#     res <- 
+#       fread(file = file.path(PS01, SYS, "B4", "B4_RSBOHFIELDS.csv")) %>%
+#       .[OHDEST == x, .(
+#         FIELDNM = sub("/BIC/", "", FIELDNM), 
+#         DATATYPE, POSIT)]                                            %T>%
+#       setorder(POSIT)
+#       
+# 
+#     # Calculate the maximum length of FLDNM_IN for alignment
+#     res[, no_spc := max(nchar(FIELDNM)) - nchar(FIELDNM) + 3]
+#         
+#     res <- 
+#       res[, glue_data(.SD, 
+#                   "{FIELDNM}{strrep(' ', no_spc)}| {DATATYPE} | "
+#     )]
+#     
+#     # Collapse the vector into a single string
+#     result <- 
+#       paste0(res, collapse = "\n") 
+#     
+#     clipr::write_clip(result)
+#     cat(result) 
+#   }
 
 # generate a formatted field PIPE_LINE with field types
-generate_field_spec <- 
+gen_fields_in <- 
   function(x) {
     
     # remove unnamed fields
@@ -205,9 +205,8 @@ generate_field_spec <-
     x[, no_spc := max(nchar(FLDNM_IN)) - nchar(FLDNM_IN) + 3]
     
     # Generate the formatted string using glue_data
-    result <- x[, glue_data(.SD, 
-                            "'{FLDNM_IN}'{strrep(' ', no_spc)}: '{FIELDTP}',"
-    )]
+    result <- x[, glue_data(
+      .SD, "'{FLDNM_IN}'{strrep(' ', no_spc)}: '{FIELDTP}',")]
     
     # Collapse the vector into a single string
     result <- 
@@ -218,7 +217,7 @@ generate_field_spec <-
   }
 
 # generate a formatted field PIPE_LINE with field types
-generate_transformation_spec <- 
+gen_fields_out <- 
   function(x) {
     
     # remove unnamed fields
@@ -239,66 +238,118 @@ generate_transformation_spec <-
     return(result)
   }
 
-# generate the read_csv SQL snippet
-gen_sql_to_read_csv <- 
-  function(ffns, delim, header, date_format, field_spec) {
-    glue("
-    read_csv('{ffns}',
-      delim      = '{delim}',
-      header     = {header},
-      dateformat = '{date_format}',
-      columns = {{
-        {field_spec}
-      }}
-    )
-  ")
-  }
+# # generate the read_csv SQL snippet
+# gen_sql_to_read_csv <- 
+#   function(
+#     ffns      ,
+#     file_spec ,
+#     fields_in,
+#     verbose) {
+#     
+#     sql <- glue(
+#      "read_csv('{ffns}',
+#         delim      = '{file_spec$DELIM}',
+#         header     =  {file_spec$HEADER},
+#         dateformat = '{file_spec$DATE_FORMAT}',
+#         columns = {{
+#           {fields_in}
+#         }}
+#       )
+#      ")
+#     
+#     # Print the SQL if verbose is TRUE
+#     # Use the custom verbose function
+#     fVerbose(
+#       function_name   = "gen_sql_to_read_csv",
+#       function_args   = list(
+#         ffns       = ffns,
+#         file_spec  = file_spec,
+#         fields_in = fields_in
+#       ),
+#       function_return = sql,
+#       verbose         = verbose
+#     )
+#     
+#     return(sql)
+#   }
 
-gen_sql_to_transform_data <- 
-  function(sql_read_csv, pipe_line, con) {
-    # Use glue_sql to construct SQL query
-    sql_get_data <- 
-      glue_sql("
-      SELECT 
-       *
-      FROM {DBI::SQL(sql_read_csv)}
-      ", .con = con)
-    
-    # Create the SELECT statement dynamically
-    select_statement <- 
-      generate_transformation_spec(pipe_line)
-    
-    sql_transform_data <- 
-      glue_sql("
-      SELECT 
-        {DBI::SQL(select_statement)}
-      FROM ({DBI::SQL(sql_get_data)})
-      ", .con = con)
-    
-    return(sql_transform_data)
-  }
+# gen_sql_transformation_rules <- 
+#   function(
+#     sql_read_csv, 
+#     pipe_line   , 
+#     con         ,
+#     verbose) {
+#     
+#     # # Use glue_sql to construct SQL query
+#     # sql_get_data <- 
+#     #   glue_sql("
+#     #   SELECT 
+#     #    *
+#     #   FROM {DBI::SQL(sql_read_csv)}
+#     #   ", .con = con)
+#     
+#     # ({DBI::SQL(sql_get_data)})
+#     
+#     sql_transformation_rules <- 
+#       glue_sql("
+#       SELECT 
+#         {DBI::SQL(gen_fields_out(pipe_line))}
+#       FROM 
+#           {DBI::SQL(sql_read_csv)}        
+#       ", .con = con)
+#     
+#     # Print if verbose is TRUE
+#     fVerbose(
+#       function_name  = "gen_sql_transformation_rules",
+#       function_args  = list(
+#         sql_read_csv = sql_read_csv,
+#         pipe_line    = pipe_line,
+#         con          = con
+#       ),
+#       function_return = sql_transformation_rules,
+#       verbose         = verbose
+#     )
+#     
+#     return(sql_transformation_rules)
+#   }
 
-# Function to write data to Parquet
-gen_sql_to_write_data_to_parquet <- 
-  function(sql_transform_data, output_file) {
-    sql_write_data <- glue("
-      COPY ({sql_transform_data})
-      TO '{output_file}'
-      (FORMAT 'parquet', CODEC 'uncompressed')
-      ")
-    
-    return(sql_write_data)
-  }
+# # Function to write data to Parquet
+# gen_sql_to_write_data_to_parquet <- 
+#   function(
+#     sql_transformation_rules, 
+#     output_pqt_file   ,
+#     verbose
+#     ) {
+#     
+#     sql_write_data <- glue(
+#       "COPY ({sql_transformation_rules})
+#        TO '{output_pqt_file}'
+#        (FORMAT 'parquet', CODEC 'uncompressed')
+#       ")
+#     
+#     # Print if verbose is TRUE
+#     fVerbose(
+#       function_name   = "gen_sql_to_write_data_to_parquet",
+#       function_args   = list(
+#         sql_transformation_rules = sql_transformation_rules,
+#         output_pqt_file          = output_pqt_file
+#       ),
+#       function_return = sql_write_data,
+#       verbose         = verbose
+#     )
+#     
+#     return(sql_write_data)
+#   }
 
 # Main function to transform_csv_to_parquet
 # read csv > transform > write parquet
-transform_csv_to_parquet <- 
+.transform_csv_to_parquet <- 
   function(
     full_file_name, 
     output_path   , 
     file_spec     ,
     pipe_line     ,
-    verbose       = FALSE) {
+    verbose) {
 
     file_name       <- fs::path_file(full_file_name)
     input_csv_file  <- full_file_name
@@ -323,31 +374,84 @@ transform_csv_to_parquet <-
     }
     
     # Establish a connection to DuckDB
-    con <- dbConnect(duckdb(), dbdir = ":memory:")
+    con <- .get_duckdb_conn()
     
     # Ensure the connection is closed when the function exits
-    on.exit(dbDisconnect(con), add = TRUE)
+    on.exit(.close_duckdb_conn(), add = TRUE) 
+
+    # sql_read_csv <- glue("
+    #   read_csv('{input_csv_file}',
+    #     delim      = '{file_spec$DELIM}',
+    #     header     =  {file_spec$HEADER},
+    #     dateformat = '{file_spec$DATE_FORMAT}',
+    #     columns = {{
+    #       {gen_fields_in(pipe_line)}
+    #     }} 
+    #   )", .con = con) 
+    # 
+    # sql_transformation_rules <- glue_sql("
+    #   SELECT 
+    #     {DBI::SQL(gen_fields_out(pipe_line))}
+    #   FROM 
+    #     {DBI::SQL(sql_read_csv)}        
+    #   ", .con = con) 
+    # 
+    # sql_write_parquet <-  glue("
+    #   COPY ({sql_transformation_rules})
+    #    TO '{output_pqt_file}'
+    #    (FORMAT 'parquet', CODEC 'uncompressed')
+    #   ", .con = con) 
     
     # Generate duckdb SQL to transform_csv_to_parquet
-    sql_transform_csv_to_parquet <- 
-      # Generate duckdb SQL for reading CSV
-      gen_sql_to_read_csv(
-        ffns              = input_csv_file,
-        delim             = file_spec$DELIM,
-        header            = file_spec$HEADER,
-        date_format       = file_spec$DATE_FORMAT,
-        field_spec        = generate_field_spec(pipe_line)
-      ) %>%
-      # Generate duckdb SQL for data transformation
-      gen_sql_to_transform_data(
-        pipe_line         = pipe_line,
-        con               = con
-      ) %>% 
-      # Generate duckdb SQL for writing data as parquet
-      gen_sql_to_write_data_to_parquet(
-        output_pqt_file
-      )
+    sql_transform_csv_to_parquet <- glue("
+      read_csv('{input_csv_file}',
+        delim      = '{file_spec$DELIM}',
+        header     =  {file_spec$HEADER},
+        dateformat = '{file_spec$DATE_FORMAT}',
+        columns = {{
+          {gen_fields_in(pipe_line)}
+        }} 
+      )", .con = con
+    ) %>% glue_sql("
+      SELECT 
+        {DBI::SQL(gen_fields_out(pipe_line))}
+      FROM 
+        {DBI::SQL(sql_read_csv)}        
+      ", sql_read_csv = ., .con = con
+    ) %>% glue("
+      COPY ({sql_transformation_rules})
+       TO '{output_pqt_file}'
+       (FORMAT 'parquet', CODEC 'uncompressed')
+      ", sql_transformation_rules = ., .con = con
+    ) 
+      
     
+    # sql_write_parquet <-  glue("
+    #   COPY ({sql_transformation_rules})
+    #    TO '{output_pqt_file}'
+    #    (FORMAT 'parquet', CODEC 'uncompressed')
+    #   ", .con = con) 
+ #      # Generate duckdb SQL for reading CSV
+ # %>%
+ #      # gen_sql_to_read_csv(
+ #      #   ffns              = input_csv_file,
+ #      #   file_spec         = file_spec,
+ #      #   fields_in         = gen_fields_in(pipe_line),
+ #      #   verbose           = verbose
+ #      # ) %>%
+ #      # Generate duckdb SQL for data transformation
+ #    %>%
+ #      # gen_sql_transformation_rules(
+ #      #   pipe_line         = pipe_line,
+ #      #   con               = con,
+ #      #   verbose           = verbose
+ #      # ) %>%
+ #      # Generate duckdb SQL for writing data as parquet
+ #      gen_sql_to_write_data_to_parquet(
+ #        output_pqt_file   = output_pqt_file,
+ #        verbose           = verbose
+ #      )
+
     # Execute the SQL to transform_csv_to_parquet
     tryCatch({
       system.time({
@@ -370,14 +474,15 @@ transform_csv_to_parquet <-
 
 fGetPipeLines <-
   function(){
-    rbind(
-      fread(file = file.path(PS01, SYS, "B4", "B4_PIPELINE_ORG.csv")) %>%
-        .[, SRC:= 'O'], 
-      fread(file = file.path(PS01, SYS, "B4", "B4_PIPELINE_MOD.csv")) %>%
-        .[, SRC:= 'C']
-    )                                                                   %T>%
-      setorder(SRC, OHDEST, POSIT)                                   %>%
-      .[, .SD[1], by = .(OHDEST, POSIT)]    
+    
+      rbind(
+        fread(file = file.path(PS01, SYS, "B4", "B4_PIPELINE_ORG.csv")) %>%
+          .[, SRC:= 'O'], 
+        fread(file = file.path(PS01, SYS, "B4", "B4_PIPELINE_MOD.csv")) %>%
+          .[, SRC:= 'C']
+      )                                                                 %T>%
+      setorder(SRC, OHDEST, POSIT)                                      %>%
+      .[, .SD[1], by = .(OHDEST, POSIT)]
   }
 
 fGetPipeLine <- 
@@ -389,7 +494,13 @@ fGetPipeLine <-
   }
 
 fTransform_csv_to_parquet <- 
-  function(source_path, output_path, file_pattern, ohdest, verbose){
+  function(
+    source_path, 
+    output_path, 
+    file_pattern,
+    file_spec,
+    ohdest, 
+    verbose){
     
     PIPE_LINE <- fGetPipeLine(ohdest = ohdest)
 
@@ -416,67 +527,71 @@ fTransform_csv_to_parquet <-
     # Run the main function to transform data from Bronze to Silver
     purrr::walk(
       .x          = fls, 
-      .f          = transform_csv_to_parquet, 
+      .f          = .transform_csv_to_parquet, 
       output_path = output_path,  
-      file_spec   = FILE_SPEC, 
+      file_spec   = file_spec, 
       pipe_line   = PIPE_LINE, 
       verbose     = verbose
     ) 
   }
 
-fTest <- 
-  function(){
+# 
+# fTest <- 
+#   function(){
+# 
+#   con <- .get_duckdb_conn()
+#   
+#   on.exit( .close_duckdb_conn())
+#   
+#   sql_create_temp_table <- glue_sql("
+#     CREATE TABLE SDSFRPR1_1 AS
+#     SELECT 
+#       *,
+#       date_diff(
+#         'month',
+#         -- Parse VERSMON as YYYYMM + '01' into a date
+#         strptime(VERSMON  || '01', '%Y%m%d'),
+#         -- Parse CALMONTH as YYYYMM + '01' into a date
+#         strptime(CALMONTH || '01', '%Y%m%d')
+#       ) as STEP
+#     FROM 
+#       read_parquet([{`FN_FRPR5`}])
+#     WHERE 
+#       STEP = -1
+#    ", .con = con)
+#   
+#   dbExecute(con, sql_create_temp_table)
+#   
+#   FN_FRPR_tmp <- file.path(PDYN, "SDSFRPR1_1.parquet")
+#   sql_write_FRPR_tmp_table <- glue_sql("
+#     COPY SDSFRPR1_1
+#     TO {`FN_FRPR_tmp`}
+#     (FORMAT 'parquet', CODEC 'uncompressed')
+#     ", .con = con)
+#   
+#   dbExecute(con, sql_write_FRPR_tmp_table)
+#   
+#   # delete and rename to original
+#   fs::file_delete(FN_FRPR5)
+#   fs::file_move(FN_FRPR_tmp, FN_FRPR5)
+#   
+#   # # Step 2: Read the temporary table
+#   # query <- glue_sql("
+#   #   SELECT
+#   #     *
+#   #   FROM 
+#   #     read_parquet([{`FN_FRPR5`}])
+#   #   ", .con = con)
+#   # 
+#   # dt <- 
+#   #   dbGetQuery(con, query) %>% 
+#   #   setDT()
+#   # 
+#   # 
+#   # 
+#   # return(dt)
+#   
+#   }
 
-  con <- .get_duckdb_conn()
-  
-  on.exit( .close_duckdb_conn())
-  
-  sql_create_temp_table <- glue_sql("
-    CREATE TABLE SDSFRPR1_1 AS
-    SELECT 
-      *,
-      date_diff(
-        'month',
-        -- Parse VERSMON as YYYYMM + '01' into a date
-        strptime(VERSMON  || '01', '%Y%m%d'),
-        -- Parse CALMONTH as YYYYMM + '01' into a date
-        strptime(CALMONTH || '01', '%Y%m%d')
-      ) as STEP
-    FROM 
-      read_parquet([{`FN_FRPR5`}])
-    WHERE 
-      STEP = -1
-   ", .con = con)
-  
-  dbExecute(con, sql_create_temp_table)
-  
-  FN_FRPR_tmp <- file.path(PDYN, "SDSFRPR1_1.parquet")
-  sql_write_FRPR_tmp_table <- glue_sql("
-    COPY SDSFRPR1_1
-    TO {`FN_FRPR_tmp`}
-    (FORMAT 'parquet', CODEC 'uncompressed')
-    ", .con = con)
-  
-  dbExecute(con, sql_write_FRPR_tmp_table)
-  
-  # delete and rename to original
-  fs::file_delete(FN_FRPR5)
-  fs::file_move(FN_FRPR_tmp, FN_FRPR5)
-  
-  # # Step 2: Read the temporary table
-  # query <- glue_sql("
-  #   SELECT
-  #     *
-  #   FROM 
-  #     read_parquet([{`FN_FRPR5`}])
-  #   ", .con = con)
-  # 
-  # dt <- 
-  #   dbGetQuery(con, query) %>% 
-  #   setDT()
-  # 
-  # 
-  # 
-  # return(dt)
-  
-  }
+
+
