@@ -124,12 +124,18 @@
 #'
 #' @keywords internal
 .gen_where_clause <- function(pipe_line) {
-  .gen_fields_generic(
-    pipe_line     = pipe_line,
-    filter_col    = "WHERE_CLAUSE",   # Filter out empty WHERE_CLAUSE rows
-    alignment_col = "WHERE_CLAUSE",   # Align based on the length of WHERE_CLAUSE
-    glue_template = "{FLDNM_OUT}{strrep(' ', no_spc)} {WHERE_CLAUSE},"
-  )
+  
+  
+  if(nrow(pipe_line[WHERE_CLAUSE != ""]) == 0){
+    return("TRUE")
+  } else {
+    .gen_fields_generic(
+      pipe_line     = pipe_line,
+      filter_col    = "WHERE_CLAUSE",   # Filter out empty WHERE_CLAUSE rows
+      alignment_col = "WHERE_CLAUSE",   # Align based on the length of WHERE_CLAUSE
+      glue_template = "{FLDNM_OUT}{strrep(' ', no_spc)} {WHERE_CLAUSE},"
+    )
+  }
 }
 
 

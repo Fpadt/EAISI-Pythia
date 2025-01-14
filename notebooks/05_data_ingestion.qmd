@@ -122,7 +122,8 @@ Transform .csv files in Bronze to .parquet in Silver
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "IPM"),
   output_path  = file.path(PS02, SYS, "IPM"),
-  file_pattern = "^DD_HISTO_QTY_202[45].*\\.csv$",   
+  file_pattern = "^DD_HISTO_QTY_202[45].*\\.csv$",  
+    file_spec  = FILE_SPEC,
   ohdest       = "ZSOP_ASLS",
   verbose      = TRUE
 )
@@ -139,7 +140,8 @@ fTransform_csv_to_parquet(
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "STK"),
   output_path  = file.path(PS02, SYS, "STK"),
-  file_pattern = "^IMP03SM1.*\\.csv$",   
+  file_pattern = "^IMP03SM1.*\\.csv$", 
+  file_spec    = FILE_SPEC,  
   ohdest       = "OH_STOCK",
   verbose      = TRUE
 )
@@ -174,15 +176,6 @@ fTransform_csv_to_parquet(
   file_spec    = FILE_SPEC,
   ohdest       = "OH_FRPR3",
   verbose      = FALSE
-)
-
-fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "DYN"),
-  output_path  = "c:/temp",
-  file_pattern = "^SDSFRPR([1].*|[24]_202(412|501)).*\\.csv$",
-  file_spec    = FILE_SPEC,
-  ohdest       = "OH_FRPR3",
-  verbose      = TRUE
 )
 
 # 
@@ -222,6 +215,7 @@ fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "RTP"),
   output_path  = file.path(PS02, SYS, "RTP"),
   file_pattern = "^MD_MATERIAL\\.csv$",   
+  file_spec    = FILE_SPEC,
   ohdest       = "DSCP_MATE",
   verbose      = TRUE
 )
@@ -238,6 +232,7 @@ fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "RTP"),
   output_path  = file.path(PS02, SYS, "RTP"),
   file_pattern = "^MD_MATERIAL_SALES_ORG\\.csv$",   
+  file_spec    = FILE_SPEC,
   ohdest       = "DSCP_MATS",
   verbose      = TRUE
 )
@@ -254,6 +249,7 @@ fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "RTP"),
   output_path  = file.path(PS02, SYS, "RTP"),
   file_pattern = "^MD_MATERIAL_PLANT\\.csv$",   
+  file_spec    = FILE_SPEC,
   ohdest       = "DSCP_MATP",
   verbose      = TRUE
 )
@@ -270,6 +266,7 @@ fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "RTP"),
   output_path  = file.path(PS02, SYS, "RTP"),
   file_pattern = "^MD_BOM.*\\.csv$",   
+  file_spec    = FILE_SPEC,
   ohdest       = "DSCP_BOMX",
   verbose      = TRUE
 )
@@ -288,7 +285,8 @@ fTransform_csv_to_parquet(
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "RTP"),
   output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_SOLD_TO_CUSTOMER\\.csv$",   
+  file_pattern = "^MD_SOLD_TO_CUSTOMER\\.csv$", 
+  file_spec    = FILE_SPEC,  
   ohdest       = "DSCP_CUST",
   verbose      = TRUE
 )
@@ -307,6 +305,7 @@ fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "RTP"),
   output_path  = file.path(PS02, SYS, "RTP"),
   file_pattern = "^MD_PLANT\\.csv$",   
+  file_spec    = FILE_SPEC,  
   ohdest       = "DSCP_PLNT",
   verbose      = TRUE
 )
@@ -324,6 +323,7 @@ fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "RTP"),
   output_path  = file.path(PS02, SYS, "RTP"),
   file_pattern = "^MD_SALES_ORG\\.csv$",   
+  file_spec    = FILE_SPEC,  
   ohdest       = "DSCP_SORG",
   verbose      = TRUE
 )
