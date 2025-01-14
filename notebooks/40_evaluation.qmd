@@ -234,4 +234,3 @@ ggplot(
   theme_minimal()
 
 ```
-
