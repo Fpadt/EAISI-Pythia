@@ -16,7 +16,7 @@ editor_options:
 
 \newpage
 
-![Logo](../images/logo.png)
+![](../images/logo.png)
 
 # Purpose
 
@@ -152,6 +152,8 @@ fTransform_csv_to_parquet(
 
 ### Sales DYN
 
+- 
+
 Transform .csv files in Bronze to .parquet in Silver
 
 ```{r}
@@ -162,17 +164,19 @@ Transform .csv files in Bronze to .parquet in Silver
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "DYN"),
   output_path  = file.path(PS02, SYS, "DYN"),
-  file_pattern = "^SDSFRPR([13].*|[24]_202(412|501)).*\\.csv$",
+  file_pattern = "^SDSFR(LV|PR[24]_202).*\\.csv$",  # (412|501)
   file_spec    = FILE_SPEC,
   ohdest       = "OH_FRPR1",
   verbose      = TRUE
 )
 
 # Complete Actuals from 2024.02 till now
+# This saves only 1 month of ACTUALS per VERSMON
+# TODO: Remove the 4 next load feb!!!!!!!!!
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "DYN"),
   output_path  = file.path(PS02, SYS, "DYN"),
-  file_pattern = "^SDSFRFA[13].*\\.csv$",   
+  file_pattern = "^SDSFRPR[13]_202[45].*\\.csv$",   
   file_spec    = FILE_SPEC,
   ohdest       = "OH_FRPR3",
   verbose      = FALSE

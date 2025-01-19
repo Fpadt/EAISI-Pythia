@@ -471,8 +471,8 @@ fDescribe_Parquet <-
     .salesorg    = NULL    , # NULL wont apply any filter      
     .scope_matl  = FALSE   , # FALSE wont apply any filter
     .scope_sorg  = FALSE   ,  # FALSE wont apply any filter
-    .cm_min      = '202101', # minimal Cal Month
-    .cm_max      = '202506', # maximal Cal Month
+    .cm_min      = NULL    , # minimal Cal Month
+    .cm_max      = NULL    , # maximal Cal Month
     .step_min    = NULL    , # minimal forecast step ahead
     .step_max    = NULL    , # maximal forecast step ahead
     .lagg_min    = NULL    , # minimal diff. between VERSMON & MONTH
@@ -508,13 +508,7 @@ fDescribe_Parquet <-
       SALESORG,
       PLANT,
       MATERIAL,
-      date_diff(
-        'month',
-        -- Parse VERSMON as YYYYMM + '01' into a date
-        strptime(VERSMON  || '01', '%Y%m%d'),
-        -- Parse CALMONTH as YYYYMM + '01' into a date
-        strptime(CALMONTH || '01', '%Y%m%d')
-      ) AS STEP,
+      STEP,
       CALMONTH,
       VERSMON,
       FTYPE,
@@ -667,19 +661,19 @@ fGet_MATP <-
 
 fGet_DYN <- 
   function(
-    .vtype       = NULL    , # NULL will get all vtypes
-    .ftype       = NULL    , # NULL will get all ftypes
-    .material    = NULL    , # Optional user-supplied material
-    .salesorg    = NULL    , # Optional user-supplied salesorg
-    .scope_matl  = TRUE    , # restrict to Pythia Scope
-    .scope_sorg  = TRUE    , # restrict to Pythia Scope
-    .cm_min      = NULL    , # minimal Cal Month
-    .cm_max      = NULL    , # maximal Cal Month
-    .step_min    = NULL    , # minimal forecast step ahead
-    .step_max    = NULL    , # maximal forecast step ahead
-    .lagg_min    = NULL    , # minimal diff. between VERSMON & MONTH
-    .lagg_max    = NULL    , # maximal diff. between VERSMON & MONTH      
-    .n           = Inf       # number of materials to return
+    .vtype       = NULL         , # NULL will get all vtypes
+    .ftype       = NULL         , # NULL will get all ftypes
+    .material    = NULL         , # Optional user-supplied material
+    .salesorg    = NULL         , # Optional user-supplied salesorg
+    .scope_matl  = TRUE         , # restrict to Pythia Scope
+    .scope_sorg  = TRUE         , # restrict to Pythia Scope
+    .cm_min      = '202101'     , # minimal Cal Month
+    .cm_max      = '202506'     , # maximal Cal Month
+    .step_min    = 1            , # minimal forecast step ahead
+    .step_max    = 18           , # maximal forecast step ahead
+    .lagg_min    = NULL         , # minimal diff. between VERSMON & MONTH
+    .lagg_max    = NULL         , # maximal diff. between VERSMON & MONTH      
+    .n           = Inf            # number of materials to return
   ){
   
     # construct Query

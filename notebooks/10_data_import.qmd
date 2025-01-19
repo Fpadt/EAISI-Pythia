@@ -16,7 +16,7 @@ editor_options:
 
 \newpage
 
-![Logo](../images/logo.png)
+![](../images/logo.png)
 
 # Setup
 
@@ -38,8 +38,6 @@ knitr::opts_chunk$set(
 
 SID <- "WPB500"
 SYS <- substr(SID, 1, 3)
-
-# use_condaenv("sapyr")
 
 # public functions ---------------------------------------------------------
 invisible(source('library/KnitR_SetUp.R'))
@@ -107,16 +105,16 @@ MATP <- fGet_MATP(.scope_matl = FALSE, .material = '10023') # 2
 
 DYN <-                    # 95
   fGet_DYN(
-    .vtype       = c('010', '010'), # 010 = Actuals, 060 = Forecast
-    .ftype       = c(1, 1)        , # 1 = PreDR, 2 = PostDR 
-    .material    = 10023        , # Optional user-supplied material
+    .vtype       = c('010', '060'), # 010 = Actuals, 060 = Forecast
+    .ftype       = c(1, 2)        , # 1 = PreDR, 2 = PostDR 
+    .material    = NULL           , # Optional user-supplied material
     .salesorg    = 'FR30'         , # Optional user-supplied salesorg
     .scope_matl  = TRUE           , # restrict to Pythia Scope
     .scope_sorg  = TRUE           , # restrict to Pythia Scope
     .cm_min      = '202101'       , # minimal Cal Month
-    .cm_max      = '202412'       , # maximal Cal Month
-    .step_min    = 1           , # minimal forecast step ahead
-    .step_max    = 18           , # maximal forecast step ahead
+    .cm_max      = '202506'       , # maximal Cal Month
+    .step_min    = 1              , # minimal forecast step ahead
+    .step_max    = 18             , # maximal forecast step ahead
     .lagg_min    = NULL           , # minimal diff. between VERSMON & MONTH
     .lagg_max    = NULL           , # maximal diff. between VERSMON & MONTH  
     .n           = Inf  
