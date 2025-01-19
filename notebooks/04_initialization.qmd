@@ -48,8 +48,11 @@ SID <- "WPB500"
 SYS <- substr(SID, 1, 3)
 
 # SAP Access
-library(reticulate)
-use_condaenv("sapyr")
+if (computer_name == 'GNPBB54' ){
+  devtools::load_all(path = "C:\\RW\\sapyr")
+  library(reticulate)
+  use_condaenv("sapyr")
+}
 
 # public functions ---------------------------------------------------------
 invisible(source('library/KnitR_SetUp.R'))
