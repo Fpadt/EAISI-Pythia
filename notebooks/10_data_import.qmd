@@ -99,15 +99,17 @@ MATP <- fGet_MATP(.scope_matl = FALSE, .material = '10023') # 2
 
 ## Sales
 
+### Dynasys 
+
 ```{r}
 #| label: 'Get DYN data'
 #| eval:   true
 
 DYN <-                    # 95
   fGet_DYN(
-    .vtype       = c('010', '060'), # 010 = Actuals, 060 = Forecast
+    .vtype       = c('010', '010'), # 010 = Actuals, 060 = Forecast
     .ftype       = c(1, 2)        , # 1 = PreDR, 2 = PostDR 
-    .material    = NULL           , # Optional user-supplied material
+    .material    = '10023'           , # Optional user-supplied material
     .salesorg    = 'FR30'         , # Optional user-supplied salesorg
     .scope_matl  = TRUE           , # restrict to Pythia Scope
     .scope_sorg  = TRUE           , # restrict to Pythia Scope
@@ -132,7 +134,62 @@ DYN <-                    # 95
 
 ```
 
+### RTP
+
+```{r}
+#| label: 'Get RTP data'
+#| eval:   true
+
+RTP <-
+  fGet_RTP(
+    .material    = '10023'        , # Optional user-supplied material
+    .salesorg    = 'FR30'         , # Optional user-supplied salesorg
+    .scope_matl  = TRUE           , # restrict to Pythia Scope
+    .scope_sorg  = TRUE           , # restrict to Pythia Scope
+    .cm_min      = '202101'       , # minimal Cal Month
+    .cm_max      = '202506'       , # maximal Cal Month,
+    .n           = Inf
+  )
+
+```
+
+### IPM
+
+```{r}
+#| label: 'Get IMP data'
+#| eval:   true
+
+IPM <-
+  fGet_IPM(
+    .material    = '10023'        , # Optional user-supplied material
+    .salesorg    = 'FR30'         , # Optional user-supplied salesorg
+    .scope_matl  = TRUE           , # restrict to Pythia Scope
+    .scope_sorg  = TRUE           , # restrict to Pythia Scope
+    .cm_min      = '202101'       , # minimal Cal Month
+    .cm_max      = '202506'       , # maximal Cal Month,
+    .n           = Inf
+  )
+
+```
+
 # Analysis
+
+```{r}
+
+
+TST <- rbind(
+  IPM[, .(SALESORG,  PLANT,  MATERIAL,  CALMONTH,  FTYPE,  VTYPE,  Q)], 
+  DYN[, .(SALESORG,  PLANT,  MATERIAL,  CALMONTH,  FTYPE,  VTYPE,  Q)]) %>%
+  dcast.data.table(
+    ... ~ paste0("F_",FTYPE),
+    fun.aggregate = sum,
+    value.var = c("Q")
+  ) %>% 
+  .[, DIFF:= F_3 - F_1]
+
+
+```
+
 
 ## PH1
 

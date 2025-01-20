@@ -15,6 +15,9 @@ computer_name <-
     ifelse(.Platform$OS.type == "windows", "COMPUTERNAME", "HOSTNAME")
     )
 
+OneDriveBusiness <- Sys.getenv("OneDriveCommercial")
+OneDriveConsumer <- Sys.getenv("OneDriveConsumer")   
+
 # folder locations
 RW <- 
   switch(

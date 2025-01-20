@@ -68,7 +68,7 @@ FILE_SPEC <-
 ## Administration
 
 ```{r}
-shell.exec(file.path(PS01, SYS, "B4","IB_OB_FLD.xlsx"))
+shell.exec(normalizePath(file.path(".", "config","IB_OB_FLD.xlsx")))
 ```
 
 ## PipeLines
@@ -152,7 +152,7 @@ fTransform_csv_to_parquet(
 
 ### Sales DYN
 
-- 
+-   
 
 Transform .csv files in Bronze to .parquet in Silver
 
@@ -164,7 +164,8 @@ Transform .csv files in Bronze to .parquet in Silver
 fTransform_csv_to_parquet(
   source_path  = file.path(PS01, SYS, "DYN"),
   output_path  = file.path(PS02, SYS, "DYN"),
-  file_pattern = "^SDSFR(LV|PR[24]_202).*\\.csv$",  # (412|501)
+  # file_pattern = "^SDSFR(LV|PR[24]_202).*\\.csv$",  # (412|501)
+  file_pattern = "^SDSFR(LV).*\\.csv$",  # (412|501)  
   file_spec    = FILE_SPEC,
   ohdest       = "OH_FRPR1",
   verbose      = TRUE
