@@ -50,3 +50,4 @@ Results
 *.parquet
 nul
 .tmp
+.config.yaml
