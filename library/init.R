@@ -1,22 +1,39 @@
 library(fs)
 library(yaml)
 
+DTAP <- c("Development", "Test", "Acceptance", "Production")
+BSGP <- c("Bronze", "Silver", "Gold", "Platinum")
+AREA <- c("sales", "stock")
+
 setup_project_structure <- function(
     root_dir         = ".", 
-    dtap_levels      = c("1_Development", "2_Test", 
-                         "3_Acceptance", "4_Production"),
-    bsgp_levels      = c("1_Bronze", "2_Silver", 
-                         "3_Gold", "4_Platinum"),
-    functional_areas = c("sales", "stock"),
+    dtap_levels      = DTAP,
+    bsgp_levels      = BSGP,
+    functional_areas = AREA,
     project_dir      = "."
 ) {
+  # Get OneDrive paths from environment variables
+  onedrive_consumer <- path_abs(Sys.getenv("OneDriveConsumer"))
+  onedrive_commercial <- path_abs(Sys.getenv("OneDriveCommercial"))
   
   # Normalize and validate root_dir
   root_dir <- tryCatch({
-    normalizePath(root_dir, mustWork = FALSE)
+    path_abs(root_dir)
   }, error = function(e) {
     stop("Invalid root directory path: ", root_dir, "\n", e$message)
   })
+  
+  # Determine the value to store for root_dir in the YAML
+  yaml_root_dir <- 
+    if (path_has_parent(root_dir, onedrive_consumer)) {
+      rel_path <- path_rel(root_dir, start = onedrive_consumer)
+      path("OneDriveConsumer", rel_path)
+    } else if (path_has_parent(root_dir, onedrive_commercial)) {
+      rel_path <- path_rel(root_dir, start = onedrive_commercial)
+      path("OneDriveBusiness", rel_path)
+    } else {
+      root_dir
+    }
   
   # Attempt to create the root directory
   tryCatch({
@@ -25,41 +42,30 @@ setup_project_structure <- function(
     stop("Failed to create the root directory: ", root_dir, "\n", e$message)
   })
   
-  # Check if the directory exists after the creation attempt
-  if (!dir_exists(root_dir)) {
-    stop("Failed to create the root directory, even though no error was thrown: ", root_dir)
-  }
-  
-  # Create DTAP structure
+  # Create the DTAP, BSGP, and functional area directory structure
   for (dtap in dtap_levels) {
-    dtap_path <- path(root_dir, dtap)
-    dir_create(dtap_path) # Create DTAP directory
-    
-    # Create BSGP structure
     for (bsgp in bsgp_levels) {
-      bsgp_path <- path(dtap_path, bsgp)
-      dir_create(bsgp_path) # Create BSGP directory
-      
-      # Create functional area directories
       for (area in functional_areas) {
-        area_path <- path(bsgp_path, area)
-        dir_create(area_path) # Create functional area directory
+        dir_create(path(root_dir, dtap, bsgp, area))
       }
     }
   }
   
   # Save the root_dir to the YAML file
   save_config_to_yaml(
-    list(root_dir = root_dir), 
-    project_dir   = project_dir
-    )
+    config_list = list(root_dir = yaml_root_dir), 
+    project_dir = project_dir
+  )
   
-  message("Project structure created at: ", root_dir)
-  
+  message("Project structure created successfully at: ", root_dir)
   return(invisible(root_dir))
 }
 
-save_config_to_yaml <- function(config_list, project_dir = ".") {
+
+save_config_to_yaml <- function(
+    config_list, 
+    project_dir = ".") {
+  
   # Normalize project directory
   project_dir <- normalizePath(project_dir, mustWork = TRUE)
   
@@ -128,6 +134,10 @@ set_current_environment <- function(
     .project_dir = ".", 
     .environment = "Production") {
   
+  if(!.environment %in% DTAP){
+    stop("Invalid environment: ", .environment)
+  }
+  
   update_or_insert_config_in_yaml(
     .key         = "environment",
     .value       = .environment,
@@ -136,21 +146,22 @@ set_current_environment <- function(
 }
 
 get_environment_path <- function(project_dir = ".") {
+  
   # Normalize project directory
-  project_dir <- normalizePath(project_dir, mustWork = TRUE)
+  project_dir <- path_abs(project_dir)
   
   # Define the path for the .config file
-  config_file <- file.path(project_dir, ".config.yaml")
+  config_file <- path(project_dir, ".config.yaml")
   
   # Check if the config file exists
-  if (!file.exists(config_file)) {
+  if (!file_exists(config_file)) {
     stop("Configuration file not found: ", config_file)
   }
   
   # Read the configuration data
   config_data <- read_yaml(config_file)
   
-  # Check if root_dir and environment keys exist in the config
+  # Validate keys in the config
   if (!"root_dir" %in% names(config_data)) {
     stop("Key 'root_dir' is missing in the configuration file.")
   }
@@ -158,7 +169,20 @@ get_environment_path <- function(project_dir = ".") {
     stop("Key 'environment' is missing in the configuration file.")
   }
   
+  # Resolve placeholders in root_dir
+  root_dir <- path_abs(config_data$root_dir)
+  onedrive_consumer   <- path_abs(Sys.getenv("OneDriveConsumer", ""))
+  onedrive_commercial <- path_abs(Sys.getenv("OneDriveCommercial", ""))
+  
+  if (path_has_parent(root_dir, "OneDriveConsumer")) {
+    relative_path <- path_rel(root_dir, start = "OneDriveConsumer")
+    root_dir <- path(onedrive_consumer, relative_path)
+  } else if (path_has_parent(root_dir, "OneDriveBusiness")) {
+    relative_path <- path_rel(root_dir, start = "OneDriveBusiness")
+    root_dir <- path(onedrive_commercial, relative_path)
+  }
+  
   # Construct and return the normalized environment path
-  environment_path <- file.path(config_data$root_dir, config_data$environment)
-  return(normalizePath(environment_path, mustWork = FALSE))
+  environment_path <- path(root_dir, config_data$environment)
+  return(path_abs(environment_path))
 }
