@@ -1,13 +1,13 @@
 # https://yihui.name/knitr/options/
 knitr::opts_chunk$set(
   cache   = FALSE,
-  echo    = FALSE,     # include R source code in the output  
+  echo    = TRUE,     # include R source code in the output  
   eval    = TRUE,
   message = FALSE,
   warning = FALSE,
   results = "markup",
   image   = TRUE,  
-  include = FALSE      # include the chunk output in the output 
+  include = TRUE      # include the chunk output in the output 
 )
 
 computer_name <- 
@@ -92,8 +92,8 @@ ES4 <- es4
 # Load functions
 invisible(source(file.path(MOD, "General.R")))
 invisible(source(file.path(MOD, "ET_Functions.R")))
-invisible(source(file.path(MOD, "pa_functions.R")))
-invisible(source(file.path(MOD, "pa_set_paths.R")))
+# invisible(source(file.path(MOD, "pa_functions.R")))
+# invisible(source(file.path(MOD, "pa_set_paths.R")))
 #invisible(source(file.path(MOD, "00_Global", "SAP2R_BODS.R")))
 #invisible(source(file.path(MOD, "00_Global", "RDCOMClient.R")))
 

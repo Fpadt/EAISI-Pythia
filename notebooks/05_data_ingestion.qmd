@@ -61,7 +61,27 @@ FILE_SPEC <-
     DATE_FORMAT  = '%Y-%m-%d'
   )
 
+devtools::load_all(path = "C:/RW/EAISI-Padt")
 ```
+
+```{r}
+#| label: setup Project
+#| eval: false
+
+
+source("C:/RW/EAISI-Padt/R/pa_init.R")
+
+setup_project_structure(root_dir = "C:/PW/OneDrive/ET/pythia/data")
+
+set_current_environment(.environment = "Production")
+
+get_environment_path()
+
+source("C:/RW/EAISI-Padt/R/05_data_ingestion.R")
+
+fGetPipeLines()
+```
+
 
 # Export & Copy Procedure
 

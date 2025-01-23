@@ -24,28 +24,17 @@ editor_options:
 #| label: setup
 #| eval:   true
 
-
-knitr::opts_chunk$set(
-  cache   = FALSE,
-  echo    = TRUE,     # include R source code in the output  
-  eval    = TRUE,
-  message = FALSE,
-  warning = FALSE,
-  results = "markup",
-  image   = TRUE,  
-  include = TRUE      # include the chunk output in the output 
-)
-
-SID <- "WPB500"
-SYS <- substr(SID, 1, 3)
+# SID <- "WPB500"
+# SYS <- substr(SID, 1, 3)
 
 # public functions ---------------------------------------------------------
-invisible(source('library/KnitR_SetUp.R'))
+# invisible(source('library/KnitR_SetUp.R'))
 
 # setwd("C:/RW/EAISI-Pythia/notebooks")
-lsrc <- "notebooks/10_data_import.R"  
-if( file.exists(lsrc)){source(lsrc)}
+# lsrc <- "notebooks/10_data_import.R"  
+# if( file.exists(lsrc)){source(lsrc)}
 
+devtools::load_all(path = "C:/RW/EAISI-Padt")
 ```
 
 # Scope
@@ -67,31 +56,38 @@ if( file.exists(lsrc)){source(lsrc)}
 #| label: 'Get Material Master data '
 #| eval:   true
 
-MATL <- fGet_MATL() # MARA/0MATERIAL
-MATS <- fGet_MATS() # MVKE/0MAT_SALES
-MATP <- fGet_MATP() # MARC/0MAT_PLANT
+MATL <- fGet_MAT(.ftype = 1)  # MARA/0MATERIAL 
+MATS <- fGet_MAT(.ftype = 2)  # MVKE/0MAT_SALES
+MATP <- fGet_MAT(.ftype = 3)  # MARC/0MAT_PLANT
 
+# Test
+MATL <- fGet_MAT(.ftype = 1, 
+                 .scope_matl = FALSE)                        # 6009
+MATL <- fGet_MAT(.ftype = 1, 
+                 .scope_matl = TRUE)                         # 2314
+MATL <- fGet_MAT(.ftype = 1, .material = '10023',
+                 .scope_matl = FALSE)                        # 1
 
-MATL <- fGet_MATL(.scope_matl = TRUE)  # 2314
-MATL <- fGet_MATL(.scope_matl = FALSE) # 6009
-MATL <- fGet_MATL(.scope_matl = FALSE, .material = '10023') # MARA/0MATERIAL
+MATS <- fGet_MAT(.ftype = 2, 
+                 .scope_matl = FALSE, .scope_sorg = FALSE)   # 7943
+MATS <- fGet_MAT(.ftype = 2, 
+                 .scope_matl = TRUE , .scope_sorg = FALSE)   # 3351
+MATS <- fGet_MAT(.ftype = 2, 
+                 .scope_matl = FALSE, .scope_sorg = TRUE )   # 3178
+MATS <- fGet_MAT(.ftype = 2, 
+                 .scope_matl = TRUE , .scope_sorg = TRUE )   # 3286
 
-MATS <- fGet_MATS()                   # 2148
-MATS <- fGet_MATS(.scope_matl = TRUE) # 2148
-MATS <- fGet_MATS(.scope_matl = TRUE, .scope_sorg = TRUE)   # 2148
-MATS <- fGet_MATS(.scope_matl = TRUE, .scope_sorg = FALSE)  # 3351
-MATS <- fGet_MATS(.scope_matl = FALSE, .scope_sorg = TRUE)  # 3178
-MATS <- fGet_MATS(.scope_matl = FALSE, .scope_sorg = FALSE) # 7943
-MATS <- fGet_MATS(.scope_matl = FALSE, .scope_sorg = FALSE) # 7943
-MATS <- fGet_MATS(.scope_matl = FALSE, .scope_sorg = FALSE, 
-                  .material = '10023') # 2
-MATS <- fGet_MATS(.scope_matl = FALSE, .scope_sorg = FALSE, 
-                  .material = '10023', .salesorg   = 'FR30') # 1
+MATS <- fGet_MAT(.ftype = 2,  
+                 .material = '10023')                        # 2
+MATS <- fGet_MAT(.ftype = 2,  
+                 .material = '10023', .salesorg   = 'FR30')  # 1
 
-MATP <- fGet_MATP()                    # 3286
-MATP <- fGet_MATP(.scope_matl = TRUE)  # 3286
-MATP <- fGet_MATP(.scope_matl = FALSE) # 8065
-MATP <- fGet_MATP(.scope_matl = FALSE, .material = '10023') # 2
+MATP <- fGet_MAT(.ftype = 3,
+                 .scope_matl = FALSE)                        # 8065
+MATP <- fGet_MAT(.ftype = 3, 
+                 .scope_matl = FALSE)                        # 7943
+MATP <- fGet_MAT(.ftype = 3, 
+                 .material = '10023')                        # 2
 
 ```
 
@@ -105,20 +101,20 @@ MATP <- fGet_MATP(.scope_matl = FALSE, .material = '10023') # 2
 #| label: 'Get DYN data'
 #| eval:   true
 
-DYN <-                    # 95
+DYN <-                              # 95
   fGet_DYN(
     .vtype       = c('010', '010'), # 010 = Actuals, 060 = Forecast
     .ftype       = c(1, 2)        , # 1 = PreDR, 2 = PostDR 
-    .material    = '10023'           , # Optional user-supplied material
+    .material    = '10023'        , # Optional user-supplied material
     .salesorg    = 'FR30'         , # Optional user-supplied salesorg
     .scope_matl  = TRUE           , # restrict to Pythia Scope
     .scope_sorg  = TRUE           , # restrict to Pythia Scope
-    .cm_min      = '202101'       , # minimal Cal Month
-    .cm_max      = '202506'       , # maximal Cal Month
+    .cm_min      = '202406'       , # minimal Cal Month
+    .cm_max      = '202412'       , # maximal Cal Month
     .step_min    = 1              , # minimal forecast step ahead
     .step_max    = 18             , # maximal forecast step ahead
-    .lagg_min    = NULL           , # minimal diff. between VERSMON & MONTH
-    .lagg_max    = NULL           , # maximal diff. between VERSMON & MONTH  
+    .lagg_min    = -999           , # minimal diff. between VERSMON & MONTH
+    .lagg_max    = 999            , # maximal diff. between VERSMON & MONTH  
     .n           = Inf  
   )
 
