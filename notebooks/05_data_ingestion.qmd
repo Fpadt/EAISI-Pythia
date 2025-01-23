@@ -33,25 +33,14 @@ Can be executed outside Ecotone Network as OneDrive ET\Pythia is used
 #| label:  setup
 #| eval:   true
 
-# knitr::opts_chunk$set(
-#   cache   = FALSE,
-#   echo    = TRUE,     # include R source code in the output  
-#   # eval    = TRUE,
-#   message = FALSE,
-#   warning = FALSE,
-#   results = "markup",
-#   image   = TRUE,  
-#   include = TRUE      # include the chunk output in the output 
-# )
-
-SID <- "WPB500"
-SYS <- substr(SID, 1, 3)
-
 # public functions ---------------------------------------------------------
-invisible(source('library/KnitR_SetUp.R'))
+invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
 
-lsrc <- "notebooks/05_data_ingestion.R"  
-if( file.exists(lsrc)){source(lsrc)}
+# devtools::load_all(path = "C:/RW/EAISI-Padt")
+library("padt")
+
+# lsrc <- "notebooks/05_data_ingestion.R"  
+# if( file.exists(lsrc)){source(lsrc)}
 
 # Configuration parameters of Open Hub DSCP_TRAN
 FILE_SPEC <- 
@@ -61,25 +50,31 @@ FILE_SPEC <-
     DATE_FORMAT  = '%Y-%m-%d'
   )
 
-devtools::load_all(path = "C:/RW/EAISI-Padt")
+# helper paths
+PATH_PA_CNFG <- file.path(get_environment_path(), "config")
+PATH_BRZ_SLS <- file.path(get_environment_path(), BSGP[1], AREA[1])
+PATH_SLV_SLS <- file.path(get_environment_path(), BSGP[2], AREA[1])
+PATH_BRZ_STK <- file.path(get_environment_path(), BSGP[1], AREA[2])
+PATH_SLV_STK <- file.path(get_environment_path(), BSGP[2], AREA[2])
+PATH_BRZ__MD <- file.path(get_environment_path(), BSGP[1], AREA[4])
+PATH_SLV__MD <- file.path(get_environment_path(), BSGP[2], AREA[4])
 ```
 
 ```{r}
 #| label: setup Project
 #| eval: false
 
+# TODO: if directory exists check if config file needs to be written
 
-source("C:/RW/EAISI-Padt/R/pa_init.R")
-
+# create the root and underlying folders
 setup_project_structure(root_dir = "C:/PW/OneDrive/ET/pythia/data")
 
+# set the DTAP environment
 set_current_environment(.environment = "Production")
 
+# test functions
 get_environment_path()
-
-source("C:/RW/EAISI-Padt/R/05_data_ingestion.R")
-
-fGetPipeLines()
+View(fGetPipeLines())
 ```
 
 
@@ -88,7 +83,7 @@ fGetPipeLines()
 ## Administration
 
 ```{r}
-shell.exec(normalizePath(file.path(".", "config","IB_OB_FLD.xlsx")))
+shell.exec(normalizePath(file.path(".", "admin","IB_OB_FLD.xlsx")))
 ```
 
 ## PipeLines
@@ -96,10 +91,10 @@ shell.exec(normalizePath(file.path(".", "config","IB_OB_FLD.xlsx")))
 Use following code to check Pipelines and Transformations
 
 ```{r}
-shell.exec(file.path(PS01, SYS, "B4", "B4_PIPELINE_ORG.csv"))
-shell.exec(file.path(PS01, SYS, "B4", "B4_PIPELINE_MOD.csv"))
+shell.exec(file.path(PATH_PA_CNFG, "B4_PIPELINE_ORG.csv"))
+shell.exec(file.path(PATH_PA_CNFG, "B4_PIPELINE_MOD.csv"))
 
-View(fGetPipeLines())
+#View(fGetPipeLines())
 ```
 
 # Transaction Data
@@ -120,8 +115,8 @@ Transform .csv files in Bronze to .parquet in Silver
 #| eval:    true
 
 fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "RTP"),
-  output_path  = file.path(PS02, SYS, "RTP"),
+  source_path  = PATH_BRZ_SLS,
+  output_path  = PATH_SLV_SLS,
   file_pattern = "^DD_SALES_QTY_202[12345].*\\.csv$",
   file_spec    = FILE_SPEC,
   ohdest       = "DSCP_TRAN",
@@ -140,10 +135,10 @@ Transform .csv files in Bronze to .parquet in Silver
 #| eval:    true
 
 fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "IPM"),
-  output_path  = file.path(PS02, SYS, "IPM"),
-  file_pattern = "^DD_HISTO_QTY_202[45].*\\.csv$",  
-    file_spec  = FILE_SPEC,
+  source_path  = PATH_BRZ_SLS,
+  output_path  = PATH_SLV_SLS,
+  file_pattern = "^DD_HISTO_QTY_202[12345].*\\.csv$",  
+  file_spec    = FILE_SPEC,
   ohdest       = "ZSOP_ASLS",
   verbose      = TRUE
 )
@@ -158,8 +153,8 @@ fTransform_csv_to_parquet(
 #| eval:    true  
 
 fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "STK"),
-  output_path  = file.path(PS02, SYS, "STK"),
+  source_path  = PATH_BRZ_STK,
+  output_path  = PATH_SLV_STK,
   file_pattern = "^IMP03SM1.*\\.csv$", 
   file_spec    = FILE_SPEC,  
   ohdest       = "OH_STOCK",
@@ -181,46 +176,52 @@ Transform .csv files in Bronze to .parquet in Silver
 #| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
 #| eval:    true
 
-fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "DYN"),
-  output_path  = file.path(PS02, SYS, "DYN"),
-  # file_pattern = "^SDSFR(LV|PR[24]_202).*\\.csv$",  # (412|501)
-  file_pattern = "^SDSFR(LV).*\\.csv$",  # (412|501)  
-  file_spec    = FILE_SPEC,
-  ohdest       = "OH_FRPR1",
-  verbose      = TRUE
-)
+# Helper function with defaults ####
+fHelper_Transform <- 
+  function(
+    .source_path   = PATH_BRZ_SLS,
+    .output_path   = PATH_SLV_SLS,
+    .file_pattern,
+    .file_spec     = FILE_SPEC,
+    .ohdest,
+    .verbose       = FALSE
+  ){
+    fTransform_csv_to_parquet(
+      source_path  = .source_path,
+      output_path  = .output_path,
+      file_pattern = .file_pattern,
+      file_spec    = .file_spec,
+      ohdest       = .ohdest,
+      verbose      = .verbose
+    )
+  }
 
-# Complete Actuals from 2024.02 till now
+# Only for forecasts ####
+fHelper_Transform(
+  # .file_pattern = "^SDSFRPR[24]_202(412|501)).*\\.csv$",  # delta
+  .file_pattern = "^SDSFRPR[24]_202.*\\.csv$",              # ALL
+  .ohdest       = "OH_FRPR1",
+  .verbose      = FALSE  
+)    
+
+# Complete Actuals from 2024.02 till now ####
 # This saves only 1 month of ACTUALS per VERSMON
 # TODO: Remove the 4 next load feb!!!!!!!!!
-fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "DYN"),
-  output_path  = file.path(PS02, SYS, "DYN"),
-  file_pattern = "^SDSFRPR[13]_202[45].*\\.csv$",   
-  file_spec    = FILE_SPEC,
-  ohdest       = "OH_FRPR3",
-  verbose      = FALSE
-)
+fHelper_Transform(
+  # .file_pattern = "^SDSFRPR[13]_202(412|501)).*\\.csv$",  # delta
+  .file_pattern = "^SDSFRPR[13]_202.*\\.csv$",              # ALL
+  .ohdest       = "OH_FRPR2",
+  .verbose      = FALSE  
+)  
 
-# 
-# # actuals
-# fTransform_csv_to_parquet(
-#   source_path  = file.path(PS01, SYS, "DYN"),
-#   output_path  = file.path(PS02, SYS, "DYN"),
-#   file_pattern = "^SDSFRPR[13].*\\.csv$",   
-#   ohdest       = "OH_FRPR1",
-#   verbose      = FALSE
-# )
-# 
-# # forecasts
-# fTransform_csv_to_parquet(
-#   source_path  = file.path(PS01, SYS, "DYN"),
-#   output_path  = file.path(PS02, SYS, "DYN"),
-#   file_pattern = "^SDSFRPR[24]_202(412|501).*\\.csv$",   
-#   ohdest       = "OH_FRPR1",
-#   verbose      = FALSE
-# )
+# Create FTYPE 3 and 4 on Latest Actuals ####
+# to be used for forecasting
+fHelper_Transform(
+  # .file_pattern = "^SDSFRPR[13]_202(412|501)).*\\.csv$",  # delta
+  .file_pattern = "^SDSFRLV[13]_202[45].*\\.csv$", #ALL 
+  .ohdest       = "OH_FRPR3",
+  .verbose      = FALSE  
+) 
 
 ```
 
@@ -237,9 +238,9 @@ fTransform_csv_to_parquet(
 # !!!!File needs to be Converted to UTF-8
 
 fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "RTP"),
-  output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_MATERIAL\\.csv$",   
+  source_path  = PATH_BRZ__MD,
+  output_path  = PATH_SLV__MD,
+  file_pattern = "^MD_MATERIAL\\.CSV$",   
   file_spec    = FILE_SPEC,
   ohdest       = "DSCP_MATE",
   verbose      = TRUE
@@ -254,9 +255,9 @@ fTransform_csv_to_parquet(
 #| eval:   true
 
 fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "RTP"),
-  output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_MATERIAL_SALES_ORG\\.csv$",   
+  source_path  = PATH_BRZ__MD,
+  output_path  = PATH_SLV__MD,
+  file_pattern = "^MD_MATERIAL_SALES_ORG\\.CSV$",   
   file_spec    = FILE_SPEC,
   ohdest       = "DSCP_MATS",
   verbose      = TRUE
@@ -271,9 +272,9 @@ fTransform_csv_to_parquet(
 #| eval:   true
 
 fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "RTP"),
-  output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_MATERIAL_PLANT\\.csv$",   
+  source_path  = PATH_BRZ__MD,
+  output_path  = PATH_SLV__MD,
+  file_pattern = "^MD_MATERIAL_PLANT\\.CSV$",   
   file_spec    = FILE_SPEC,
   ohdest       = "DSCP_MATP",
   verbose      = TRUE
@@ -288,9 +289,9 @@ fTransform_csv_to_parquet(
 #| eval:   true
 
 fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "RTP"),
-  output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_BOM.*\\.csv$",   
+  source_path  = PATH_BRZ__MD,
+  output_path  = PATH_SLV__MD,
+  file_pattern = "^MD_BOM.*\\.CSV$",   
   file_spec    = FILE_SPEC,
   ohdest       = "DSCP_BOMX",
   verbose      = TRUE
@@ -306,11 +307,10 @@ fTransform_csv_to_parquet(
 #| eval:   true
 
 # !!!! UTF-8 conversion
-
 fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "RTP"),
-  output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_SOLD_TO_CUSTOMER\\.csv$", 
+  source_path  = PATH_BRZ__MD,
+  output_path  = PATH_SLV__MD,
+  file_pattern = "^MD_SOLD_TO_CUSTOMER\\.CSV$", 
   file_spec    = FILE_SPEC,  
   ohdest       = "DSCP_CUST",
   verbose      = TRUE
@@ -327,9 +327,9 @@ fTransform_csv_to_parquet(
 #| eval:   true
 
 fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "RTP"),
-  output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_PLANT\\.csv$",   
+  source_path  = PATH_BRZ__MD,
+  output_path  = PATH_SLV__MD,
+  file_pattern = "^MD_PLANT\\.CSV$",   
   file_spec    = FILE_SPEC,  
   ohdest       = "DSCP_PLNT",
   verbose      = TRUE
@@ -345,9 +345,9 @@ fTransform_csv_to_parquet(
 #| eval:   true
 
 fTransform_csv_to_parquet(
-  source_path  = file.path(PS01, SYS, "RTP"),
-  output_path  = file.path(PS02, SYS, "RTP"),
-  file_pattern = "^MD_SALES_ORG\\.csv$",   
+  source_path  = PATH_BRZ__MD,
+  output_path  = PATH_SLV__MD,
+  file_pattern = "^MD_SALES_ORG\\.CSV$",   
   file_spec    = FILE_SPEC,  
   ohdest       = "DSCP_SORG",
   verbose      = TRUE

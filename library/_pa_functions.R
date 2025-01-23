@@ -528,267 +528,267 @@ fDescribe_Parquet <-
   return(query)
 }
 
-# Master data Functions ####
-fGet_MATL <-
-  function(
-    .material    = NULL, # Optional user-supplied material
-    .scope_matl  = TRUE, # restrict to Pythia Scope
-    .n           = Inf   # number of materials to return
-    ){
-  
-    # Get Centralized config
-    config <- .get_duckdb_parts(
-      .material   = .material,
-      .scope_matl = .scope_matl
-    )
-
-    # construct Query using glue package
-    query <- 
-      glue_sql("
-          {DBI::SQL(config$cte_scope_materials)}
-          SELECT 
-            *
-          FROM 
-            read_parquet({`FN_MATL`})
-                  WHERE 
-          {DBI::SQL(config$where_clause)} 
-        ", .con = config$duckdb_con)
-    
-    # fetch .n results and return as data.table 
-    dbGetQuery(config$duckdb_con, query, n = .n) %>%
-      setDT()
-    
-  }
-
-fGet_MATS <-
-  function(
-    .material    = NULL, # Optional user-supplied material
-    .salesorg    = NULL, # Optional user-supplied salesorg
-    .scope_matl  = TRUE, # restrict to Pythia Scope
-    .scope_sorg  = TRUE, # restrict to Pythia Scope
-    .n           = Inf   # number of materials to return
-  ){
-    
-    # Get Centralized config
-    config <- .get_duckdb_parts(
-      .material    = .material,
-      .salesorg    = .salesorg,
-      .scope_matl  = .scope_matl,
-      .scope_sorg  = .scope_sorg
-    )
-    
-    # construct Query using glue package 
-    query <- 
-      glue_sql("
-          {DBI::SQL(config$cte_scope_materials)}
-          SELECT 
-            *
-          FROM 
-            read_parquet({`FN_MATS`})
-          WHERE 
-            {DBI::SQL(config$where_clause)}
-        ", .con = config$duckdb_con)
-    
-    # fetch .n results and return as data.table 
-    dbGetQuery(config$duckdb_con, query, n = .n) %>%
-      setDT()
-    
-  }
-
-fGet_MATP <- 
-  function(
-    .material    = NULL, # Optional user-supplied material
-    .scope_matl  = TRUE, # restrict to Pythia Scope
-    .n           = Inf   # number of materials to return
-  ){
-    
-    # Get Centralized config
-    config <- .get_duckdb_parts(
-      .material   = .material,
-      .scope_matl = .scope_matl
-    )
-    
-    # construct Query using glue package
-    query <- 
-      glue_sql("
-          {DBI::SQL(config$cte_scope_materials)}
-          SELECT 
-            *
-          FROM 
-            read_parquet({`FN_MATP`})
-          WHERE 
-            {DBI::SQL(config$where_clause)}
-        ", .con = config$duckdb_con)
-    
-    # fetch .n results and return as data.table 
-    dbGetQuery(config$duckdb_con, query, n = .n) %>%
-      setDT()
-    
-  }
+# # Master data Functions ####
+# fGet_MATL <-
+#   function(
+#     .material    = NULL, # Optional user-supplied material
+#     .scope_matl  = TRUE, # restrict to Pythia Scope
+#     .n           = Inf   # number of materials to return
+#     ){
+#   
+#     # Get Centralized config
+#     config <- .get_duckdb_parts(
+#       .material   = .material,
+#       .scope_matl = .scope_matl
+#     )
+# 
+#     # construct Query using glue package
+#     query <- 
+#       glue_sql("
+#           {DBI::SQL(config$cte_scope_materials)}
+#           SELECT 
+#             *
+#           FROM 
+#             read_parquet({`FN_MATL`})
+#                   WHERE 
+#           {DBI::SQL(config$where_clause)} 
+#         ", .con = config$duckdb_con)
+#     
+#     # fetch .n results and return as data.table 
+#     dbGetQuery(config$duckdb_con, query, n = .n) %>%
+#       setDT()
+#     
+#   }
+# 
+# fGet_MATS <-
+#   function(
+#     .material    = NULL, # Optional user-supplied material
+#     .salesorg    = NULL, # Optional user-supplied salesorg
+#     .scope_matl  = TRUE, # restrict to Pythia Scope
+#     .scope_sorg  = TRUE, # restrict to Pythia Scope
+#     .n           = Inf   # number of materials to return
+#   ){
+#     
+#     # Get Centralized config
+#     config <- .get_duckdb_parts(
+#       .material    = .material,
+#       .salesorg    = .salesorg,
+#       .scope_matl  = .scope_matl,
+#       .scope_sorg  = .scope_sorg
+#     )
+#     
+#     # construct Query using glue package 
+#     query <- 
+#       glue_sql("
+#           {DBI::SQL(config$cte_scope_materials)}
+#           SELECT 
+#             *
+#           FROM 
+#             read_parquet({`FN_MATS`})
+#           WHERE 
+#             {DBI::SQL(config$where_clause)}
+#         ", .con = config$duckdb_con)
+#     
+#     # fetch .n results and return as data.table 
+#     dbGetQuery(config$duckdb_con, query, n = .n) %>%
+#       setDT()
+#     
+#   }
+# 
+# fGet_MATP <- 
+#   function(
+#     .material    = NULL, # Optional user-supplied material
+#     .scope_matl  = TRUE, # restrict to Pythia Scope
+#     .n           = Inf   # number of materials to return
+#   ){
+#     
+#     # Get Centralized config
+#     config <- .get_duckdb_parts(
+#       .material   = .material,
+#       .scope_matl = .scope_matl
+#     )
+#     
+#     # construct Query using glue package
+#     query <- 
+#       glue_sql("
+#           {DBI::SQL(config$cte_scope_materials)}
+#           SELECT 
+#             *
+#           FROM 
+#             read_parquet({`FN_MATP`})
+#           WHERE 
+#             {DBI::SQL(config$where_clause)}
+#         ", .con = config$duckdb_con)
+#     
+#     # fetch .n results and return as data.table 
+#     dbGetQuery(config$duckdb_con, query, n = .n) %>%
+#       setDT()
+#     
+#   }
 
 
 
 # Transaction Data Functions ####
 
 ## DYN from Dynasys ####
-fGet_DYN <- 
-  function(
-    .vtype       = NULL         , # NULL will get all vtypes
-    .ftype       = NULL         , # NULL will get all ftypes
-    .material    = NULL         , # Optional user-supplied material
-    .salesorg    = NULL         , # Optional user-supplied salesorg
-    .scope_matl  = TRUE         , # restrict to Pythia Scope
-    .scope_sorg  = TRUE         , # restrict to Pythia Scope
-    .cm_min      = '202101'     , # minimal Cal Month
-    .cm_max      = '202506'     , # maximal Cal Month
-    .step_min    = 1            , # minimal forecast step ahead
-    .step_max    = 18           , # maximal forecast step ahead
-    .lagg_min    = NULL         , # minimal diff. between VERSMON & MONTH
-    .lagg_max    = NULL         , # maximal diff. between VERSMON & MONTH      
-    .n           = Inf            # number of materials to return
-  ){
-  
-    # construct Query
-    query <- .make_sql_query_dyn(
-      .vtype       = .vtype, 
-      .ftype       = .ftype,
-      .material    = .material,
-      .salesorg    = .salesorg,
-      .scope_matl  = .scope_matl,
-      .scope_sorg  = .scope_sorg,
-      .cm_min      = .cm_min,
-      .cm_max      = .cm_max,
-      .step_min    = .step_min,
-      .step_max    = .step_max,
-      .lagg_min    = .lagg_min,
-      .lagg_max    = .lagg_max    
-    )
-    
-    # fetch .n results and return as data.table 
-    dbGetQuery(.get_duckdb_conn(), query, n = .n) %>%
-      setDT()
-    
-  }
+# fGet_DYN <- 
+#   function(
+#     .vtype       = NULL         , # NULL will get all vtypes
+#     .ftype       = NULL         , # NULL will get all ftypes
+#     .material    = NULL         , # Optional user-supplied material
+#     .salesorg    = NULL         , # Optional user-supplied salesorg
+#     .scope_matl  = TRUE         , # restrict to Pythia Scope
+#     .scope_sorg  = TRUE         , # restrict to Pythia Scope
+#     .cm_min      = '202101'     , # minimal Cal Month
+#     .cm_max      = '202506'     , # maximal Cal Month
+#     .step_min    = 1            , # minimal forecast step ahead
+#     .step_max    = 18           , # maximal forecast step ahead
+#     .lagg_min    = NULL         , # minimal diff. between VERSMON & MONTH
+#     .lagg_max    = NULL         , # maximal diff. between VERSMON & MONTH      
+#     .n           = Inf            # number of materials to return
+#   ){
+#   
+#     # construct Query
+#     query <- .make_sql_query_dyn(
+#       .vtype       = .vtype, 
+#       .ftype       = .ftype,
+#       .material    = .material,
+#       .salesorg    = .salesorg,
+#       .scope_matl  = .scope_matl,
+#       .scope_sorg  = .scope_sorg,
+#       .cm_min      = .cm_min,
+#       .cm_max      = .cm_max,
+#       .step_min    = .step_min,
+#       .step_max    = .step_max,
+#       .lagg_min    = .lagg_min,
+#       .lagg_max    = .lagg_max    
+#     )
+#     
+#     # fetch .n results and return as data.table 
+#     dbGetQuery(.get_duckdb_conn(), query, n = .n) %>%
+#       setDT()
+#     
+#   }
+
+# ## RTP to Dynasys  ####
+# fGet_RTP <- 
+#   function(
+#     .material    = NULL    , # Optional user-supplied material
+#     .salesorg    = NULL    , # Optional user-supplied salesorg
+#     .scope_matl  = TRUE   , # restrict to Pythia Scope
+#     .scope_sorg  = TRUE    , # restrict to Pythia Scope
+#     .cm_min      = '202101', # no data available before this date
+#     .cm_max      = '202506', # no data available after this date
+#     .n           = Inf       # number of materials to return
+#   ){
+#     
+#     # Get Centralized config
+#     config <- .get_duckdb_parts(
+#       .material   = .material,
+#       .salesorg   = .salesorg,
+#       .scope_matl = .scope_matl,
+#       .scope_sorg = .scope_sorg,
+#       .cm_min     = .cm_min,
+#       .cm_max     = .cm_max
+#     )
+#     
+#     # construct Query  
+#     query <-
+#       glue_sql("
+#         {DBI::SQL(config$cte_scope_materials)}
+# 
+#         SELECT
+#           SALESORG,
+#           PLANT,
+#           MATERIAL,
+#        -- SOLDTO,
+#           -1                          AS STEP,
+#           CALMONTH,
+#           '4'                         AS FTYPE,
+#           '010'                       AS VTYPE,
+#           sum(SLS_QT_SO + SLS_QT_FOC) AS Q,          
+#           sum(SLS_QT_SO)              AS SLS,
+#           sum(SLS_QT_RET)             AS RET,
+#           sum(SLS_QT_FOC)             AS FOC,
+#           sum(SLS_QT_DIR)             AS DIR,
+#        -- sum(SLS_QT_PRO)             AS PRO,
+#           sum(SLS_QT_IC)              AS ICS,
+#           sum(MSQTBUO)                AS MSL
+#         FROM
+#           read_parquet([{`FN_IRTP`}])
+#         WHERE
+#           {DBI::SQL(config$where_clause)}
+#         GROUP BY
+#           ALL
+#         ORDER BY
+#           ALL
+#       ", .con = config$duckdb_con)
+#     
+#     # fetch .n results and return as data.table
+#     dbGetQuery(config$duckdb_con, query, n = .n) %>%
+#       setDT()
+#     
+#   }
 
 ## RTP to Dynasys  ####
-fGet_RTP <- 
-  function(
-    .material    = NULL    , # Optional user-supplied material
-    .salesorg    = NULL    , # Optional user-supplied salesorg
-    .scope_matl  = TRUE   , # restrict to Pythia Scope
-    .scope_sorg  = TRUE    , # restrict to Pythia Scope
-    .cm_min      = '202101', # no data available before this date
-    .cm_max      = '202506', # no data available after this date
-    .n           = Inf       # number of materials to return
-  ){
-    
-    # Get Centralized config
-    config <- .get_duckdb_parts(
-      .material   = .material,
-      .salesorg   = .salesorg,
-      .scope_matl = .scope_matl,
-      .scope_sorg = .scope_sorg,
-      .cm_min     = .cm_min,
-      .cm_max     = .cm_max
-    )
-    
-    # construct Query  
-    query <-
-      glue_sql("
-        {DBI::SQL(config$cte_scope_materials)}
-
-        SELECT
-          SALESORG,
-          PLANT,
-          MATERIAL,
-       -- SOLDTO,
-          -1                          AS STEP,
-          CALMONTH,
-          '4'                         AS FTYPE,
-          '010'                       AS VTYPE,
-          sum(SLS_QT_SO + SLS_QT_FOC) AS Q,          
-          sum(SLS_QT_SO)              AS SLS,
-          sum(SLS_QT_RET)             AS RET,
-          sum(SLS_QT_FOC)             AS FOC,
-          sum(SLS_QT_DIR)             AS DIR,
-       -- sum(SLS_QT_PRO)             AS PRO,
-          sum(SLS_QT_IC)              AS ICS,
-          sum(MSQTBUO)                AS MSL
-        FROM
-          read_parquet([{`FN_IRTP`}])
-        WHERE
-          {DBI::SQL(config$where_clause)}
-        GROUP BY
-          ALL
-        ORDER BY
-          ALL
-      ", .con = config$duckdb_con)
-    
-    # fetch .n results and return as data.table
-    dbGetQuery(config$duckdb_con, query, n = .n) %>%
-      setDT()
-    
-  }
-
-## RTP to Dynasys  ####
-fGet_IPM <- 
-  function(
-    .material    = NULL    , # Optional user-supplied material
-    .salesorg    = NULL    , # Optional user-supplied salesorg
-    .scope_matl  = TRUE   , # restrict to Pythia Scope
-    .scope_sorg  = TRUE    , # restrict to Pythia Scope
-    .cm_min      = '202101', # no data available before this date
-    .cm_max      = '202506', # no data available after this date
-    .n           = Inf       # number of materials to return
-  ){
-    
-    # Get Centralized config
-    config <- .get_duckdb_parts(
-      .material   = .material,
-      .salesorg   = .salesorg,
-      .scope_matl = .scope_matl,
-      .scope_sorg = .scope_sorg,
-      .cm_min     = .cm_min,
-      .cm_max     = .cm_max
-    )
-    
-    # construct Query  
-    query <-
-      glue_sql("
-        {DBI::SQL(config$cte_scope_materials)}
-
-        SELECT
-          SALESORG,
-          PLANT,
-          MATERIAL,
-       -- SOLDTO,
-          -1                          AS STEP,
-          CALMONTH,
-          '3'                         AS FTYPE,
-          '010'                       AS VTYPE,
-          sum(SLS_QT_SO + SLS_QT_FOC) AS Q,          
-          sum(SLS_QT_SO)              AS SLS,
-          sum(SLS_QT_RET)             AS RET,
-          sum(SLS_QT_FOC)             AS FOC,
-          sum(SLS_QT_DIR)             AS DIR,
-       -- sum(SLS_QT_PRO)             AS PRO,
-          sum(SLS_QT_IC)              AS ICS,
-          sum(MSQTBUO)                AS MSL
-        FROM
-          read_parquet([{`FN_IIPM`}])
-        WHERE
-          {DBI::SQL(config$where_clause)}
-        GROUP BY
-          ALL
-        ORDER BY
-          ALL
-      ", .con = config$duckdb_con)
-    
-    # fetch .n results and return as data.table
-    dbGetQuery(config$duckdb_con, query, n = .n) %>%
-      setDT()
-    
-  }
+# fGet_IPM <- 
+#   function(
+#     .material    = NULL    , # Optional user-supplied material
+#     .salesorg    = NULL    , # Optional user-supplied salesorg
+#     .scope_matl  = TRUE   , # restrict to Pythia Scope
+#     .scope_sorg  = TRUE    , # restrict to Pythia Scope
+#     .cm_min      = '202101', # no data available before this date
+#     .cm_max      = '202506', # no data available after this date
+#     .n           = Inf       # number of materials to return
+#   ){
+#     
+#     # Get Centralized config
+#     config <- .get_duckdb_parts(
+#       .material   = .material,
+#       .salesorg   = .salesorg,
+#       .scope_matl = .scope_matl,
+#       .scope_sorg = .scope_sorg,
+#       .cm_min     = .cm_min,
+#       .cm_max     = .cm_max
+#     )
+#     
+#     # construct Query  
+#     query <-
+#       glue_sql("
+#         {DBI::SQL(config$cte_scope_materials)}
+# 
+#         SELECT
+#           SALESORG,
+#           PLANT,
+#           MATERIAL,
+#        -- SOLDTO,
+#           -1                          AS STEP,
+#           CALMONTH,
+#           '3'                         AS FTYPE,
+#           '010'                       AS VTYPE,
+#           sum(SLS_QT_SO + SLS_QT_FOC) AS Q,          
+#           sum(SLS_QT_SO)              AS SLS,
+#           sum(SLS_QT_RET)             AS RET,
+#           sum(SLS_QT_FOC)             AS FOC,
+#           sum(SLS_QT_DIR)             AS DIR,
+#        -- sum(SLS_QT_PRO)             AS PRO,
+#           sum(SLS_QT_IC)              AS ICS,
+#           sum(MSQTBUO)                AS MSL
+#         FROM
+#           read_parquet([{`FN_IIPM`}])
+#         WHERE
+#           {DBI::SQL(config$where_clause)}
+#         GROUP BY
+#           ALL
+#         ORDER BY
+#           ALL
+#       ", .con = config$duckdb_con)
+#     
+#     # fetch .n results and return as data.table
+#     dbGetQuery(config$duckdb_con, query, n = .n) %>%
+#       setDT()
+#     
+#   }
 
 # R Functions ####
 
@@ -799,25 +799,3 @@ fOpen_Folder <-
     shell.exec(normalizePath(path))
   }
 
-fHeader_PQT <- 
-  function(.fn, .n = 1000){
-    
-    con <- .get_duckdb_conn()
-    
-    on.exit( .close_duckdb_conn())
-    
-    query <- glue_sql("
-    SELECT 
-      *
-    FROM 
-      read_parquet([{`.fn`}])
-    LIMIT {.n}
-   ", .con = con)
-    
-    dt <-
-      dbGetQuery(con, query) %>%
-      setDT()
-    
-    return(dt)
-    
-  }

@@ -33,17 +33,6 @@ SAP is needed
 #| label:  setup
 #| eval:   true
 
-knitr::opts_chunk$set(
-  cache   = FALSE,
-  echo    = TRUE,     # include R source code in the output  
-  eval    = TRUE,
-  message = FALSE,
-  warning = FALSE,
-  results = "markup",
-  image   = TRUE,  
-  include = TRUE      # include the chunk output in the output 
-)
-
 SID <- "WPB500"
 SYS <- substr(SID, 1, 3)
 
@@ -58,8 +47,8 @@ if (computer_name == 'GNPBB54' ){
 invisible(source('library/KnitR_SetUp.R'))
 source("C:/RW/ETRMK/00_RProj/00_Global/KnitR_SetUp.R")
 
-lsrc <- "notebooks/05_data_ingestion.R"  
-if( file.exists(lsrc)){source(lsrc)}
+# lsrc <- "notebooks/05_data_ingestion.R"  
+# if( file.exists(lsrc)){source(lsrc)}
 
 # MASP
 ## MATERIAL
@@ -78,6 +67,17 @@ fltSTGY_GRP       <- c('Z1')
 fltACCNT_GRP      <- c('0001', 'CPD' , 'ZINC')
 
 ```
+
+```{r}
+#| label: 'install padt package'
+#| eval: true
+
+detach("package:padt", unload = TRUE)
+remotes::install_github("Fpadt/EAISI-Padt")
+library("padt")
+
+```
+
 
 # Master Data
 

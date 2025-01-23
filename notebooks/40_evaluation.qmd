@@ -24,27 +24,14 @@ editor_options:
 #| label: 'setup'
 #| eval:   true
 
-
-# knitr::opts_chunk$set(
-#   cache   = FALSE,
-#   echo    = TRUE,     # include R source code in the output  
-#   eval    = TRUE,
-#   message = FALSE,
-#   warning = FALSE,
-#   results = "markup",
-#   image   = TRUE,  
-#   include = TRUE      # include the chunk output in the output 
-# )
-
-SID <- "WPB500"
-SYS <- substr(SID, 1, 3)
-
 # public functions ---------------------------------------------------------
-invisible(source('library/KnitR_SetUp.R'))
+invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
 
-# setwd("C:/RW/EAISI-Pythia/notebooks")
-lsrc <- "notebooks/40_evaluation.R"  
-if( file.exists(lsrc)){source(lsrc)}
+# devtools::load_all(path = "C:/RW/EAISI-Padt")
+library("padt")
+
+# lsrc <- "notebooks/40_evaluation.R"  
+# if( file.exists(lsrc)){source(lsrc)}
 
 # location for generated figures
 pimg <- file.path('.', 'fig')
@@ -52,10 +39,12 @@ pimg <- file.path('.', 'fig')
 MAN <-  FALSE
 VAR <- 'EPA'
 MAT <- MATN1('10023')
-MAT <- MATN1('433')
+# MAT <- MATN1('433')
 ```
 
 # Sales versus Forecast
+
+## Time series
 
 ```{r}
 #| label: 'display sales'
@@ -64,7 +53,7 @@ MAT <- MATN1('433')
 ACT <- 
   DYN[MATERIAL == MAT 
       # & FTYPE  == '1' 
-      & CALMONTH %between% c('202401', '202412') 
+      & CALMONTH %between% c('202101', '202412') 
       & STEP %in% c(-1, 1)
       ] %>% .[!(FTYPE == '2' & VTYPE == '010')]
 
@@ -106,14 +95,18 @@ ggplot(
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
+## Violin on Horizon
+
 ```{r}
 #| label: 'violin plot of Forecast Accuracy'
 #| eval: true
 
 ACC <- .calc_accuracy(
-  tab = DYN, act_ftype = 1, fct_ftype = 2)
+  tab = DYN, act_ftype = 1, fct_ftype = 2)   %>%
+  .[, WGHT:= 0.2*ACT/max(ACT), by = .(CALMONTH, STEP)] %>%
+  .[CALMONTH >= '202401' & WGHT > 0.05 ]
 
-DT <- ACC[get(VAR) >0,.(STEP, ACC = get(VAR))]
+DT <- ACC[get(VAR) >0,.(STEP, ACC = get(VAR), WGHT)]
 
 # Violin plot: STEP on x-axis (treat as discrete), ACC on y-axis
 ggplot(DT, aes(x = factor(STEP), y = ACC)) +
@@ -124,11 +117,16 @@ ggplot(DT, aes(x = factor(STEP), y = ACC)) +
     color          = ET_FG
     ) +
   geom_jitter(
+    aes(
+      size  = WGHT/2,
+      alpha = WGHT/2
+    ),
     height = 0, 
     width  = 0.15, 
-    color  = ET_LG,
-    size   = 0.2,
-    alpha  = 0.3
+    color  = ET_LG
+    # ,
+    # size   = 0.2,
+    # alpha  = 0.3
     ) +
   # Optional: a summary point for the mean on each violin
   stat_summary(
@@ -141,7 +139,7 @@ ggplot(DT, aes(x = factor(STEP), y = ACC)) +
   ) +
   labs(
     x     = "Step",
-    y     = "Ecotone Accuracy",
+    y     = "Accuracy",
     title = glue("Distribution of Forecast Accuracy ({`VAR`}) by Step")
   ) +
   coord_cartesian(ylim = c(40, 100))
@@ -181,7 +179,7 @@ ggplot(
     values = c(ET_CG, ET_FG, ET_LG)) +
   labs(
     x     = "Year Month",
-    y     = "Accuracy Academic",
+    y     = "Accuracy",
     title = glue("SC-113B {RL0(`MAT`)} - Forecast Accuracy ({`VAR`}) M-1, M-2, M-3"),
     color = "Forecast Period"
   ) +

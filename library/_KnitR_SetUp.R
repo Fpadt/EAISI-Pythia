@@ -109,13 +109,6 @@ invisible(source(file.path(MOD, "ET_Functions.R")))
 # https://coolors.co/3e074a-0f431c-fde8e9-f0f600
 # Colors
 
-ET_CG = "#0f5e3c"
-ET_FG = "#089b35"
-ET_LG = "#38e56d"
-ET_YL = "#fff200"
-ET_JB = "#333333"
-
-
 # GV_ORNG_0 <- "#FE5000"
 # GV_ORNG_1 <- "#F68946"
 # GV_ORNG_2 <- "#FCC098"
@@ -135,5 +128,5 @@ ET_JB = "#333333"
 # GV_GREY_4 <- "#FFFFFF" 
 # GV_GREY_A <- "#818183"
 
-COL_FACTR <- "#9CEB91"
-COL___RED <- "#ff7f7f"
+# COL_FACTR <- "#9CEB91"
+# COL___RED <- "#ff7f7f"

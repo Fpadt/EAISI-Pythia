@@ -28,13 +28,15 @@ editor_options:
 # SYS <- substr(SID, 1, 3)
 
 # public functions ---------------------------------------------------------
-# invisible(source('library/KnitR_SetUp.R'))
+invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
+
+# devtools::load_all(path = "C:/RW/EAISI-Padt")
+library("padt")
 
 # setwd("C:/RW/EAISI-Pythia/notebooks")
-# lsrc <- "notebooks/10_data_import.R"  
+# lsrc <- "notebooks/10_data_import.R"
 # if( file.exists(lsrc)){source(lsrc)}
 
-devtools::load_all(path = "C:/RW/EAISI-Padt")
 ```
 
 # Scope
@@ -101,32 +103,56 @@ MATP <- fGet_MAT(.ftype = 3,
 #| label: 'Get DYN data'
 #| eval:   true
 
-DYN <-                              # 95
+# FTYPE = 1 Actuals for Accuracy PreDR from 202401
+# FTYPE = 2 Actuals for Accuracy PstDR from 202401
+# FTYPE = 3 Actuals Last Version PreDR from 202101 
+# FTYPE = 4 Actuals Last Version PstDR from 202101 
+
+
+DYN <-                              # 
   fGet_DYN(
-    .vtype       = c('010', '010'), # 010 = Actuals, 060 = Forecast
+    .vtype       = c('010', '060'), # 010 = Actuals, 060 = Forecast
     .ftype       = c(1, 2)        , # 1 = PreDR, 2 = PostDR 
     .material    = '10023'        , # Optional user-supplied material
     .salesorg    = 'FR30'         , # Optional user-supplied salesorg
     .scope_matl  = TRUE           , # restrict to Pythia Scope
     .scope_sorg  = TRUE           , # restrict to Pythia Scope
-    .cm_min      = '202406'       , # minimal Cal Month
+    .cm_min      = '202101'       , # minimal Cal Month
     .cm_max      = '202412'       , # maximal Cal Month
     .step_min    = 1              , # minimal forecast step ahead
     .step_max    = 18             , # maximal forecast step ahead
-    .lagg_min    = -999           , # minimal diff. between VERSMON & MONTH
-    .lagg_max    = 999            , # maximal diff. between VERSMON & MONTH  
+    .lagg_min    = NULL             , # minimal diff. between VERSMON & MONTH
+    .lagg_max    = NULL             , # maximal diff. between VERSMON & MONTH  
     .n           = Inf  
   )
 
-# ACTC <- 
+DYN[VTYPE == '010'] %>%
+  dcast.data.table(
+    FTYPE + VERSMON ~ CALMONTH,
+    fun.aggregate = sum,
+    value.var = "Q"
+  ) %T>% View()
+
+# awesome check
+DYN[CALMONTH > '202312'] %>%
+  dcast.data.table(
+    VTYPE + FTYPE + STEP ~ CALMONTH,
+    fun.aggregate = sum,
+    value.var = "Q"
+  ) %T>% View()
+
+# ACTC <-
 #   dcast.data.table(
-#     ACTL, 
-#     ... ~ paste0("TYP_", FTYPE),  
-#     value.var = "A"
+#     DYN,
+#     ... ~ paste0("TYP_", FTYPE),
+#     value.var = "Q"
 #   ) %>%
-#   .[, DIFF:= TYP_1 - TYP_2]
-# 
-# View(ACTC[DIFF != 0])
+#   .[, ABSE:= abs(TYP_1 - TYP_2)] %>%
+#   .[, PERC:= round(100 * ABSE/ TYP_1, 1)] %>%
+#   .[ABSE != 0 ] %T>%
+#   setorder(-PERC) %T>%
+#   View()
+
 
 ```
 
