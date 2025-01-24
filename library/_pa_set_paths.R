@@ -5,7 +5,7 @@
     .dat,   # 10
     .layer, # 20
     .sid,   # 30
-    .area   # 40 
+    .pa_AREA   # 40 
 ) {
   
   PATHS <- read_xlsx(
@@ -41,13 +41,13 @@
     L30 <- .sid
   }
   
-  if(missing(.area)){
-    stop("Please provide a value for .area")
+  if(missing(.pa_AREA)){
+    stop("Please provide a value for .pa_AREA")
   }
   
   full_path <- 
     normalizePath(
-      file.path(L00, L10, L20, L30, .area),
+      file.path(L00, L10, L20, L30, .pa_AREA),
       winslash = "/")
   
   return(full_path)
@@ -153,11 +153,11 @@ paths_parquet_files <- fread("
   colClasses = list(character = "vtype"))  %>%    
   .[, path := file.path(PDYN, path)]
 
-# .construct_path(.layer = "S2S", .area = "DYN")
+# .construct_path(.layer = "S2S", .pa_AREA = "DYN")
 FN_FRPR1 <-               # pre-Demand review 
   paths_parquet_files[vtype == '010' & ftype == 1, path]
 
-.construct_path(.layer = "S2S", .area = "DYN")
+.construct_path(.layer = "S2S", .pa_AREA = "DYN")
 FN_FRPR5 <-               # pre-Demand review 
   paths_parquet_files[vtype == '010' & ftype == 5, path]
 

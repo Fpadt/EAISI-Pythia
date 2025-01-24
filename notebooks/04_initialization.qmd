@@ -33,21 +33,15 @@ SAP is needed
 #| label:  setup
 #| eval:   true
 
+no_sapyr <- FALSE
 SID <- "WPB500"
 SYS <- substr(SID, 1, 3)
 
-# SAP Access
-if (computer_name == 'GNPBB54' ){
-  devtools::load_all(path = "C:\\RW\\sapyr")
-  library(reticulate)
-  use_condaenv("sapyr")
-}
-
 # public functions ---------------------------------------------------------
-invisible(source('library/KnitR_SetUp.R'))
+# invisible(source('library/KnitR_SetUp.R'))
 source("C:/RW/ETRMK/00_RProj/00_Global/KnitR_SetUp.R")
 
-# lsrc <- "notebooks/05_data_ingestion.R"  
+# lsrc <- "notebooks/04_initialization.R"  
 # if( file.exists(lsrc)){source(lsrc)}
 
 # MASP
@@ -72,7 +66,9 @@ fltACCNT_GRP      <- c('0001', 'CPD' , 'ZINC')
 #| label: 'install padt package'
 #| eval: true
 
-detach("package:padt", unload = TRUE)
+if("package:padt" %in% search()){
+  detach("package:padt", unload = TRUE, character.only = TRUE)}
+  
 remotes::install_github("Fpadt/EAISI-Padt")
 library("padt")
 
@@ -992,7 +988,7 @@ S4_MARC <-
         # "STEUC"                   , # Control code for consumption taxes in foreign trade           
         # "FABKZ"                   , # JIT Delivery Schedules                                        
         # "MATGR"                   , # Group of Materials for Transition Matrix                      
-        # "VSPVB"                   , # Proposed Supply Area in Material Master Record                
+        # "VSPVB"                   , # Proposed Supply pa_AREA in Material Master Record                
         # "DPLFS"                   , # Fair share rule                                               
         # "DPLPU"                   , # Indicator: push distribution                                  
         # "DPLHO"                   , # Deployment horizon in days                                    
@@ -1004,7 +1000,7 @@ S4_MARC <-
         # "CONVT"                   , # Conversion types for production figures                       
         # "SHPRO"                   , # Period Profile for Safety Time                                
         # "AHDIS"                   , # MRP relevancy for dependent requirements                      
-        # "DIBER"                   , # Indicator: MRP area exists                                    
+        # "DIBER"                   , # Indicator: MRP pa_AREA exists                                    
         # "KZPSP"                   , # Indicator for Cross-Project Material                          
         # "OCMPF"                   , # Overall profile for order change management                   
         # "APOKZ"                   , # Indicator: Is material relevant for APO                       
@@ -1147,7 +1143,7 @@ B4_MAT_PLANT_P <-
         # "OBJVERS"         , # Object version                                             X
         # "CHANGED"         , # Change flag ( I inserted / D deleted )                     
         # "ABCKEY"          , # ABC indicator                                              
-        # "CO_AREA"         , # Controlling area                                           
+        # "CO_pa_AREA"         , # Controlling pa_AREA                                           
         # "DEL_FLAG"        , # Deletion flag for all material data of a plant             
         # "DISMM"           , # MRP Type                                                   
         # "DOC_CURRCY"      , # Document currency                                          
@@ -1164,7 +1160,7 @@ B4_MAT_PLANT_P <-
         # "RPA_MVF"         , # Valuation Factor for Average Cost Value                    
         # "RPA_QTYUOM"      , # Unit of Measure Basis for Moving Average Valuation Factor  
         # "RT_DEPARTM"      , # Department Number                                          
-        # "RT_PURCHAR"      , # Purchasing Area                                            
+        # "RT_PURCHAR"      , # Purchasing pa_AREA                                            
         # "RT_SERVLEV"      , # IS-R Service Level                                         
         # "RT_SSMFGR"       , # Date of First Goods Receipt                                
         # "RUNOUTDATE"      , # Run-Out Date                                               
@@ -1346,7 +1342,7 @@ B4_RSBOHDEST <-
         # "SOURCEOBJNM"     , # Name of Source                                              
         # "DATASOURCE"      , # DataSource, (3.x DataSource)                                
         # "SOURCELOGSYS"    , # Source system                                               
-        # "INFOAREA"        , # InfoArea                                                    
+        # "INFOpa_AREA"        , # Infopa_AREA                                                    
         # "NEW_OHD"         , # Boolean                                                     
         # "TLOGO"           , # BW: Object Type (TLOGO)                                     
         # "OBJNM"           , # Object Name in Object Directory                             
@@ -1485,17 +1481,17 @@ PA_OPEN_HUB.csv
 #| label:  PA_OPEN_HUB
 #| eval:   true
 
-# Pythia Info Area's
+# Pythia Info pa_AREA's
 PA_IA <- c('RW_DSCP', 'RW_PYTHIA', 'DML_SOP', 'RW_MD_SOP')
 
 # Create PA Open Hub ####
 PA_OPEN_HUB <- 
   RSBOHDEST[, .(
-    SYSTID     , CLIENT     , OHDEST    , OHD = TXTLG, OBJVERS, INFOAREA, 
+    SYSTID     , CLIENT     , OHDEST    , OHD = TXTLG, OBJVERS, INFOpa_AREA, 
     SOURCEOBJNM, SOURCETLOGO, CREATED_BY, OWNER      , DESTTYPE)][
       RSBOHFIELDS[],
       on = .(SYSTID, CLIENT, OHDEST, OBJVERS)] %>%
-  .[INFOAREA %chin% PA_IA]                     %T>%
+  .[INFOpa_AREA %chin% PA_IA]                     %T>%
   setorder(OHDEST, POSIT)
 
 # Write PA Open Hub ####
@@ -1575,7 +1571,7 @@ B4_FILENAMECI <-
         # "FILEINTERN"  , # Logical file name                       X
         # "FILEEXTERN"  , # Physical file name                      
         # "FILEFORMAT"  , # Transfer file format (upload/download)  
-        # "APPLI_TR01"  , # Application area                        
+        # "APPLI_TR01"  , # Application pa_AREA                        
         # "PATHINTERN"    # Logical path name                       
     ),
      pRowcount = Inf
@@ -1610,13 +1606,3 @@ B4_RSBOHFIELDS[, .(                      ,
 
 ```
 
-## Open CSV to modify Pipelines
-
-```{r}
-#| label:  Open Pipeline files
-#| label:  true 
-#| 
-shell.exec(file.path(PS01, SYS, "B4", "B4_PIPELINE_ORG.csv"))
-shell.exec(file.path(PS01, SYS, "B4", "B4_PIPELINE_MOD.csv"))
-
-```

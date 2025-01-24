@@ -212,7 +212,7 @@ fMARC_ALL <-
 #      "STEUC"                   , # Control code for consumption taxes in foreign trade
 #      "FABKZ"                   , # Indicator: Item Relevant to JIT Delivery Schedules
       "MATGR"                   , # Group of Materials for Transition Matrix
-#      "VSPVB"                   , # Proposed Supply Area in Material Master Record
+#      "VSPVB"                   , # Proposed Supply pa_AREA in Material Master Record
 #      "DPLFS"                   , # Fair share rule
 #      "DPLPU"                   , # Indicator: push distribution
 #      "DPLHO"                   , # Deployment horizon in days
@@ -224,7 +224,7 @@ fMARC_ALL <-
 #      "CONVT"                   , # Conversion types for production figures
       "SHPRO"                   , # Period Profile for Safety Time
 #      "AHDIS"                   , # MRP relevancy for dependent requirements
-      "DIBER"                   , # Indicator: MRP area exists
+      "DIBER"                   , # Indicator: MRP pa_AREA exists
 #      "KZPSP"                   , # Indicator for cross-project material
 #      "OCMPF"                   , # Overall profile for order change management
 #      "APOKZ"                   , # Indicator: Is material relevant for APO
@@ -414,7 +414,7 @@ fMARC_REL1 <-
       "KZECH"                   , # Determination of batch entry in the production/process order
       "MATGR"                   , # Group of Materials for Transition Matrix
       "SHPRO"                   , # Period Profile for Safety Time
-      "DIBER"                   , # Indicator: MRP area exists
+      "DIBER"                   , # Indicator: MRP pa_AREA exists
       "EISLO"                   , # Minimum Safety Stock
       "NCOST"                   , # Do Not Cost
       "BWESB"                   , # Valuated Goods Receipt Blocked Stock

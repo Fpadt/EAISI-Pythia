@@ -36,10 +36,13 @@ library("padt")
 # location for generated figures
 pimg <- file.path('.', 'fig')
 
+# generate the Ecotone Brand Colors
+generate_color_variables(pa_ET_COLS)
+
 MAN <-  FALSE
 VAR <- 'EPA'
-MAT <- MATN1('10023')
-# MAT <- MATN1('433')
+MAT <- pa_matn1_input('10023')
+# MAT <- pa_matn1_input('433')
 ```
 
 # Sales versus Forecast
@@ -53,12 +56,12 @@ MAT <- MATN1('10023')
 ACT <- 
   DYN[MATERIAL == MAT 
       # & FTYPE  == '1' 
-      & CALMONTH %between% c('202101', '202412') 
+      & CALMONTH %between% c('202401', '202412') 
       & STEP %in% c(-1, 1)
       ] %>% .[!(FTYPE == '2' & VTYPE == '010')]
 
 n_cols <- length(unique(paste(ACT$VTYPE, ACT$FTYPE)))
-ET_COL <- c(ET_JB, ET_FG, ET_LG, ET_CG, ET_YL)[1:n_cols]
+ET_COL <- pa_ET_COLS[1:n_cols]
 
 ggplot(
   ACT, 
@@ -76,19 +79,19 @@ ggplot(
   labs(
     x     = "Month",
     y     = "Quantity EA", 
-    title = paste("Sales of SKU:", RL0(MAT), "per month"),
+    title = paste("Sales of SKU:", pa_matn1_output(MAT), "per month"),
     color = "Legend"
   ) +
   scale_color_manual(
     # labels = c("Act.1", "Fct.1", "Act.2", "Fct.2"),
-    values = ET_COL
+    values = pa_ET_COLS
   ) +  
   geom_label(aes(label = round(Q/1000, 1))) +
   guides(color = guide_legend(
     override.aes = 
       list(
-        fill  = ET_COL,  
-        color = ET_COL 
+        fill  = pa_ET_COLS,  
+        color = pa_ET_COLS 
       )
   )
   ) +
@@ -114,7 +117,7 @@ ggplot(DT, aes(x = factor(STEP), y = ACC)) +
   geom_violin(
     trim           = TRUE, 
     draw_quantiles = c(0.25, 0.5, 0.75),
-    color          = ET_FG
+    color          = pa_ET_FG
     ) +
   geom_jitter(
     aes(
@@ -123,7 +126,7 @@ ggplot(DT, aes(x = factor(STEP), y = ACC)) +
     ),
     height = 0, 
     width  = 0.15, 
-    color  = ET_LG
+    color  = pa_ET_COLS["LG"]
     # ,
     # size   = 0.2,
     # alpha  = 0.3
@@ -134,8 +137,8 @@ ggplot(DT, aes(x = factor(STEP), y = ACC)) +
     geom  = "point", 
     shape = 23,   # diamond shape
     size  = 3, 
-    fill  = ET_CG, 
-    color = ET_CG
+    fill  = pa_pa_ET_COLSS["CG"], 
+    color = pa_pa_ET_COLSS["CG"]
   ) +
   labs(
     x     = "Step",
@@ -176,18 +179,18 @@ ggplot(
   geom_label(aes(label = round(PE, 1))) +
   scale_color_manual(
     labels = c("M-1", "M-2", "M-3"),
-    values = c(ET_CG, ET_FG, ET_LG)) +
+    values = c(pa_ET_COLS["CG"], pa_ET_COLS["FG"], pa_ET_COLS["LG"])) +
   labs(
     x     = "Year Month",
     y     = "Accuracy",
-    title = glue("SC-113B {RL0(`MAT`)} - Forecast Accuracy ({`VAR`}) M-1, M-2, M-3"),
+    title = glue("SC-113B {pa_matn1_output(`MAT`)} - Forecast Accuracy ({`VAR`}) M-1, M-2, M-3"),
     color = "Forecast Period"
   ) +
   guides(color = guide_legend(
     override.aes = 
       list(
-        fill  = c(ET_CG, ET_FG, ET_LG), 
-        color = c(ET_CG, ET_FG, ET_LG)
+        fill  = c(pa_pa_ET_COLSS["CG"], pa_ET_FG, pa_ET_COLS["LG"]), 
+        color = c(pa_pa_ET_COLSS["CG"], pa_ET_FG, pa_ET_COLS["LG"])
       )
   )
   ) +
@@ -216,7 +219,7 @@ ggplot(
   geom_abline(intercept = 0, slope = 1) +
   # geom_label(aes(label = round(PE, 1))) +
   # facet_wrap(~ PLANT + MATERIAL, scales = "free_y") +
-  # scale_color_manual(values=c(ET_CG, ET_FG))+
+  # scale_color_manual(values=c(pa_pa_ET_COLSS["CG"], pa_ET_FG))+
   theme_minimal()
 ```
 
@@ -249,18 +252,18 @@ ggplot(
   ) +
   scale_color_manual(
     labels = c("M-1", "M-2", "M-3"),
-    values = c(ET_CG, ET_FG, ET_LG)
+    values = c(pa_pa_ET_COLSS["CG"], pa_ET_FG, pa_ET_COLS["LG"])
   ) +
   labs(
     x     = "Year Month",
     y     = "Accuracy Academic",
-    title = glue("SC-113B {RL0(`MAT`)} - Forecast Accuracy ({`VAR`}) M-1, M-2, M-3"),
+    title = glue("SC-113B {pa_matn1_output(`MAT`)} - Forecast Accuracy ({`VAR`}) M-1, M-2, M-3"),
     color = "Forecast Period"
   ) +
   guides(color = guide_legend(
     override.aes = list(
-      fill  = c(ET_CG, ET_FG, ET_LG), 
-      color = c(ET_CG, ET_FG, ET_LG)
+      fill  = c(pa_pa_ET_COLSS["CG"], pa_ET_FG, pa_ET_COLS["LG"]), 
+      color = c(pa_pa_ET_COLSS["CG"], pa_ET_FG, pa_ET_COLS["LG"])
     )
   )) +
   coord_cartesian(ylim = c(25, 100)) +

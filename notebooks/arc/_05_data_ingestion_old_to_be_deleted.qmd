@@ -234,7 +234,7 @@ process_data <- function(
     source_base_path, 
     target_base_path, 
     sys_value, 
-    area,
+    pa_AREA,
     verbose = FALSE) {
   
   if(yr != ""){yr <- paste0("_", yr)}
@@ -242,12 +242,12 @@ process_data <- function(
   # Define file paths
   source_csv_file  <- 
     file.path(
-      source_base_path , sys_value, area,  
+      source_base_path , sys_value, pa_AREA,  
       paste0(csv_file_name, yr, ".CSV")
     )
   target_pqt_file <- 
     file.path(
-      target_base_path, sys_value, area,  
+      target_base_path, sys_value, pa_AREA,  
       paste0(csv_file_name, yr, ".parquet")
     )
   
@@ -259,7 +259,7 @@ process_data <- function(
   config <- 
     generate_config(
       file_path = file.path(
-        source_base_path, sys_value, area,  
+        source_base_path, sys_value, pa_AREA,  
         paste0("S_", paste0(csv_file_name, ".CSV"))
       )
     )
@@ -332,11 +332,11 @@ process_data("MD_MATERIAL" , ""    , PS01, PS02, SYS, "RTP", verbose = TRUE)
 #| label: 'MATERIAL'
 #| eval:   true
 
-pAREA <- "MATERIAL"
+ppa_AREA <- "MATERIAL"
 MATERIAL <- 
   fLoadOpenHubExport(
-    pAREA = pAREA,  
-    pKEY  = c(pAREA),
+    ppa_AREA = ppa_AREA,  
+    pKEY  = c(ppa_AREA),
     pPTH  = file.path(PS01, SYS, "RTP", "CSV")
   )                                                                       %>% 
  .[, MATERIAL:= LP0(MATERIAL, 18)]                                        %T>%
@@ -344,7 +344,7 @@ MATERIAL <-
   write_parquet(
     sink = file.path(
       PS02, SYS, "RTP", "ARR", 
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+      paste0(CFG[EXP == "NEW" & pa_AREA == ppa_AREA, BNM], ".parquet")
     )
   )
 
@@ -356,10 +356,10 @@ MATERIAL <-
 #| label: 'MAT_SALES',
 #| eval:   true
 
-pAREA <- "MAT_SALES"
+ppa_AREA <- "MAT_SALES"
 MAT_SALES <- 
   fLoadOpenHubExport(
-    pAREA = pAREA,  
+    ppa_AREA = ppa_AREA,  
     pPTH  = file.path(PS01, SYS, "RTP", "CSV")
   )                                                                       %>%
   .[, DISTR_CHAN:= 10]                                                    %>%
@@ -369,7 +369,7 @@ MAT_SALES <-
   write_parquet(
     sink = file.path(
       PS02, SYS, "RTP", "ARR", 
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+      paste0(CFG[EXP == "NEW" & pa_AREA == ppa_AREA, BNM], ".parquet")
     )
   )                                                              
 
@@ -381,10 +381,10 @@ MAT_SALES <-
 #| label: 'MAT_PLANT',
 #| eval:   true
 
-pAREA <- "MAT_PLANT"
+ppa_AREA <- "MAT_PLANT"
 MAT_PLANT <- 
   fLoadOpenHubExport(
-    pAREA = pAREA,  
+    ppa_AREA = ppa_AREA,  
     pKEY  = c("MAT_PLANT", "PLANT"),
     pPTH  = file.path(PS01, SYS, "RTP", "CSV")
   )                                                                       %>%
@@ -394,7 +394,7 @@ MAT_PLANT <-
   write_parquet(
     sink = file.path(
       PS02, SYS, "RTP", "ARR", 
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+      paste0(CFG[EXP == "NEW" & pa_AREA == ppa_AREA, BNM], ".parquet")
     )
   ) 
 ```
@@ -407,10 +407,10 @@ MAT_PLANT <-
 #| label: 'CUST_SALES',
 #| eval:   true
 
-pAREA <- "SOLDTO"
+ppa_AREA <- "SOLDTO"
 CUST_SALES <- 
   fLoadOpenHubExport(
-    pAREA = pAREA,  
+    ppa_AREA = ppa_AREA,  
     # pKEY  = c("MAT_PLANT", "PLANT"),
     pPTH  = file.path(PS01, SYS, "RTP", "CSV")
   )                                                                       %>%
@@ -428,7 +428,7 @@ CUST_SALES <-
   write_parquet(
     sink = file.path(
       PS02, SYS, "RTP", "ARR", 
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+      paste0(CFG[EXP == "NEW" & pa_AREA == ppa_AREA, BNM], ".parquet")
     )
   ) 
 ```
@@ -439,10 +439,10 @@ CUST_SALES <-
 #| label: 'Stock'
 #| eval:   true
 
-pAREA <- "STOCK"
+ppa_AREA <- "STOCK"
 STK <- 
   fLoadOpenHubExport(
-    pAREA = pAREA,  
+    ppa_AREA = ppa_AREA,  
     # pKEY  = c("MAT_PLANT", "PLANT"),
     pPTH  = file.path(PS01, SYS, "STK", "CSV")
   )                                                              %T>%         
@@ -450,7 +450,7 @@ STK <-
   write_parquet(
     sink = file.path(
       PS02, SYS, "STK", "ARR",
-      paste0(CFG[EXP == "NEW" & AREA == pAREA, BNM], ".parquet")
+      paste0(CFG[EXP == "NEW" & pa_AREA == ppa_AREA, BNM], ".parquet")
     )
   ) 
 

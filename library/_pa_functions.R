@@ -19,7 +19,7 @@ LAGG_MAX <- 999
 # duckdb environment
 .duckdb_env <- new.env(parent = emptyenv())
 
-# SCOPE_MATL <- MATN1('10023')
+# SCOPE_MATL <- pa_matn1_input('10023')
 SCOPE_SORG <- c('FR30', 'NL10')
 SCOPE_PRDH <- c(
   '07',  # ALTER ECO
@@ -324,12 +324,12 @@ fDescribe_Parquet <-
     }
   
     # If .material is given, filter on MATERIAL
-    # leading zero's are added by function MATN1
+    # leading zero's are added by function pa_matn1_input
     if (!is.null(.material) && length(.material) > 0) {
       .clauses <- c(
         .clauses,
         glue_sql(
-          "MATERIAL IN ({vals*})", vals = MATN1(.material), 
+          "MATERIAL IN ({vals*})", vals = pa_matn1_input(.material), 
           .con = .con)
       )
     }

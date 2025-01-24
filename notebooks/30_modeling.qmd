@@ -152,9 +152,9 @@ fBG <- function(phl, IPH){
       scales = 'free_y'
     ) +
     theme(legend.position = "top") + # Move legend to the top +
-    scale_fill_manual(values  = c("0" = ET_CG, "1" = ET_YL))   
+    scale_fill_manual(values  = c("0" = pa_pa_ET_COLSS["CG"], "1" = pa_pa_ET_COLSS["YL"]))   
   # +
-  #   scale_color_manual(values = c("0" = ET_CG, "1" = ET_YL)) 
+  #   scale_color_manual(values = c("0" = pa_pa_ET_COLSS["CG"], "1" = pa_pa_ET_COLSS["YL"])) 
   
   ggsave(
     filename = paste(phl, 'bar_sales.png', sep = '_'),
@@ -285,7 +285,7 @@ ggplot(
   data = dtMat,
   mapping = aes(x = ds, y=y)
 ) +
-  geom_col(color = "white", fill = ET_CG) +
+  geom_col(color = "white", fill = pa_pa_ET_COLSS["CG"]) +
   coord_cartesian(ylim = c(min_value - padding, max_value + padding)) +
   labs(
     title    = "Historical Sales ",

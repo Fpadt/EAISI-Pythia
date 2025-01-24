@@ -110,10 +110,10 @@ MATP <- fGet_MAT(.ftype = 3,
 
 
 DYN <-                              # 
-  fGet_DYN(
+  pa_Get_DYN(
     .vtype       = c('010', '060'), # 010 = Actuals, 060 = Forecast
     .ftype       = c(1, 2)        , # 1 = PreDR, 2 = PostDR 
-    .material    = '10023'        , # Optional user-supplied material
+    .material    = NULL, #'10023'        , # Optional user-supplied material
     .salesorg    = 'FR30'         , # Optional user-supplied salesorg
     .scope_matl  = TRUE           , # restrict to Pythia Scope
     .scope_sorg  = TRUE           , # restrict to Pythia Scope
@@ -124,7 +124,7 @@ DYN <-                              #
     .lagg_min    = NULL             , # minimal diff. between VERSMON & MONTH
     .lagg_max    = NULL             , # maximal diff. between VERSMON & MONTH  
     .n           = Inf  
-  )
+  ) 
 
 DYN[VTYPE == '010'] %>%
   dcast.data.table(
@@ -1118,10 +1118,10 @@ Pre-demand Forecast Snapshots
 
 # options(scipen=999)
 # 
-# pAREA <- "SDSFRPR2"
+# ppa_AREA <- "SDSFRPR2"
 # SDSFRPR2 <- 
 #   fLoadOpenHubExport(
-#     pAREA = pAREA,  
+#     ppa_AREA = ppa_AREA,  
 #     # pKEY = c("CALDAY", "MATERIAL", "CUSTOMER", "PLANT"),
 #     pPTH  = file.path(PDYN)
 #   )                                                                       %>%
@@ -1190,8 +1190,8 @@ dtIMP <-
     ]                                                                     %>%
   # .[, .(
   #   CALMONTH   = CALMONTH,
-  #   MATERIAL   = RL0(MATERIAL),
-  #   CUST_HIE03 = RL0(CUST_HIE03),
+  #   MATERIAL   = pa_matn1_output(MATERIAL),
+  #   CUST_HIE03 = pa_matn1_output(CUST_HIE03),
   #   SALESORG   = SALESORG,
   #   PLANT      = PLANT,
   #   DEMND_QTY  = DEMND_QTY

@@ -51,13 +51,13 @@ FILE_SPEC <-
   )
 
 # helper paths
-PATH_PA_CNFG <- file.path(get_environment_path(), "config")
-PATH_BRZ_SLS <- file.path(get_environment_path(), BSGP[1], AREA[1])
-PATH_SLV_SLS <- file.path(get_environment_path(), BSGP[2], AREA[1])
-PATH_BRZ_STK <- file.path(get_environment_path(), BSGP[1], AREA[2])
-PATH_SLV_STK <- file.path(get_environment_path(), BSGP[2], AREA[2])
-PATH_BRZ__MD <- file.path(get_environment_path(), BSGP[1], AREA[4])
-PATH_SLV__MD <- file.path(get_environment_path(), BSGP[2], AREA[4])
+PATH_PA_CNFG <- file.path(pa_getwd(), "config")
+PATH_BRZ_SLS <- file.path(pa_getwd(), pa_BSGP[1], pa_AREA[1])
+PATH_SLV_SLS <- file.path(pa_getwd(), pa_BSGP[2], pa_AREA[1])
+PATH_BRZ_STK <- file.path(pa_getwd(), pa_BSGP[1], pa_AREA[2])
+PATH_SLV_STK <- file.path(pa_getwd(), pa_BSGP[2], pa_AREA[2])
+PATH_BRZ__MD <- file.path(pa_getwd(), pa_BSGP[1], pa_AREA[4])
+PATH_SLV__MD <- file.path(pa_getwd(), pa_BSGP[2], pa_AREA[4])
 ```
 
 ```{r}
@@ -67,14 +67,14 @@ PATH_SLV__MD <- file.path(get_environment_path(), BSGP[2], AREA[4])
 # TODO: if directory exists check if config file needs to be written
 
 # create the root and underlying folders
-setup_project_structure(root_dir = "C:/PW/OneDrive/ET/pythia/data")
+pa_setup_project_structure(root_dir = "C:/PW/OneDrive/ET/pythia/data")
 
 # set the DTAP environment
-set_current_environment(.environment = "Production")
+pa_set_environment(.environment = "Production")
 
 # test functions
-get_environment_path()
-View(fGetPipeLines())
+pa_getwd()
+View(pa_get_pipelines())
 ```
 
 
@@ -94,7 +94,7 @@ Use following code to check Pipelines and Transformations
 shell.exec(file.path(PATH_PA_CNFG, "B4_PIPELINE_ORG.csv"))
 shell.exec(file.path(PATH_PA_CNFG, "B4_PIPELINE_MOD.csv"))
 
-#View(fGetPipeLines())
+#View(pa_get_pipelines())
 ```
 
 # Transaction Data
@@ -198,8 +198,8 @@ fHelper_Transform <-
 
 # Only for forecasts ####
 fHelper_Transform(
-  # .file_pattern = "^SDSFRPR[24]_202(412|501)).*\\.csv$",  # delta
-  .file_pattern = "^SDSFRPR[24]_202.*\\.csv$",              # ALL
+  .file_pattern = "^SDSFRPR[24]_202(412|501).*\\.csv$",  # delta
+  # .file_pattern = "^SDSFRPR[24]_202.*\\.csv$",              # ALL
   .ohdest       = "OH_FRPR1",
   .verbose      = FALSE  
 )    
@@ -208,8 +208,8 @@ fHelper_Transform(
 # This saves only 1 month of ACTUALS per VERSMON
 # TODO: Remove the 4 next load feb!!!!!!!!!
 fHelper_Transform(
-  # .file_pattern = "^SDSFRPR[13]_202(412|501)).*\\.csv$",  # delta
-  .file_pattern = "^SDSFRPR[13]_202.*\\.csv$",              # ALL
+  .file_pattern = "^SDSFRPR[13]_202(412|501).*\\.csv$",  # delta
+  # .file_pattern = "^SDSFRPR[13]_202.*\\.csv$",              # ALL
   .ohdest       = "OH_FRPR2",
   .verbose      = FALSE  
 )  
@@ -217,8 +217,8 @@ fHelper_Transform(
 # Create FTYPE 3 and 4 on Latest Actuals ####
 # to be used for forecasting
 fHelper_Transform(
-  # .file_pattern = "^SDSFRPR[13]_202(412|501)).*\\.csv$",  # delta
-  .file_pattern = "^SDSFRLV[13]_202[45].*\\.csv$", #ALL 
+  .file_pattern = "^SDSFRPR[13]_202(412|501).*\\.csv$",  # delta
+  # .file_pattern = "^SDSFRLV[13]_202[45].*\\.csv$", #ALL 
   .ohdest       = "OH_FRPR3",
   .verbose      = FALSE  
 ) 

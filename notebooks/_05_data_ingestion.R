@@ -249,7 +249,7 @@
 #' @title Internal Helper: Retrieve a Pipeline by ohdest
 #'
 #' @description
-#' Internal helper function that queries all available pipelines (via \code{fGetPipeLines()})
+#' Internal helper function that queries all available pipelines (via \code{pa_get_pipelines()})
 #' and returns only those relevant for a given \code{ohdest}. The returned data.table is then sorted.
 #'
 #' @param ohdest A character string indicating which pipeline to filter on.
@@ -259,11 +259,11 @@
 #'
 #' @details
 #' This is an internal function (\emph{not exported}) and is intended to be used by other functions
-#' within this package. It relies on \code{fGetPipeLines()} to load the master pipeline data first.
+#' within this package. It relies on \code{pa_get_pipelines()} to load the master pipeline data first.
 #'
 #' @keywords internal
 .get_pipe_line <- function(ohdest) {
-  fGetPipeLines() %>%
+  pa_get_pipelines() %>%
     .[OHDEST == ohdest] %T>%
     setorder(OHDEST, POSIT)
 }
@@ -293,12 +293,12 @@
 #' @examples
 #' \dontrun{
 #'   # Fetch pipeline data
-#'   dt_pipe <- fGetPipeLines()
+#'   dt_pipe <- pa_get_pipelines()
 #'   head(dt_pipe)
 #' }
 #'
 #' @export
-fGetPipeLines <- function() {
+pa_get_pipelines <- function() {
   rbind(
     fread(file = file.path(PS01, SYS, "B4", "B4_PIPELINE_ORG.csv")) %>%
       .[, `:=`(SRC = "O", WHERE_CLAUSE = "")],

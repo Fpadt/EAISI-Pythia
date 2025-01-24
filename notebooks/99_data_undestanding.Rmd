@@ -64,7 +64,7 @@ FILE_SPEC <-
     DATE_FOR     = '%Y-%m-%d'
   )
 
-MAT <- MATN1("10023")
+MAT <- pa_matn1_input("10023")
 
 # setwd("C:/RW/EAISI-Pythia/notebooks")
 lsrc <- "notebooks/30_modeling.R"  
@@ -434,7 +434,7 @@ B4_SDWVAIT02_A <-
         # "/BIC/KZTLF"      , # Partial delivery indicator                                    
         # "PROMOTION"       , # Promotion                                                     
         # "PROFIT_CTR"      , # Profit Center                                                 
-        # "CO_AREA"         , # Controlling area                                              
+        # "CO_pa_AREA"         , # Controlling pa_AREA                                              
         # "DLV_STSO"        , # Overall delivery status of the item                           
         # "DLV_STS"         , # Delivery Status                                               
         # "GI_STS"          , # Goods Issue Status                                            
@@ -1220,11 +1220,11 @@ ACC <-
   ]
 
 ggplot(ACTS, aes(x = CALMONTH, y = ACTS)) +
-  geom_col(colour = "white", fill = ET_CG) +
+  geom_col(colour = "white", fill = pa_pa_ET_COLSS["CG"]) +
   labs(
     x = "Month",
     y = "Quantity EA", 
-    title = paste("Sales of SKU:", RL0(MAT), "per month")
+    title = paste("Sales of SKU:", pa_matn1_output(MAT), "per month")
     )                 +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
@@ -1247,7 +1247,7 @@ ggplot(
   geom_abline(intercept = 0, slope = 1) +
   # geom_label(aes(label = round(PE, 1))) +
   # facet_wrap(~ PLANT + MATERIAL, scales = "free_y") +
-  # scale_color_manual(values=c(ET_CG, ET_FG))+
+  # scale_color_manual(values=c(pa_pa_ET_COLSS["CG"], pa_ET_FG))+
   theme_minimal()
 ```
 
@@ -1274,7 +1274,7 @@ ggplot(
   geom_point() +
   geom_label(aes(label = round(PE, 1))) +
   # facet_wrap(~ PLANT + MATERIAL, scales = "free_y") +
-  scale_color_manual(values=c(ET_CG, ET_FG))+
+  scale_color_manual(values=c(pa_pa_ET_COLSS["CG"], pa_ET_FG))+
   theme_minimal()
 
 if(MAN){
@@ -1335,7 +1335,7 @@ SLS_A <- fread(file = file.path(PYTH, "DD_HISTO_QTY.CSV"))
 #   fread(file = file.path(PYTH, "DD_HISTO_QTY.CSV"))                  %T>%
 #   # fread(file.path(PNW , PKZ, "DEC", "DD_HISTO_QTY.CSV"))             %T>%
 #   setnames(fGetOHFields("DSCP_TRAN"))                                %>%
-#   .[MATERIAL == RL0(MAT)]                                            %>%
+#   .[MATERIAL == pa_matn1_output(MAT)]                                            %>%
 #   .[CALDAY   <  ymd("2024-10-01")]                                   %>%
 #   .[PLANT    == "FR30"]                                              %>%
 #   .[, `:=`(
@@ -1363,11 +1363,11 @@ SLS_A <- fread(file = file.path(PYTH, "DD_HISTO_QTY.CSV"))
 #      )] 
 # 
 # ggplot(SLS10023, aes(x = CALMONTH, y = SLS_QT_SO)) +
-#   geom_col(colour = "white", fill = ET_CG) +
+#   geom_col(colour = "white", fill = pa_pa_ET_COLSS["CG"]) +
 #   labs(
 #     x = "Month",
 #     y = "Quantity EA", 
-#     title = paste("Sales of SKU:", RL0(MAT), "per month")
+#     title = paste("Sales of SKU:", pa_matn1_output(MAT), "per month")
 #     )                 +
 #   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
@@ -1413,9 +1413,9 @@ accuracy(FCT10023, ts10023)
 
 PRM10023 <- 
   PROMONAT                                                 %>%
-  .[Réf == RL0(MAT)]                                       %T>%
+  .[Réf == pa_matn1_output(MAT)]                                       %T>%
   fOpen_as_xlsx()
-  # fwrite(file.path(PDAT, RL0(MAT), "PROMONAT.csv"))
+  # fwrite(file.path(PDAT, pa_matn1_output(MAT), "PROMONAT.csv"))
 ```
 
 ## Create Workbook for Comparison
@@ -1440,7 +1440,7 @@ wb <-
 for (i in 1:length(lst)) {
   wsh <- lst[i] %>% names()
   dt  <- lst[[i]]
-  addWorksheet(  wb = wb, sheet = wsh, gridLines = FALSE, tabColour = ET_CG)
+  addWorksheet(  wb = wb, sheet = wsh, gridLines = FALSE, tabColour = pa_pa_ET_COLSS["CG"])
   writeDataTable(wb = wb, sheet = wsh, x = dt, tableStyle = "TableStyleMedium4")
   freezePane(    wb = wb, sheet = wsh, firstActiveRow = 2, firstActiveCol = 2)
   setColWidths(  wb = wb, sheet = wsh, cols = 1:1000, widths = "auto")  

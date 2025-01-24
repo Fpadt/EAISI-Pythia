@@ -540,7 +540,7 @@ P3 <-
         ## "OBJVERS"         , # Object version                                             X
         ## "CHANGED"         , # Change flag ( I inserted / D deleted )                     
         "ABCKEY"          , # ABC indicator
-        ## "CO_AREA"         , # Controlling area                                           
+        ## "CO_pa_AREA"         , # Controlling pa_AREA                                           
         # "DEL_FLAG"        , # Deletion flag for all material data of a plant
         "DISMM"           , # MRP Type
         ## "DOC_CURRCY"      , # Document currency                                          
@@ -557,7 +557,7 @@ P3 <-
         ## "RPA_MVF"         , # Valuation Factor for Average Cost Value                    
         ## "RPA_QTYUOM"      , # Unit of Measure Basis for Moving Average Valuation Factor  
         ## "RT_DEPARTM"      , # Department Number                                          
-        ## "RT_PURCHAR"      , # Purchasing Area                                            
+        ## "RT_PURCHAR"      , # Purchasing pa_AREA                                            
         ## "RT_SERVLEV"      , # IS-R Service Level                                         
         ## "RT_SSMFGR"       , # Date of First Goods Receipt                                
         ## "RUNOUTDATE"      , # Run-Out Date                                               
@@ -851,7 +851,7 @@ wb <-
 for (i in 1:length(lst)) {
   wsh <- lst[i] %>% names()
   dt  <- lst[[i]]
-  addWorksheet(  wb = wb, sheet = wsh, gridLines = FALSE, tabColour = ET_CG)
+  addWorksheet(  wb = wb, sheet = wsh, gridLines = FALSE, tabColour = pa_pa_ET_COLSS["CG"])
   writeDataTable(wb = wb, sheet = wsh, x = dt, tableStyle = "TableStyleMedium4")
   freezePane(    wb = wb, sheet = wsh, firstActiveRow = 2, firstActiveCol = 2)
   setColWidths(  wb = wb, sheet = wsh, cols = 1:1000, widths = "auto")  
