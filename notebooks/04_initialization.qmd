@@ -82,7 +82,6 @@ rstudioapi::sendToConsole("\f", execute = TRUE)
 
 ```
 
-
 # Master Data
 
 ## Material
@@ -1613,4 +1612,3 @@ B4_RSBOHFIELDS[, .(                      ,
   )
 
 ```
-
