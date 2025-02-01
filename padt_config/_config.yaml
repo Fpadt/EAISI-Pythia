@@ -1,0 +1,260 @@
+project:
+  name: Pythia's Advice
+  department: EAISI
+  active_environment: production
+
+csv_file_spec:
+  delim: ;
+  header: no
+  date_format: '%Y-%m-%d'
+
+environments:
+  - name: development
+    root: 'OneDriveConsumer/ET/pythia/data/development'
+    # ...
+  - name: test
+    root: 'OneDriveConsumer/ET/pythia/data/test'
+    # ...
+  - name: acceptance
+    root: 'OneDriveConsumer/ET/pythia/data/acceptance'
+    # ...
+  - name: production
+    root: 'OneDriveConsumer/ET/pythia/data/production'
+    # ...
+  - name: demo
+    root: './demo_data'
+    # ...
+
+staging_levels:
+  - name: bronze
+    folder: bronze
+    description: "Raw incoming files, unmodified"
+    compression: "none"
+    file_types:
+      - csv      # csv is the only supported format
+
+  - name: silver
+    folder: silver
+    description: "Simpel transformed and aggregated data"
+    compression: "none"
+    file_types:
+      - parquet
+
+  - name: gold
+    folder: gold
+    description: "Curated or  data"
+    compression: "none"
+    file_types:
+      - parquet
+
+  - name: platinum
+    folder: platinum
+    description: "Final data ready for external consumption"
+    compression: "none"
+    file_types:
+      - csv      # csv is the only supported format
+
+datasets:
+  functional_areas:
+    sales:
+      datasets:
+        - name: rtp
+          transformation: DSCP_TRAN
+          directory: sales
+          staging:
+            bronze:
+              pattern: DD_SALES_QTY_202[12345]
+              extension: csv
+            silver:
+              pattern: DD_SALES_QTY*
+              extension: parquet
+
+        - name: ipm
+          transformation: ZSOP_ASLS
+          directory: sales
+          staging:
+            bronze:
+              pattern: DD_HISTO_QTY_202[12345]
+              extension: csv
+            silver:
+              pattern: DD_HISTO_QTY*
+              extension: parquet
+
+        - name: abr
+          transformation: OH_FRPR2
+          directory: sales
+          staging:
+            bronze:
+              pattern: SDSFRPR1__202[12345]
+              extension: csv
+            silver:
+              pattern: SDSFRPR1*
+              extension: parquet
+
+        - name: aar
+          transformation: OH_FRPR2
+          directory: sales
+          staging:
+            bronze:
+              pattern: SDSFRPR3__202[12345]
+              extension: csv
+            silver:
+              pattern: SDSFRPR3*
+              extension: parquet
+
+        - name: lbr
+          transformation: OH_FRPR3
+          directory: sales
+          staging:
+            bronze:
+              pattern: SDSFRLV1_202[45]
+              extension: csv
+            silver:
+              pattern: SDSFRLV1*
+              extension: parquet
+
+        - name: lar
+          transformation: OH_FRPR3
+          directory: sales
+          staging:
+            bronze:
+              pattern: SDSFRLV3__202[45]
+              extension: csv
+            silver:
+              pattern: SDSFRLV3*
+              extension: parquet
+
+        - name: fbr
+          transformation: OH_FRPR1
+          directory: sales
+          staging:
+            bronze:
+              pattern: SDSFRPR2_202(412|501)
+              extension: csv
+            silver:
+              pattern: SDSFRPR2*
+              extension: parquet
+            platinum:  # new forecast CSV
+              pattern: SDSFRPR2*
+              extension: csv
+
+        - name: far
+          transformation: OH_FRPR1
+          directory: sales
+          staging:
+            bronze:
+              pattern: SDSFRPR4_202(412|501)
+              extension: csv
+            silver:
+              pattern: SDSFRPR4*
+              extension: parquet
+
+        - name: res
+          transformation: NA
+          directory: forecast
+          staging:
+            platinum:  # new forecast CSV
+              pattern: PA_FCST.*
+              extension: csv
+
+    stock:
+      datasets:
+        - name: stock
+          transformation: OH_STOCK
+          directory: stock
+          staging:
+            bronze:
+              pattern: IMP03SM1.*
+              extension: csv
+            silver:
+              pattern: IMP03SM1*
+              extension: parquet
+
+    master_data:
+      datasets:
+        - name: material
+          transformation: DSCP_MATE
+          directory: master_data
+          staging:
+            bronze:
+              pattern: MD_MATERIAL
+              extension: csv
+            silver:
+              pattern: MD_MATERIAL
+              extension: parquet
+
+        - name: mat_sales
+          transformation: DSCP_MATS
+          directory: master_data
+          staging:
+            bronze:
+              pattern: MD_MATERIAL_SALES_ORG
+              extension: csv
+            silver:
+              pattern: MD_MATERIAL_SALES_ORG
+              extension: parquet
+
+        - name: mat_plant
+          transformation: DSCP_MATP
+          directory: master_data
+          staging:
+            bronze:
+              pattern: MD_MATERIAL_PLANT
+              extension: csv
+            silver:
+              pattern: MD_MATERIAL_PLANT
+              extension: parquet
+
+        - name: bomx
+          transformation: DSCP_BOMX
+          directory: master_data
+          staging:
+            bronze:
+              pattern: MD_BOM
+              extension: csv
+            silver:
+              pattern: MD_BOM
+              extension: parquet
+
+    promotions:
+      datasets:
+        - name: webcon
+          transformation: WECON
+          directory: promotions_webcon
+          staging:
+            bronze:
+              pattern: SDSFRPR1_202(412|501)
+              extension: csv
+            silver:
+              pattern: SDSFRPR1.*
+              extension: parquet
+
+        - name: promonat
+          transformation: PROMNAT
+          directory: promotions_promonat
+          staging:
+            bronze:
+              pattern: PROMONAT_202(412|501)
+              extension: csv
+            silver:
+              pattern: PROMONAT.*
+              extension: parquet
+
+
+theme:
+  brand_colors:
+    primary: '#0f5e3c'
+    secondary: '#089b35'
+    tertiary: '#38e56d'
+    accent1: '#fff200'
+    accent2: '#ff8f00'
+    accent3: '#ff00ff'
+    neutral1: '#ffffff'
+    neutral2: '#f5f5f5'
+    neutral3: '#333333'
+    neutral4: '#000000'
+  color_palette:
+  - '#123456'
+  - '#345678'
+  - '#56789A'
+  - '#789ABC'

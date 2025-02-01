@@ -34,30 +34,34 @@ Can be executed outside Ecotone Network as OneDrive ET\Pythia is used
 #| eval:   true
 
 # public functions ---------------------------------------------------------
-invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
-
 # devtools::load_all(path = "C:/RW/EAISI-Padt")
 library("padt")
+invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
+
+
 
 # lsrc <- "notebooks/05_data_ingestion.R"  
 # if( file.exists(lsrc)){source(lsrc)}
 
 # Configuration parameters of Open Hub DSCP_TRAN
-FILE_SPEC <- 
-  list(
-    DELIM        = ';',
-    HEADER       = FALSE,
-    DATE_FORMAT  = '%Y-%m-%d'
-  )
+# FILE_SPEC <- 
+#   list(
+#     DELIM        = pa_get_config_value(key = "DELIM"),       # ';',
+#     HEADER       = pa_get_config_value(key = "HEADER"),      # FALSE,
+#     DATE_FORMAT  = pa_get_config_value(key = "DATE_FORMAT")  # '%Y-%m-%d'
+#   )
 
 # helper paths
-PATH_PA_CNFG <- file.path(pa_getwd(), "config")
-PATH_BRZ_SLS <- file.path(pa_getwd(), pa_BSGP[1], pa_AREA[1])
-PATH_SLV_SLS <- file.path(pa_getwd(), pa_BSGP[2], pa_AREA[1])
-PATH_BRZ_STK <- file.path(pa_getwd(), pa_BSGP[1], pa_AREA[2])
-PATH_SLV_STK <- file.path(pa_getwd(), pa_BSGP[2], pa_AREA[2])
-PATH_BRZ__MD <- file.path(pa_getwd(), pa_BSGP[1], pa_AREA[4])
-PATH_SLV__MD <- file.path(pa_getwd(), pa_BSGP[2], pa_AREA[4])
+PATH_PA_CNFG <- file.path("padt_config")
+
+PATH_BRZ_SLS <- pa_ds_stageing_path_get(.staging = "bronze", .functional_area = "sales", "ipm")
+PATH_SLV_SLS <- pa_ds_stageing_path_get(.staging = "silver", .functional_area = "sales", "ipm")
+
+PATH_BRZ_STK <- pa_ds_stageing_path_get(.staging = "bronze", .functional_area = "stock", "stock")
+PATH_SLV_STK <- pa_ds_stageing_path_get(.staging = "silver", .functional_area = "stock", "stock")
+
+PATH_BRZ__MD <- pa_ds_stageing_path_get(.staging = "bronze", .functional_area = "master_data", "material")
+PATH_SLV__MD <- pa_ds_stageing_path_get(.staging = "silver", .functional_area = "master_data", "material")
 ```
 
 ```{r}
@@ -67,14 +71,14 @@ PATH_SLV__MD <- file.path(pa_getwd(), pa_BSGP[2], pa_AREA[4])
 # TODO: if directory exists check if config file needs to be written
 
 # create the root and underlying folders
-pa_setup_project_structure(root_dir = "C:/PW/OneDrive/ET/pythia/data")
+# pa_setup_project_structure(root_dir = "C:/PW/OneDrive/ET/pythia/data")
 
 # set the DTAP environment
-pa_set_environment(.environment = "Production")
+#TODO: create function to ste env
+#pa_set_environment(.environment = env_P)
 
 # test functions
-pa_getwd()
-View(pa_get_pipelines())
+View(pa_transformations_get())
 ```
 
 
@@ -91,8 +95,8 @@ shell.exec(normalizePath(file.path(".", "admin","IB_OB_FLD.xlsx")))
 Use following code to check Pipelines and Transformations
 
 ```{r}
-shell.exec(file.path(PATH_PA_CNFG, "B4_PIPELINE_ORG.csv"))
-shell.exec(file.path(PATH_PA_CNFG, "B4_PIPELINE_MOD.csv"))
+shell.exec(normalizePath(file.path(PATH_PA_CNFG, "transformation_rules_org.csv")))
+shell.exec(normalizePath(file.path(PATH_PA_CNFG, "transformation_rules_mod.csv")))
 
 #View(pa_get_pipelines())
 ```
@@ -114,11 +118,10 @@ Transform .csv files in Bronze to .parquet in Silver
 #| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
 #| eval:    true
 
-fTransform_csv_to_parquet(
+pa_transform(
   source_path  = PATH_BRZ_SLS,
   output_path  = PATH_SLV_SLS,
   file_pattern = "^DD_SALES_QTY_202[12345].*\\.csv$",
-  file_spec    = FILE_SPEC,
   ohdest       = "DSCP_TRAN",
   verbose      = TRUE
 )
@@ -134,11 +137,10 @@ Transform .csv files in Bronze to .parquet in Silver
 #| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
 #| eval:    true
 
-fTransform_csv_to_parquet(
+pa_transform(
   source_path  = PATH_BRZ_SLS,
   output_path  = PATH_SLV_SLS,
   file_pattern = "^DD_HISTO_QTY_202[12345].*\\.csv$",  
-  file_spec    = FILE_SPEC,
   ohdest       = "ZSOP_ASLS",
   verbose      = TRUE
 )
@@ -152,11 +154,10 @@ fTransform_csv_to_parquet(
 #| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)' 
 #| eval:    true  
 
-fTransform_csv_to_parquet(
+pa_transform(
   source_path  = PATH_BRZ_STK,
   output_path  = PATH_SLV_STK,
   file_pattern = "^IMP03SM1.*\\.csv$", 
-  file_spec    = FILE_SPEC,  
   ohdest       = "OH_STOCK",
   verbose      = TRUE
 )
@@ -182,15 +183,13 @@ fHelper_Transform <-
     .source_path   = PATH_BRZ_SLS,
     .output_path   = PATH_SLV_SLS,
     .file_pattern,
-    .file_spec     = FILE_SPEC,
     .ohdest,
     .verbose       = FALSE
   ){
-    fTransform_csv_to_parquet(
+    pa_transform(
       source_path  = .source_path,
       output_path  = .output_path,
       file_pattern = .file_pattern,
-      file_spec    = .file_spec,
       ohdest       = .ohdest,
       verbose      = .verbose
     )
@@ -237,11 +236,10 @@ fHelper_Transform(
 
 # !!!!File needs to be Converted to UTF-8
 
-fTransform_csv_to_parquet(
+pa_transform(
   source_path  = PATH_BRZ__MD,
   output_path  = PATH_SLV__MD,
   file_pattern = "^MD_MATERIAL\\.CSV$",   
-  file_spec    = FILE_SPEC,
   ohdest       = "DSCP_MATE",
   verbose      = TRUE
 )
@@ -254,11 +252,10 @@ fTransform_csv_to_parquet(
 #| label: 'MAT_SALES',
 #| eval:   true
 
-fTransform_csv_to_parquet(
+pa_transform(
   source_path  = PATH_BRZ__MD,
   output_path  = PATH_SLV__MD,
   file_pattern = "^MD_MATERIAL_SALES_ORG\\.CSV$",   
-  file_spec    = FILE_SPEC,
   ohdest       = "DSCP_MATS",
   verbose      = TRUE
 )
@@ -271,11 +268,10 @@ fTransform_csv_to_parquet(
 #| label: 'MAT_PLANT',
 #| eval:   true
 
-fTransform_csv_to_parquet(
+pa_transform(
   source_path  = PATH_BRZ__MD,
   output_path  = PATH_SLV__MD,
   file_pattern = "^MD_MATERIAL_PLANT\\.CSV$",   
-  file_spec    = FILE_SPEC,
   ohdest       = "DSCP_MATP",
   verbose      = TRUE
 )
@@ -288,11 +284,10 @@ fTransform_csv_to_parquet(
 #| label: 'BOMX',
 #| eval:   true
 
-fTransform_csv_to_parquet(
+pa_transform(
   source_path  = PATH_BRZ__MD,
   output_path  = PATH_SLV__MD,
   file_pattern = "^MD_BOM.*\\.CSV$",   
-  file_spec    = FILE_SPEC,
   ohdest       = "DSCP_BOMX",
   verbose      = TRUE
 )
@@ -307,11 +302,10 @@ fTransform_csv_to_parquet(
 #| eval:   true
 
 # !!!! UTF-8 conversion
-fTransform_csv_to_parquet(
+pa_transform(
   source_path  = PATH_BRZ__MD,
   output_path  = PATH_SLV__MD,
   file_pattern = "^MD_SOLD_TO_CUSTOMER\\.CSV$", 
-  file_spec    = FILE_SPEC,  
   ohdest       = "DSCP_CUST",
   verbose      = TRUE
 )
@@ -326,11 +320,10 @@ fTransform_csv_to_parquet(
 #| label: 'PLANT',
 #| eval:   true
 
-fTransform_csv_to_parquet(
+pa_transform(
   source_path  = PATH_BRZ__MD,
   output_path  = PATH_SLV__MD,
   file_pattern = "^MD_PLANT\\.CSV$",   
-  file_spec    = FILE_SPEC,  
   ohdest       = "DSCP_PLNT",
   verbose      = TRUE
 )
@@ -344,11 +337,10 @@ fTransform_csv_to_parquet(
 #| label: 'SALESORG',
 #| eval:   true
 
-fTransform_csv_to_parquet(
+pa_transform(
   source_path  = PATH_BRZ__MD,
   output_path  = PATH_SLV__MD,
   file_pattern = "^MD_SALES_ORG\\.CSV$",   
-  file_spec    = FILE_SPEC,  
   ohdest       = "DSCP_SORG",
   verbose      = TRUE
 )

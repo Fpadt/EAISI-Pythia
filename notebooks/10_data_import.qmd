@@ -58,38 +58,55 @@ library("padt")
 #| label: 'Get Material Master data '
 #| eval:   true
 
-MATL <- fGet_MAT(.ftype = 1)  # MARA/0MATERIAL 
-MATS <- fGet_MAT(.ftype = 2)  # MVKE/0MAT_SALES
-MATP <- fGet_MAT(.ftype = 3)  # MARC/0MAT_PLANT
+MATL <- pa_md_mat_get(.dataset_name = "material")   # MARA/0MATERIAL
+MATS <- pa_md_mat_get(.dataset_name = "mat_sales")  # MVKE/0MAT_SALES
+MATP <- pa_md_mat_get(.dataset_name = "mat_plant")  # MARC/0MAT_PLANT
 
 # Test
-MATL <- fGet_MAT(.ftype = 1, 
-                 .scope_matl = FALSE)                        # 6009
-MATL <- fGet_MAT(.ftype = 1, 
-                 .scope_matl = TRUE)                         # 2314
-MATL <- fGet_MAT(.ftype = 1, .material = '10023',
-                 .scope_matl = FALSE)                        # 1
+MATL <- pa_md_mat_get(
+  .dataset_name = "material", 
+  .scope_matl   = FALSE)                         # 6035
+MATL <- pa_md_mat_get(
+  .dataset_name = "material", 
+  .scope_matl   = TRUE)                          # 2329
+MATL <- pa_md_mat_get(
+  .dataset_name = "material", 
+  .material     = '10023',
+  .scope_matl   = FALSE)                         # 1
 
-MATS <- fGet_MAT(.ftype = 2, 
-                 .scope_matl = FALSE, .scope_sorg = FALSE)   # 7943
-MATS <- fGet_MAT(.ftype = 2, 
-                 .scope_matl = TRUE , .scope_sorg = FALSE)   # 3351
-MATS <- fGet_MAT(.ftype = 2, 
-                 .scope_matl = FALSE, .scope_sorg = TRUE )   # 3178
-MATS <- fGet_MAT(.ftype = 2, 
-                 .scope_matl = TRUE , .scope_sorg = TRUE )   # 3286
+MATS <- pa_md_mat_get(
+  .dataset_name = "mat_sales", 
+  .scope_matl   = FALSE, 
+  .scope_sorg   = FALSE)                         # 7977
+MATS <- pa_md_mat_get(
+  .dataset_name = "mat_sales", 
+  .scope_matl   = TRUE , 
+  .scope_sorg   = FALSE)                         # 3374
+MATS <- pa_md_mat_get(
+  .dataset_name = "mat_sales", 
+  .scope_matl   = FALSE, 
+  .scope_sorg   = TRUE )                         # 3191
+MATS <- pa_md_mat_get(
+  .dataset_name = "mat_sales", 
+  .scope_matl   = TRUE , 
+  .scope_sorg   = TRUE )                         # 2162
+MATS <- pa_md_mat_get(
+  .dataset_name = "mat_sales",  
+  .material     = '10023')                       # 2
+MATS <- pa_md_mat_get(
+  .dataset_name = "mat_sales",  
+  .material     = '10023', 
+  .salesorg     = 'FR30')                        # 1
 
-MATS <- fGet_MAT(.ftype = 2,  
-                 .material = '10023')                        # 2
-MATS <- fGet_MAT(.ftype = 2,  
-                 .material = '10023', .salesorg   = 'FR30')  # 1
-
-MATP <- fGet_MAT(.ftype = 3,
-                 .scope_matl = FALSE)                        # 8065
-MATP <- fGet_MAT(.ftype = 3, 
-                 .scope_matl = FALSE)                        # 7943
-MATP <- fGet_MAT(.ftype = 3, 
-                 .material = '10023')                        # 2
+MATP <- pa_md_mat_get(
+  .dataset_name = "mat_plant",
+  .scope_matl   = FALSE)                         # 8101
+MATP <- pa_md_mat_get(
+  .dataset_name = "mat_plant", 
+  .scope_matl   = TRUE)                          # 3307
+MATP <- pa_md_mat_get(
+  .dataset_name = "mat_plant", 
+  .material     = '10023')                       # 2
 
 ```
 
@@ -110,17 +127,17 @@ MATP <- fGet_MAT(.ftype = 3,
 
 
 DYN <-                              # 
-  pa_Get_DYN(
-    .vtype       = c('010', '060'), # 010 = Actuals, 060 = Forecast
-    .ftype       = c(1, 2)        , # 1 = PreDR, 2 = PostDR 
-    .material    = NULL, #'10023'        , # Optional user-supplied material
-    .salesorg    = 'FR30'         , # Optional user-supplied salesorg
-    .scope_matl  = TRUE           , # restrict to Pythia Scope
-    .scope_sorg  = TRUE           , # restrict to Pythia Scope
-    .cm_min      = '202101'       , # minimal Cal Month
-    .cm_max      = '202412'       , # maximal Cal Month
-    .step_min    = 1              , # minimal forecast step ahead
-    .step_max    = 18             , # maximal forecast step ahead
+  pa_td_dyn_get(
+    .vtype       = c('010', '060')  , # 010 = Actuals, 060 = Forecast
+    .ftype       = c(1, 2)          , # 1 = PreDR, 2 = PostDR 
+    .material    = '10023'          , # Optional user-supplied material
+    .salesorg    = 'FR30'           , # Optional user-supplied salesorg
+    .scope_matl  = TRUE             , # restrict to Pythia Scope
+    .scope_sorg  = TRUE             , # restrict to Pythia Scope
+    .cm_min      = '202101'         , # minimal Cal Month
+    .cm_max      = '202412'         , # maximal Cal Month
+    .step_min    = 1                , # minimal forecast step ahead
+    .step_max    = 18               , # maximal forecast step ahead
     .lagg_min    = NULL             , # minimal diff. between VERSMON & MONTH
     .lagg_max    = NULL             , # maximal diff. between VERSMON & MONTH  
     .n           = Inf  
@@ -163,14 +180,15 @@ DYN[CALMONTH > '202312'] %>%
 #| eval:   true
 
 RTP <-
-  fGet_RTP(
-    .material    = '10023'        , # Optional user-supplied material
-    .salesorg    = 'FR30'         , # Optional user-supplied salesorg
-    .scope_matl  = TRUE           , # restrict to Pythia Scope
-    .scope_sorg  = TRUE           , # restrict to Pythia Scope
-    .cm_min      = '202101'       , # minimal Cal Month
-    .cm_max      = '202506'       , # maximal Cal Month,
-    .n           = Inf
+  pa_td_ob_get(
+    .dataset_name = 'rtp'          , # Dynasys Cloud Outbound from SAP BW 
+    .material     = '10023'        , # Optional user-supplied material
+    .salesorg     = 'FR30'         , # Optional user-supplied salesorg
+    .scope_matl   = TRUE           , # restrict to Pythia Scope
+    .scope_sorg   = TRUE           , # restrict to Pythia Scope
+    .cm_min       = '202101'       , # minimal Cal Month
+    .cm_max       = '202506'       , # maximal Cal Month,
+    .n            = Inf
   )
 
 ```
@@ -182,14 +200,15 @@ RTP <-
 #| eval:   true
 
 IPM <-
-  fGet_IPM(
-    .material    = '10023'        , # Optional user-supplied material
-    .salesorg    = 'FR30'         , # Optional user-supplied salesorg
-    .scope_matl  = TRUE           , # restrict to Pythia Scope
-    .scope_sorg  = TRUE           , # restrict to Pythia Scope
-    .cm_min      = '202101'       , # minimal Cal Month
-    .cm_max      = '202506'       , # maximal Cal Month,
-    .n           = Inf
+  pa_td_ob_get(
+    .dataset_name = 'ipm'          , # Dynasys 2018 Outbound from SAP BW
+    .material     = '10023'        , # Optional user-supplied material
+    .salesorg     = 'FR30'         , # Optional user-supplied salesorg
+    .scope_matl   = TRUE           , # restrict to Pythia Scope
+    .scope_sorg   = TRUE           , # restrict to Pythia Scope
+    .cm_min       = '202101'       , # minimal Cal Month
+    .cm_max       = '202506'       , # maximal Cal Month,
+    .n            = Inf
   )
 
 ```

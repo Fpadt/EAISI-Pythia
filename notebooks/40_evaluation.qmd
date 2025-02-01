@@ -37,7 +37,7 @@ library("padt")
 pimg <- file.path('.', 'fig')
 
 # generate the Ecotone Brand Colors
-generate_color_variables(pa_ET_COLS)
+pa_generate_color_variables(pa_ET_COLS)
 
 MAN <-  FALSE
 VAR <- 'EPA'
