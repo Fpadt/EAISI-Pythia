@@ -129,7 +129,7 @@ MATP <- pa_md_mat_get(
 DYN <-                              # 
   pa_td_dyn_get(
     .vtype       = c('010', '060')  , # 010 = Actuals, 060 = Forecast
-    .ftype       = c(1, 2)          , # 1 = PreDR, 2 = PostDR 
+    .ftype       = c(3, 4)          , # 1 = PreDR, 2 = PostDR 
     .material    = '10023'          , # Optional user-supplied material
     .salesorg    = 'FR30'           , # Optional user-supplied salesorg
     .scope_matl  = TRUE             , # restrict to Pythia Scope
@@ -180,8 +180,8 @@ DYN[CALMONTH > '202312'] %>%
 #| eval:   true
 
 RTP <-
-  pa_td_ob_get(
-    .dataset_name = 'rtp'          , # Dynasys Cloud Outbound from SAP BW 
+  pa_td_sap_get(
+    .ftype        = 5              , # 5 = rtp, 6 = ipm     
     .material     = '10023'        , # Optional user-supplied material
     .salesorg     = 'FR30'         , # Optional user-supplied salesorg
     .scope_matl   = TRUE           , # restrict to Pythia Scope
@@ -200,8 +200,8 @@ RTP <-
 #| eval:   true
 
 IPM <-
-  pa_td_ob_get(
-    .dataset_name = 'ipm'          , # Dynasys 2018 Outbound from SAP BW
+  pa_td_sap_get(
+    .ftype        = 6              , # 5 = rtp, 6 = ipm  
     .material     = '10023'        , # Optional user-supplied material
     .salesorg     = 'FR30'         , # Optional user-supplied salesorg
     .scope_matl   = TRUE           , # restrict to Pythia Scope

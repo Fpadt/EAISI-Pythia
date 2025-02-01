@@ -26,7 +26,7 @@ library(openxlsx2  , verbose = FALSE, quietly = TRUE, warn.conflicts = FALSE)
 # library(forecast)
 # library(fpp)
 
-pa_initialize_constants()
+
 
 fPrependDateTime <- function(filename){
     filename %>%

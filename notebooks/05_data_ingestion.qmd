@@ -95,8 +95,8 @@ shell.exec(normalizePath(file.path(".", "admin","IB_OB_FLD.xlsx")))
 Use following code to check Pipelines and Transformations
 
 ```{r}
-shell.exec(normalizePath(file.path(PATH_PA_CNFG, "transformation_rules_org.csv")))
-shell.exec(normalizePath(file.path(PATH_PA_CNFG, "transformation_rules_mod.csv")))
+shell.exec(normalizePath(file.path("padt_config", "transformation_rules_org.csv")))
+shell.exec(normalizePath(file.path("padt_config", "transformation_rules_mod.csv")))
 
 #View(pa_get_pipelines())
 ```
@@ -301,7 +301,7 @@ pa_transform(
 #| label: 'CUST_SALES',
 #| eval:   true
 
-# !!!! UTF-8 conversion
+# TODO: !!!! UTF-8 conversion
 pa_transform(
   source_path  = PATH_BRZ__MD,
   output_path  = PATH_SLV__MD,
