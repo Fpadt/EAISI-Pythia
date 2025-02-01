@@ -390,7 +390,6 @@ FCT10023 %>%
 accuracy(FCT10023, ts10023)  
 ```
 
-
 ```{r}
 #| label: 'cross validation'
 #| eval: true

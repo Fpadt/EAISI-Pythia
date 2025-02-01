@@ -4,31 +4,25 @@ output: github_document
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-```{r, include = FALSE}
+```{r, echo = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.path = "man/figures/",
+  out.width = "100%"
 )
 ```
 
-# EAISI-Pythia
+# EAISI-Pythia <a href="https://www.smart-r.net" target="_blank" rel="noopener noreferrer"><img src="man/figures/sapyr_col.png" align="right" height="138" /></a>
+
+*Under Development*
 
 <!-- badges: start -->
-
+[![R-CMD-check](https://github.com/tidyverse/ggplot2/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tidyverse/ggplot2/actions/workflows/R-CMD-check.yaml)
+[![codecov](https://codecov.io/gh/Fpadt/sapyr/branch/main/graph/badge.svg?token=8FXGGC2M8C)](https://codecov.io/gh/Fpadt/sapyr)
+[![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/sapyr)](https://cran.r-project.org/package=sapyr)
 <!-- badges: end -->
 
-Pythia's Advice
+# Pythia's Advice
 
-```{r cars, , echo = FALSE, eval = FALSE}
-summary(cars)
-```
-
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date.
-
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE, eval = FALSE}
-plot(pressure)
-```
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub.
+This project is under development. Please, use it with caution.
