@@ -147,7 +147,7 @@ ggplot(dtACC0, aes(x = factor(STEP), y = AE)) +
     , size   = 0.8
     # alpha  = 0.3
     ) +
-  # Optional: a summary point for the mean on each violin
+  # RSME
   stat_summary(
     mapping = aes(x = factor(STEP), y = E2),
     fun   = function(x) {sqrt(mean(x))}, 
@@ -156,6 +156,17 @@ ggplot(dtACC0, aes(x = factor(STEP), y = AE)) +
     size  = 3, 
     fill  = "#0f5e3c",
     color = "#0f5e3c"
+  ) +
+  # MAE
+  stat_summary(
+    mapping = aes(x = factor(STEP), y = AE),
+    fun   = function(x) {mean(x)}, 
+    geom  = "point", 
+    shape = 22,   # diamond shape
+    size  = 4, 
+    fill  = "#333333",
+    color = "#FFFF00"
+    
   ) +
   labs(
     x     = "Step",
@@ -170,6 +181,16 @@ ggplot(dtACC0, aes(x = factor(STEP), y = AE)) +
   coord_cartesian(ylim = c(0, 25000))
 
 ```
+
+```{r}
+
+ggplot(
+  dtACC0[STEP == 1 & AE < 15000], aes(y = AE)) +
+  geom_density(
+    )
+fivenum(dtACC0[STEP == 1 & AE < 15000, AE])
+```
+
 
 ```{r}
 #| label:  'SC-113B for M-1, M-2, M-3'
