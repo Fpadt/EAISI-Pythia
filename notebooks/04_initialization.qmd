@@ -88,7 +88,7 @@ rstudioapi::sendToConsole("\f", execute = TRUE)
 ## Material
 
 ```{r}
-#| label: Additional Material Data
+#| label: Global Material Data
 #| eval: true
 
 # General Material Data #### 
@@ -566,6 +566,8 @@ B4_MATERIAL_P <-
    )  %>%
   .[, c("SYSTID", "CLIENT"):= NULL]
 
+# Transform and Save ####
+
 B4_MATL <- 
   B4_MATERIAL_P[S4_MARA, on = .(
     MATERIAL == MATNR
@@ -575,13 +577,15 @@ B4_MATL <-
 B4_MATL <- 
   B4_MATL[, ( fTA(B4_MATL)[UCOUNT == 1, FLDNM]):= NULL] %T>%
   setnames(
-  old = c("BASE_UOM"   , "PO_UNIT"   , "PROD_HIER"   , "PLANT"   , "MTPOS"   , "LVORM"),
+  old = c("BASE_UOM"   , "PO_UNIT"   , "PROD_HIER"   , "PLANT"   , "MTPOS"   , "i.LVORM"),
   new = c("BASE_UOM_ML", "PO_UNIT_ML", "PROD_HIER_ML", "PLANT_ML", "MTPOS_ML", "LVORM_ML"),  
 )
 
 saveRDS(
   object = B4_MATL, 
-  file   = file.path(PS02, SYS, "B4", "B4_MATL.rds")
+  file   = file.path(
+    pa_ds_stageing_path_get(.staging = "silver", .functional_area = "master_data", "material"), 
+    "B4_MATL.rds")
   )
 ```
 
@@ -777,6 +781,8 @@ B4_MAT_SALES_P <-
    ) %>%
   .[, c("SYSTID", "CLIENT"):= NULL]
 
+# Transform and Save ####
+
 # Inner-join, filtering out Invalid BW records
 B4_MATS <- 
   B4_MAT_SALES_P[S4_MVKE, on = .(
@@ -790,8 +796,11 @@ B4_MATS <-
 
 saveRDS(
   object = B4_MATS, 
-  file   = file.path(PS02, SYS, "B4", "B4_MATS.rds")
+  file   = file.path(
+    pa_ds_stageing_path_get(.staging = "silver", .functional_area = "master_data", "material"), 
+    "B4_MATS.rds")
   )
+
 ```
 
 ## Mat Plant
@@ -1261,6 +1270,8 @@ B4_MAT_PLANT_P <-
    ) %>%
   .[, c("SYSTID", "CLIENT"):= NULL]
 
+# Transform and Save ####
+
 B4_MATP <- 
   B4_MAT_PLANT_P[S4_MARC, on = .(
     MATERIAL == MATNR,
@@ -1276,16 +1287,65 @@ B4_MATP <-
 
 saveRDS(
   object = B4_MATP, 
-  file   = file.path(PS02, SYS, "B4", "B4_MATP.rds")
+  file   = file.path(
+    pa_ds_stageing_path_get(.staging = "silver", .functional_area = "master_data", "material"), 
+    "B4_MATP.rds")
   )
 
 ```
 
-## Mat Combined
+## Mat Link
+
+```{r}
+#| label: Link Material-BOM
+#| eval: true
+
+# Material to BOM Link #### 
+S4_MAST <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPE500",
+     pTable    = "MAST",
+     pOptions  = list(
+       "STLAN = '1'"
+     ),
+     pFields   = list(
+        # "MANDT"             , # Client                                             X
+        "MATNR"             , # Material Number                                    X
+        "WERKS"             , # Plant                                              X
+        # "STLAN"             , # BOM Usage                                          X
+        "STLNR"             , # Bill of Material                                   X
+        "STLAL"             #, # Alternative BOM                                    X
+        # "LOSVN"             , # From Lot Size
+        # "LOSBS"             , # To Lot Size
+        # "ANDAT"             , # Date Record Created On
+        # "ANNAM"             , # User who created record
+        # "AEDAT"             , # Last Changed On
+        # "AENAM"             , # Name of Person Who Changed Object
+        # "CSLTY"             , # Indicator: configured material (material variant)
+        # "MATERIAL_BOM_KEY"    # Material BOM Concatenated Key
+    ),
+    pRowcount = Inf
+   )
+
+
+# Transform and Save ####
+B4_MAST <- 
+  S4_MAST[] %>%
+  .[, ( fTA(.)[UCOUNT == 1, FLDNM]):= NULL] 
+
+saveRDS(
+  object = B4_MAST, 
+  file   = file.path(
+    pa_ds_stageing_path_get(.staging = "silver", .functional_area = "master_data", "material"), 
+    "B4_MAST.rds")
+  )
+```
+
+## Mat Combined (obsolete?)
 
 ```{r}
 #| label:  Combined Master Data of Material
-#| eval:   true
+#| eval:   FALSE
 
 B4_MAT <- 
   B4_MATS[, `:=` (MAT_PLANT = MAT_SALES, PLANT = DWERK)][
