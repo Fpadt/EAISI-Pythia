@@ -54,51 +54,66 @@ MATL <- pa_md_mat_get(.dataset_name = "material")   # MARA/0MATERIAL
 MATS <- pa_md_mat_get(.dataset_name = "mat_sales")  # MVKE/0MAT_SALES
 MATP <- pa_md_mat_get(.dataset_name = "mat_plant")  # MARC/0MAT_PLANT
 
-# Test
-MATL <- pa_md_mat_get(
-  .dataset_name = "material", 
-  .scope_matl   = FALSE)                         # 6035
-MATL <- pa_md_mat_get(
-  .dataset_name = "material", 
-  .scope_matl   = TRUE)                          # 2329
-MATL <- pa_md_mat_get(
-  .dataset_name = "material", 
-  .material     = '10023',
-  .scope_matl   = FALSE)                         # 1
+PATH_MD <- pa_ds_stageing_path_get(.staging = "silver", .functional_area = "master_data", "material")
 
-MATS <- pa_md_mat_get(
-  .dataset_name = "mat_sales", 
-  .scope_matl   = FALSE, 
-  .scope_sorg   = FALSE)                         # 7977
-MATS <- pa_md_mat_get(
-  .dataset_name = "mat_sales", 
-  .scope_matl   = TRUE , 
-  .scope_sorg   = FALSE)                         # 3374
-MATS <- pa_md_mat_get(
-  .dataset_name = "mat_sales", 
-  .scope_matl   = FALSE, 
-  .scope_sorg   = TRUE )                         # 3191
-MATS <- pa_md_mat_get(
-  .dataset_name = "mat_sales", 
-  .scope_matl   = TRUE , 
-  .scope_sorg   = TRUE )                         # 2162
-MATS <- pa_md_mat_get(
-  .dataset_name = "mat_sales",  
-  .material     = '10023')                       # 2
-MATS <- pa_md_mat_get(
-  .dataset_name = "mat_sales",  
-  .material     = '10023', 
-  .salesorg     = 'FR30')                        # 1
+MBTL <- readRDS(file.path(PATH_MD, "B4_MATL.rds"))
+MBTS <- readRDS(file.path(PATH_MD, "B4_MATS.rds"))
+MBTP <- readRDS(file.path(PATH_MD, "B4_MATP.rds")) 
+MBST <- readRDS(file.path(PATH_MD, "B4_MAST.rds")) 
+```
 
-MATP <- pa_md_mat_get(
-  .dataset_name = "mat_plant",
-  .scope_matl   = FALSE)                         # 8101
-MATP <- pa_md_mat_get(
-  .dataset_name = "mat_plant", 
-  .scope_matl   = TRUE)                          # 3307
-MATP <- pa_md_mat_get(
-  .dataset_name = "mat_plant", 
-  .material     = '10023')                       # 2
+### Material Test
+
+```{r}
+#| label: 'Get Material Master data - Test '
+#| eval:   False
+
+
+# # Test
+# MATL <- pa_md_mat_get(
+#   .dataset_name = "material", 
+#   .scope_matl   = FALSE)                         # 6035
+# MATL <- pa_md_mat_get(
+#   .dataset_name = "material", 
+#   .scope_matl   = TRUE)                          # 2329
+# MATL <- pa_md_mat_get(
+#   .dataset_name = "material", 
+#   .material     = '10023',
+#   .scope_matl   = FALSE)                         # 1
+# 
+# MATS <- pa_md_mat_get(
+#   .dataset_name = "mat_sales", 
+#   .scope_matl   = FALSE, 
+#   .scope_sorg   = FALSE)                         # 7977
+# MATS <- pa_md_mat_get(
+#   .dataset_name = "mat_sales", 
+#   .scope_matl   = TRUE , 
+#   .scope_sorg   = FALSE)                         # 3374
+# MATS <- pa_md_mat_get(
+#   .dataset_name = "mat_sales", 
+#   .scope_matl   = FALSE, 
+#   .scope_sorg   = TRUE )                         # 3191
+# MATS <- pa_md_mat_get(
+#   .dataset_name = "mat_sales", 
+#   .scope_matl   = TRUE , 
+#   .scope_sorg   = TRUE )                         # 2162
+# MATS <- pa_md_mat_get(
+#   .dataset_name = "mat_sales",  
+#   .material     = '10023')                       # 2
+# MATS <- pa_md_mat_get(
+#   .dataset_name = "mat_sales",  
+#   .material     = '10023', 
+#   .salesorg     = 'FR30')                        # 1
+# 
+# MATP <- pa_md_mat_get(
+#   .dataset_name = "mat_plant",
+#   .scope_matl   = FALSE)                         # 8101
+# MATP <- pa_md_mat_get(
+#   .dataset_name = "mat_plant", 
+#   .scope_matl   = TRUE)                          # 3307
+# MATP <- pa_md_mat_get(
+#   .dataset_name = "mat_plant", 
+#   .material     = '10023')                       # 2
 
 ```
 
@@ -106,7 +121,7 @@ MATP <- pa_md_mat_get(
 
 ## Sales
 
-### Dynasys 
+### Dynasys
 
 ```{r}
 #| label: 'Get DYN data'
@@ -259,7 +274,6 @@ TST <- rbind(
 
 
 ```
-
 
 ## PH1
 
