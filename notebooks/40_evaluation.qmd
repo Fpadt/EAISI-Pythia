@@ -99,29 +99,36 @@ ggplot(
 # ACC_BCK <-  copy(ACC)
 # ACC     <- copy(dtACC7)
 
-VAR <- "EPA"
+
 
 dtACC0 <- 
-  dtACC7                                                       %>%
+  copy(dtACC7)                                                       %>%
   pa_model_accuracy(
   .act_ftype = 1, .fct_ftype = 2
-  )  
-# %>%
-#   .[, WGHT:= 0.2*ACT/max(ACT), by = .(CALMONTH, STEP)] %>%
-#   .[CALMONTH >= '202401' & WGHT > 0.05 ]
+  )                                                                  %>%
+  .[CALMONTH >= '202401']                                            %>%
+  .[!is.na(STEP) &  STEP <= 18]
 
-dtACC0[, .(
-  EPA = mean(EPA, na.rm = TRUE),
-  APA = mean(APA, na.rm = TRUE)
+dtALPHA <-  
+  copy(dtACC7) %>%
+  .[, .(SQ = sum(Q)), 
+    by = .(SALESORG, PLANT, MATERIAL)] %>%
+  .[, .(SALESORG, PLANT, MATERIAL, 
+        ALPHA = round(sqrt(SQ/max(SQ)), 2))] 
+
+dtACC0 <- 
+  dtALPHA[dtACC0, on =.(SALESORG, PLANT, MATERIAL)]
+
+dtACC0[!is.na(STEP) & APA > -100, .(
+  EPA  = mean(EPA, na.rm = TRUE),
+  APA  = mean(APA, na.rm = TRUE),
+  MAE  = mean(AE , na.rm = TRUE),
+  RMSE = mean(E2 , na.rm = TRUE) %>% sqrt()   
   ), 
   by = .(STEP)]
 
-# DT <- dtACC0[get(VAR) > 0,.(STEP, ACC = get(VAR), WGHT)]
-DT <- dtACC0[,.(STEP, ACC = get(VAR), WGHT = 0.2)]
-
-
 # Violin plot: STEP on x-axis (treat as discrete), ACC on y-axis
-ggplot(DT, aes(x = factor(STEP), y = ACC)) +
+ggplot(dtACC0, aes(x = factor(STEP), y = AE)) +
   # Violin layer to show the distribution
   geom_violin(
     trim           = TRUE, 
@@ -131,18 +138,19 @@ ggplot(DT, aes(x = factor(STEP), y = ACC)) +
   geom_jitter(
     aes(
       # size  = WGHT,
-      alpha = WGHT/2
+      alpha = ALPHA
     ),
     height = 0, 
     width  = 0.25, 
     color  = "#38e56d"
     # ,
-    , size   = 0.2
+    , size   = 0.8
     # alpha  = 0.3
     ) +
   # Optional: a summary point for the mean on each violin
   stat_summary(
-    fun   = mean, 
+    mapping = aes(x = factor(STEP), y = E2),
+    fun   = function(x) {sqrt(mean(x))}, 
     geom  = "point", 
     shape = 23,   # diamond shape
     size  = 3, 
@@ -151,10 +159,15 @@ ggplot(DT, aes(x = factor(STEP), y = ACC)) +
   ) +
   labs(
     x     = "Step",
-    y     = "Accuracy",
-    title = glue("Distribution of Forecast Accuracy ({`VAR`}) by Step")
+    y     = "Absolute Error",
+    title = glue(
+      "{SORG}: Distribution of Absolute Forecast Error's by Step"),
+    subtitle = glue("RMSE shown as dark green diamonds"),
+    caption = paste(
+      "extreme RMSE at Step 8 is caused by forecast errors",
+      "made in May 2023", sep = "\n")
   ) +
-  coord_cartesian(ylim = c(-100, 100))
+  coord_cartesian(ylim = c(0, 25000))
 
 ```
 
