@@ -109,6 +109,14 @@ dtACC0 <-
   .[CALMONTH >= '202401']                                            %>%
   .[!is.na(STEP) &  STEP <= 18]
 
+dtACC0[, .(
+  EPA  = mean(EPA, na.rm = TRUE),
+  APA  = mean(APA, na.rm = TRUE),
+  MAE  = mean(AE , na.rm = TRUE),
+  RMSE = mean(E2 , na.rm = TRUE) %>% sqrt()   
+  ), 
+  by = .(STEP)]
+
 dtALPHA <-  
   copy(dtACC7) %>%
   .[, .(SQ = sum(Q)), 
@@ -118,14 +126,6 @@ dtALPHA <-
 
 dtACC0 <- 
   dtALPHA[dtACC0, on =.(SALESORG, PLANT, MATERIAL)]
-
-dtACC0[!is.na(STEP) & APA > -100, .(
-  EPA  = mean(EPA, na.rm = TRUE),
-  APA  = mean(APA, na.rm = TRUE),
-  MAE  = mean(AE , na.rm = TRUE),
-  RMSE = mean(E2 , na.rm = TRUE) %>% sqrt()   
-  ), 
-  by = .(STEP)]
 
 # Violin plot: STEP on x-axis (treat as discrete), ACC on y-axis
 ggplot(dtACC0, aes(x = factor(STEP), y = AE)) +
@@ -163,9 +163,9 @@ ggplot(dtACC0, aes(x = factor(STEP), y = AE)) +
     fun   = function(x) {mean(x)}, 
     geom  = "point", 
     shape = 22,   # diamond shape
-    size  = 4, 
+    size  = 3, 
     fill  = "#333333",
-    color = "#FFFF00"
+    color = "#333333"
     
   ) +
   labs(
@@ -173,7 +173,8 @@ ggplot(dtACC0, aes(x = factor(STEP), y = AE)) +
     y     = "Absolute Error",
     title = glue(
       "{SORG}: Distribution of Absolute Forecast Error's by Step"),
-    subtitle = glue("RMSE shown as dark green diamonds"),
+    subtitle = glue(
+      "Articles (Class-A): {length(unique(dtACC0$MATERIAL))},  data points: {nrow(dtACC0)}"),
     caption = paste(
       "extreme RMSE at Step 8 is caused by forecast errors",
       "made in May 2023", sep = "\n")
