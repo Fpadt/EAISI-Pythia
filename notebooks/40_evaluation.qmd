@@ -27,17 +27,10 @@ editor_options:
 # public functions ---------------------------------------------------------
 invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
 
-# devtools::load_all(path = "C:/RW/EAISI-Padt")
 library("padt")
-
-# lsrc <- "notebooks/40_evaluation.R"  
-# if( file.exists(lsrc)){source(lsrc)}
 
 # location for generated figures
 pimg <- file.path('.', 'fig')
-
-# generate the Ecotone Brand Colors
-pa_generate_color_variables(pa_ET_COLS)
 
 MAN <-  FALSE
 VAR <- 'EPA'
@@ -57,8 +50,7 @@ ACT <-
   DYN[MATERIAL == MAT 
       # & FTYPE  == '1' 
       & CALMONTH %between% c('202401', '202412') 
-      & STEP %in% c(-1, 1)
-      ] %>% .[!(FTYPE == '2' & VTYPE == '010')]
+      ] 
 
 n_cols <- length(unique(paste(ACT$VTYPE, ACT$FTYPE)))
 ET_COL <- pa_ET_COLS[1:n_cols]
@@ -104,12 +96,14 @@ ggplot(
 #| label: 'violin plot of Forecast Accuracy'
 #| eval: true
 
-ACC <- .calc_accuracy(
-  tab = DYN, act_ftype = 1, fct_ftype = 2)   %>%
+dtACC <- pa_model_accuracy(
+  .tab = ACC, .act_ftype = 1, .fct_ftype = 2
+  )                                                    %>%
   .[, WGHT:= 0.2*ACT/max(ACT), by = .(CALMONTH, STEP)] %>%
   .[CALMONTH >= '202401' & WGHT > 0.05 ]
 
 DT <- ACC[get(VAR) >0,.(STEP, ACC = get(VAR), WGHT)]
+
 
 # Violin plot: STEP on x-axis (treat as discrete), ACC on y-axis
 ggplot(DT, aes(x = factor(STEP), y = ACC)) +

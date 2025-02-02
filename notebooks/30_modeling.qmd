@@ -16,7 +16,7 @@ editor_options:
 
 \newpage
 
-![Logo](../images/logo.png)
+![](../images/logo.png)
 
 # Setup
 
@@ -25,37 +25,24 @@ editor_options:
 #| eval:   true
 
 
-# knitr::opts_chunk$set(
-#   cache   = FALSE,
-#   echo    = TRUE,     # include R source code in the output  
-#   eval    = TRUE,
-#   message = FALSE,
-#   warning = FALSE,
-#   results = "markup",
-#   image   = TRUE,  
-#   include = TRUE      # include the chunk output in the output 
-# )
+# library(reticulate)
+# use_condaenv("sapyr")
 
-# SID <- "WPB500"
-# SYS <- substr(SID, 1, 3)
-
-library(reticulate)
 library(fpp3)
 library(feasts)
 library(tsibble)
 library(ggrepel)
-# use_condaenv("sapyr")
+
 
 # public functions ---------------------------------------------------------
-invisible(source('library/KnitR_SetUp.R'))
+invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
 
-# setwd("C:/RW/EAISI-Pythia/notebooks")
-lsrc <- "notebooks/30_modeling.R"  
-if( file.exists(lsrc)){source(lsrc)}
+library("padt")
 
 # location for generated figures
 pimg <- file.path('.', 'fig')
 
+# IALL <- DYN
 ```
 
 ## Graph Functions
@@ -174,11 +161,11 @@ fBG <- function(phl, IPH){
 #| eval: true
 
 dtSLS <- 
-  MATL[, .(MATERIAL, 
-           PRDH1, PRDH1_TMD,
-           PRDH2, PRDH2_TMD,
-           PRDH3, PRDH3_TMD,
-           PRDH4, PRDH4_TMD)
+  MATL[, .(MATERIAL, MATERIAL_TMD,
+           PRDH1   , PRDH1_TMD,
+           PRDH2   , PRDH2_TMD,
+           PRDH3   , PRDH3_TMD,
+           PRDH4   , PRDH4_TMD)
        ]                                                             %>%
   .[IALL, on = .(MATERIAL)]                                          %>%
   MATS[, .(MATERIAL = MAT_SALES, SALESORG, PROMO = PRAT7)][          
@@ -193,20 +180,24 @@ dtSLS <-
 #| eval: true
 
 ITEA <- 
-  IALL[PRDH4 == '00100467' & SALESORG == 'NL10',
-       .(DEMND_QTY = sum(DEMND_QTY)/1000),
+  dtSLS[PRDH4 == '00100467' & SALESORG == 'NL10',
+       .(Q = sum(Q)/1000),
          by = .(label = PRDH4_TMD, CALMONTH)
   ]
 
 tsTEA <- 
-  ITEA[, CALMONTH:= yearmonth(CALMONTH)]                            %>%
-  as_tsibble(, index = "CALMONTH", 
-             key= c("label"))                                       %>%
+  ITEA[, year_month:= yearmonth(CALMONTH, '%Y%m')]         %>%
+  as_tsibble(
+    index = "year_month", 
+    key = c("label")
+  )                                                        %>%
   model(
-    STL(DEMND_QTY ~ trend(window = 7) +
-          season(window = "periodic"),
-        robust = TRUE)) %>%
-  components() %>%
+    STL(
+      Q ~ trend(window = 7) +
+        season(window = "periodic"),
+      robust = TRUE)
+  )                                                        %>%
+  components()                                             %>%
   autoplot() +
   theme(legend.position = "none")
 
@@ -218,26 +209,29 @@ tsTEA <-
 
 
 MAT <- 
-  IALL[PRDH4_TMD %like% "Rice Cakes Plain",
-       .(DEMND_QTY = sum(DEMND_QTY)),
+  dtSLS[PRDH4_TMD %like% "Rice Cakes Plain",
+       .(Q = sum(Q)),
          by = .(MATERIAL_TMD, SALESORG, CALMONTH)
   ]
 
 tsSLS <- 
-  MAT[, CALMONTH:= yearmonth(CALMONTH)]                             %>%
-  .[, label:= MATERIAL_TMD ] %>%
-  as_tsibble(, index = "CALMONTH", 
-             key= c("label", "SALESORG")) 
+  MAT[, year_month:= yearmonth(CALMONTH, '%Y%m')]          %>%
+  .[, label:= MATERIAL_TMD ]                               %>%
+  as_tsibble(
+    index = "year_month", 
+    key= c("label", "SALESORG")
+  ) 
 
 gp0M <- 
-  tsSLS %>%
-  features(DEMND_QTY, feat_stl) %>%
+  tsSLS                                                    %>%
+  features(Q, feat_stl)                                    %>%
   ggplot(
     aes(
       x     = trend_strength, 
       y     = seasonal_strength_year,
       label = label,
-      col   = label)
+      col   = label
+    )
   ) +
   geom_point() +
   geom_text_repel() +
@@ -253,7 +247,7 @@ gp0M <-
 ggsave(
   filename = "mat_season_trend.png",
   device   = "png",
-  path     = ".",
+  path     = pimg,
   width    = 2500,
   height   = 1500,  
   units    = "px"
@@ -270,11 +264,8 @@ ggsave(
 pmat <- '10023'
 porg <- 'FR30'
 
-dtMat <- fGet_Sales_by_Material_Salesorg(
-  material = pmat,
-  salesorg = porg
-) %>%
-  .[, y:= y/1000]
+dtMat <- copy(DYN) %>%
+  .[, y:= Q/1000]
 
 # Calculate the range of your data 
 min_value <- min(dtMat$y) 
@@ -282,22 +273,22 @@ max_value <- max(dtMat$y)
 padding <- 0.1 * (max_value - min_value) # 10% padding
 
 ggplot(
-  data = dtMat,
-  mapping = aes(x = ds, y=y)
+  data    = dtMat,
+  mapping = aes(x = CALMONTH, y=y)
 ) +
-  geom_col(color = "white", fill = pa_pa_ET_COLSS["CG"]) +
+  geom_col(color = "white", fill = "#0f5e3c") +
   coord_cartesian(ylim = c(min_value - padding, max_value + padding)) +
   labs(
     title    = "Historical Sales ",
     subtitle = paste(pmat, "for", porg),
     x        = "Month/Year",
     y        = "Sales ('000)"
-    )
+  )
 
 tsMat <- 
-  dtMat[, month:= yearmonth(ds)] %>%
+  dtMat[, month:= yearmonth(CALMONTH, '%Y%m')] %>%
   as_tsibble(
-    key   = unique_id,
+    key   = MATERIAL,
     index = month
     )                  
 
@@ -313,10 +304,10 @@ tsMat_2024 <-
   tsMat                  %>%
   filter(year(month) == 2024)
 
-# tsMat %>%
-#   autoplot()
+tsMat %>%
+  autoplot(.vars = y)
 
-# tsMat %>% gg_season(y, period = "year")
+tsMat %>% gg_season(y, period = "year")
 
 tsMat_fit <- 
   tsMat_2023 %>%
@@ -356,15 +347,15 @@ augment(tsMat_fit)
 ts10023 <- 
   copy(DYN)                                                %>%
   .[, .(MATERIAL, PLANT,  CALMONTH, ACT = Q)]              %>%
-  .[, CALMONTH:= yearmonth(CALMONTH, format = "%Y%m")]     %>% 
+  .[, year_month:= yearmonth(CALMONTH, format = "%Y%m")]     %>% 
   as_tsibble(
     key   = c(MATERIAL, PLANT), 
-    index = CALMONTH
+    index = year_month
   ) 
 
 train <- 
   ts10023 %>%
-  filter(CALMONTH < yearmonth("202401", format("%Y%m"))) 
+  filter(year_month < yearmonth("202401", "%Y%m")) 
 
 fit <- 
   train %>% 
@@ -392,14 +383,16 @@ accuracy(FCT10023, ts10023)
 
 ```{r}
 #| label: 'cross validation'
-#| eval: true
+#| eval: true                  
 
 train_tr <- 
   train  %>%
-  stretch_tsibble(.init = 24, .step = 1)
+  slide_tsibble(.size = 24, .step = 1)
+
+# fOpen_as_xlsx(as.data.table(train_tr))
 
 acc <- 
-  train_tr           %>%
+  train_tr                                       %>%
   model(
     `Mean`           = MEAN(ACT)          ,
     `Naïve`          = NAIVE(ACT)         ,
@@ -407,8 +400,10 @@ acc <-
     `RW`             = RW(ACT ~ drift())  ,
     `ETS`            = ETS(ACT)           ,
     `Trend Model`    = TSLM(ACT ~ trend())
-  ) %>%
-  forecast(h = 18)    %>%
+    # ,
+    # `Arima`          = ARIMA()
+  )                                              %>%
+  forecast(h = 1)                               %>%
   accuracy(ts10023)
 
 ```

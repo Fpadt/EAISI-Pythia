@@ -81,7 +81,6 @@ PATH_SLV__MD <- pa_ds_stageing_path_get(.staging = "silver", .functional_area = 
 View(pa_transformations_get())
 ```
 
-
 # Export & Copy Procedure
 
 ## Administration
