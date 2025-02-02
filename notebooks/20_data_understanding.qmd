@@ -1,6 +1,6 @@
 ---
 title   : EAISI - Pythia
-subtitle: Data Access
+subtitle: Data Understanding
 author  : "F.J. Padt"
 date    : "`r format(Sys.time(), '%B %d, %Y')`"
 output  :
@@ -29,237 +29,247 @@ invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
 
 library("padt")
 
-PATH_MD <- pa_ds_stageing_path_get(.staging = "silver", .functional_area = "master_data", "material")
+SORG <- 'FR30'
 ```
 
-# Scope
+# Cleansing
 
-| Key | Brand            |
-|:----|:-----------------|
-| 07  | ALTER ECO        |
-| 08  | BJORG            |
-| 10  | CLIPPER (CUPPER) |
-| 15  | ZONNATURA        |
-| 53  | TANOSHI          |
-| 65  | NATURELA         |
+## Promotional Articles
 
-# Master Data
-
-## Material
+Promotional Articles can be identifid by MATS-PRAT7. These articles are planned
+via contracts and not forecasted for FR30 and need to be excluded
 
 ```{r}
-#| label: 'Get Material Master data '
+#| label: 'Exclude Promotions for FR30'
 #| eval:   true
 
-MATL <- pa_md_mat_get(.dataset_name = "material")   # MARA/0MATERIAL
-MATS <- pa_md_mat_get(.dataset_name = "mat_sales")  # MVKE/0MAT_SALES
-MATP <- pa_md_mat_get(.dataset_name = "mat_plant")  # MARC/0MAT_PLANT
+dtACC1 <- 
+  copy(ACC)                                                          %>%
+  .[(VTYPE == '010' & FTYPE == 1) | (VTYPE == '060' & FTYPE == 2)]   %>%
+  MATS[PRAT7 != 1 & SALESORG == SORG][
+    ., on = .(SALESORG, MATERIAL), nomatch = 0
+  ] 
 
-MBTL <- readRDS(file.path(PATH_MD, "B4_MATL.rds"))
-MBTS <- readRDS(file.path(PATH_MD, "B4_MATS.rds"))
-MBTP <- readRDS(file.path(PATH_MD, "B4_MATP.rds")) 
-MBST <- readRDS(file.path(PATH_MD, "B4_MAST.rds")) 
+dtACC_1 <- 
+  copy(dtACC1)                                                       %>%
+  .[CALMONTH >= '202401']                                            %>%
+  pa_model_accuracy(
+  .act_ftype = 1, .fct_ftype = 2
+  )   
+
+dtACC_1[, .(
+  EPA = mean(EPA, na.rm = TRUE),
+  APA = mean(APA, na.rm = TRUE)
+), 
+by = .(STEP)]
 ```
 
-### Material Test
+## BOM
+
+Exclude Articles with a BOM. These are displays and packs and have a differnt
+quantity. Should be exploded first
 
 ```{r}
-#| label: 'Get Material Master data - Test '
-#| eval:   False
-
-
-# # Test
-# MATL <- pa_md_mat_get(
-#   .dataset_name = "material", 
-#   .scope_matl   = FALSE)                         # 6035
-# MATL <- pa_md_mat_get(
-#   .dataset_name = "material", 
-#   .scope_matl   = TRUE)                          # 2329
-# MATL <- pa_md_mat_get(
-#   .dataset_name = "material", 
-#   .material     = '10023',
-#   .scope_matl   = FALSE)                         # 1
-# 
-# MATS <- pa_md_mat_get(
-#   .dataset_name = "mat_sales", 
-#   .scope_matl   = FALSE, 
-#   .scope_sorg   = FALSE)                         # 7977
-# MATS <- pa_md_mat_get(
-#   .dataset_name = "mat_sales", 
-#   .scope_matl   = TRUE , 
-#   .scope_sorg   = FALSE)                         # 3374
-# MATS <- pa_md_mat_get(
-#   .dataset_name = "mat_sales", 
-#   .scope_matl   = FALSE, 
-#   .scope_sorg   = TRUE )                         # 3191
-# MATS <- pa_md_mat_get(
-#   .dataset_name = "mat_sales", 
-#   .scope_matl   = TRUE , 
-#   .scope_sorg   = TRUE )                         # 2162
-# MATS <- pa_md_mat_get(
-#   .dataset_name = "mat_sales",  
-#   .material     = '10023')                       # 2
-# MATS <- pa_md_mat_get(
-#   .dataset_name = "mat_sales",  
-#   .material     = '10023', 
-#   .salesorg     = 'FR30')                        # 1
-# 
-# MATP <- pa_md_mat_get(
-#   .dataset_name = "mat_plant",
-#   .scope_matl   = FALSE)                         # 8101
-# MATP <- pa_md_mat_get(
-#   .dataset_name = "mat_plant", 
-#   .scope_matl   = TRUE)                          # 3307
-# MATP <- pa_md_mat_get(
-#   .dataset_name = "mat_plant", 
-#   .material     = '10023')                       # 2
-
-```
-
-# Transaction Data
-
-## Sales
-
-### Dynasys
-
-```{r}
-#| label: 'Get DYN data'
+#| label: 'Exclude Articles with a BOM for FR30'
 #| eval:   true
 
-# FTYPE = 1 Actuals for Accuracy PreDR from 202401
-# FTYPE = 2 Actuals for Accuracy PstDR from 202401
-# FTYPE = 3 Actuals Last Version PreDR from 202101 
-# FTYPE = 4 Actuals Last Version PstDR from 202101 
+dtACC2 <- 
+  copy(dtACC1)                                                       %>%
+  MBTS[SALESORG == SORG, .(SALESORG, MATERIAL = MAT_SALES)][
+    ., on = .(SALESORG, MATERIAL), nomatch = 0]
 
-system.time({
-  ACC <-                              # 
-    pa_td_dyn_get(
-      .vtype       = c('010', '060')  , # 010 = Actuals, 060 = Forecast
-      .ftype       = c(1, 2)          , # 1 = PreDR, 2 = PostDR 
-      .material    = NULL      , # Optional user-supplied material
-      .salesorg    = NULL      , #'Optional user-supplied salesorg
-      .scope_matl  = TRUE      , # restrict to Pythia Scope
-      .scope_sorg  = TRUE      , # restrict to Pythia Scope
-      .cm_min      = '20201'  , # minimal Cal Month
-      .cm_max      = '202412'  , # maximal Cal Month
-      .step_min    = 1         , # minimal forecast step ahead
-      .step_max    = 18        , # maximal forecast step ahead
-      .lagg_min    = -1        , # minimal diff. between VERSMON & MONTH
-      .lagg_max    = -1        , # maximal diff. between VERSMON & MONTH  
-      .n           = Inf  
-    ) 
-})
+dtACC <- 
+  dtACC2                                                             %>%
+  pa_model_accuracy(
+  .act_ftype = 1, .fct_ftype = 2
+  )  
 
-system.time({
-  SLS <-                              # 
-    pa_td_dyn_get(
-      .vtype       = c('010')  , # 010 = Actuals, 060 = Forecast
-      .ftype       = c(3, 4)   , # Last Version 1 = PreDR, 2 = PostDR 
-      .material    = NULL      , # Optional user-supplied material
-      .salesorg    = NULL      , #'Optional user-supplied salesorg
-      .scope_matl  = TRUE      , # restrict to Pythia Scope
-      .scope_sorg  = TRUE      , # restrict to Pythia Scope
-      .cm_min      = '202101'  , # minimal Cal Month
-      .cm_max      = '202412'  , # maximal Cal Month
-      .step_min    = 1         , # minimal forecast step ahead
-      .step_max    = 18        , # maximal forecast step ahead
-      .lagg_min    = NULL      , # minimal diff. between VERSMON & MONTH
-      .lagg_max    = NULL      , # maximal diff. between VERSMON & MONTH  
-      .n           = Inf  
-    ) 
-})
+dtACC[, .(
+  EPA = mean(EPA, na.rm = TRUE),
+  APA = mean(APA, na.rm = TRUE)
+), 
+by = .(STEP)]
+```
 
-DYN <-                              # 
-  pa_td_dyn_get(
-    .vtype       = c('010', '060')  , # 010 = Actuals, 060 = Forecast
-    .ftype       = c(1, 2)          , # 1 = PreDR, 2 = PostDR 
-    .material    = '10023'          , # Optional user-supplied material
-    .salesorg    = 'FR30'           , # Optional user-supplied salesorg
-    .scope_matl  = TRUE             , # restrict to Pythia Scope
-    .scope_sorg  = TRUE             , # restrict to Pythia Scope
-    .cm_min      = '202101'         , # minimal Cal Month
-    .cm_max      = '202412'         , # maximal Cal Month
-    .step_min    = 1                , # minimal forecast step ahead
-    .step_max    = 18               , # maximal forecast step ahead
-    .lagg_min    = NULL             , # minimal diff. between VERSMON & MONTH
-    .lagg_max    = NULL             , # maximal diff. between VERSMON & MONTH  
-    .n           = Inf  
+## Base Unit of Measure
+
+```{r}
+#| label: 'Exclude Articles with a BOM for FR30'
+#| eval:   true
+
+dtACC3 <- 
+  copy(dtACC2)                                                       %>%
+  MATL[, .(MATERIAL, BASE_UOM, BU2_EA)][
+    ., on = .(MATERIAL), nomatch = 0]
+
+```
+
+```{r}
+#| label: 'Count and Sales per BUOM'
+#| eval:   true
+
+dtBUOM <- 
+  dtACC3[, .(
+  unCnt = uniqueN(MATERIAL),  
+  Count = .N, 
+  Sales = sum(Q), 
+  mConv = mean(BU2_EA),
+  SlsEA = ifelse(mean(BU2_EA) > 0, sum(Q) / mean(BU2_EA), 0)
+  ), 
+  by = .(BASE_UOM)]                                                  %>%
+  .[, Prec:= (100*SlsEA/sum(SlsEA)) %>% round(1)]                   %T>%
+  setorder(-SlsEA) 
+
+dtBUOM[]
+
+dtACC4 <- 
+  copy(dtACC3[BASE_UOM == 'EA'])                                     %>%
+  .[, ( fTA(.)[UCOUNT == 1, FLDNM]):= NULL]                          %>%
+  .[, SALESORG:= SORG]
+
+dtACC <- 
+  copy(dtACC4)                                                             %>%
+  pa_model_accuracy(
+  .act_ftype = 1, .fct_ftype = 2
+  )  
+
+dtACC[, .(
+  EPA = mean(EPA, na.rm = TRUE),
+  APA = mean(APA, na.rm = TRUE)
+), 
+by = .(STEP)]
+```
+
+
+
+Decided to focus on EA
+
+## ABC - Classification
+
+```{r}
+#| label: 'ABC Classification'
+#| eval:   true
+
+
+abc_classify <- function(
+    dt, 
+    colKey           = "MATERIAL", 
+    colValue         = "Q"       ,
+    threshold_A      = 0.80      , 
+    threshold_B      = 0.15
+) {
+
+  # Basic checks
+  stopifnot(inherits(dt, "data.table"))
+  stopifnot(colKey %in% names(dt))
+  stopifnot(colValue %in% names(dt))
+  stopifnot(is.numeric(dt[[colValue]]))
+  stopifnot(threshold_A + threshold_B <= 1)
+
+  # Copy the input to avoid modifying original
+  dt_copy <- copy(dt)
+
+  # Order by Q descending
+  setorderv(dt_copy, colValue, -1)
+
+  # Compute cumulative sum and fraction of total
+  total_Q <- dt_copy[, sum(get(colValue))]
+  dt_copy[, cumQ := cumsum(get(colValue))]
+  dt_copy[, fracQ := cumQ / total_Q]
+
+  # Apply ABC classification
+  dt_copy[
+    fracQ <= threshold_A,
+    ABC := "A"
+  ][
+    fracQ > threshold_A & fracQ <= threshold_A + threshold_B,
+    ABC := "B"
+  ][
+    fracQ > threshold_A + threshold_B,
+    ABC := "C"
+  ]
+
+  # Restore original order if needed (optional step)
+  dt_copy[, order_id := .I]
+  setorder(dt_copy, order_id)
+  dt_copy[, order_id := NULL]
+  
+  # Return the modified table
+  return(dt_copy)
+}
+
+# Add ABC- Classification
+dtACC5 <- 
+  copy(dtACC4)                                                  %>%
+  .[VTYPE == '010']                                             %>%
+  abc_classify(
+    colKey = "MATERIAL", 
+    colValue = "Q" 
+  )
+
+dtABC <- 
+  dtACC5[, .(
+  unCnt = uniqueN(MATERIAL),  
+  Count = .N, 
+  Sales = sum(Q)
+  ), 
+  by = .(ABC)]  
+
+dtABC[]
+
+dtACC6 <- 
+  copy(dtACC5[ABC == 'A', .(MATERIAL, PLANT, SALESORG)])       %>%
+  unique()                                                     %>%
+  .[dtACC4, on = .(MATERIAL, PLANT, SALESORG), nomatch = 0]
+
+dtACC <- 
+  dtACC6                                                       %>%
+  pa_model_accuracy(
+    .act_ftype = 1, .fct_ftype = 2
   ) 
 
-DYN[VTYPE == '010'] %>%
-  dcast.data.table(
-    FTYPE + VERSMON ~ CALMONTH,
-    fun.aggregate = sum,
-    value.var = "Q"
-  ) %T>% View()
-
-# awesome check
-DYN[CALMONTH > '202312'] %>%
-  dcast.data.table(
-    VTYPE + FTYPE + STEP ~ CALMONTH,
-    fun.aggregate = sum,
-    value.var = "Q"
-  ) %T>% View()
-
-# ACTC <-
-#   dcast.data.table(
-#     DYN,
-#     ... ~ paste0("TYP_", FTYPE),
-#     value.var = "Q"
-#   ) %>%
-#   .[, ABSE:= abs(TYP_1 - TYP_2)] %>%
-#   .[, PERC:= round(100 * ABSE/ TYP_1, 1)] %>%
-#   .[ABSE != 0 ] %T>%
-#   setorder(-PERC) %T>%
-#   View()
-
-
+dtACC[, .(
+  EPA = mean(EPA, na.rm = TRUE),
+  APA = mean(APA, na.rm = TRUE)
+), 
+by = .(STEP)]
 ```
 
-### RTP
+Focus on A-Category, accounting for 80% of the sales
+
+## Sales History > 2 Years
 
 ```{r}
-#| label: 'Get RTP data'
-#| eval:   true
 
-RTP <-
-  pa_td_sap_get(
-    .ftype        = 5              , # 5 = rtp, 6 = ipm     
-    .material     = '10023'        , # Optional user-supplied material
-    .salesorg     = 'FR30'         , # Optional user-supplied salesorg
-    .scope_matl   = TRUE           , # restrict to Pythia Scope
-    .scope_sorg   = TRUE           , # restrict to Pythia Scope
-    .cm_min       = '202101'       , # minimal Cal Month
-    .cm_max       = '202506'       , # maximal Cal Month,
-    .n            = Inf
-  )
+dtHST <- 
+  copy(SLS)                                                     %>%
+  .[FTYPE == 4, .(MNTHS = .N), 
+    by = .(SALESORG, PLANT, MATERIAL)]
 
+dtACC7 <- 
+  copy(dtACC6) %>%
+  dtHST[MNTHS >= 24][., on = .(SALESORG, PLANT, MATERIAL),
+                     nomatch = 0]
+
+dtACC <- 
+  dtACC7                                                       %>%
+  pa_model_accuracy(
+  .act_ftype = 1, .fct_ftype = 2
+  )  
+
+dtACC[, .(
+  EPA = mean(EPA, na.rm = TRUE),
+  APA = mean(APA, na.rm = TRUE)
+  ), 
+  by = .(STEP)]
 ```
 
-### IPM
-
-```{r}
-#| label: 'Get IMP data'
-#| eval:   true
-
-IPM <-
-  pa_td_sap_get(
-    .ftype        = 6              , # 5 = rtp, 6 = ipm  
-    .material     = '10023'        , # Optional user-supplied material
-    .salesorg     = 'FR30'         , # Optional user-supplied salesorg
-    .scope_matl   = TRUE           , # restrict to Pythia Scope
-    .scope_sorg   = TRUE           , # restrict to Pythia Scope
-    .cm_min       = '202101'       , # minimal Cal Month
-    .cm_max       = '202506'       , # maximal Cal Month,
-    .n            = Inf
-  )
-
-```
 
 # Analysis
 
 ```{r}
-
+#| label: '?'
+#| eval: FALSE
 
 TST <- rbind(
   IPM[, .(SALESORG,  PLANT,  MATERIAL,  CALMONTH,  FTYPE,  VTYPE,  Q)], 

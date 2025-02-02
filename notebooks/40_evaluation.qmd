@@ -96,13 +96,28 @@ ggplot(
 #| label: 'violin plot of Forecast Accuracy'
 #| eval: true
 
-dtACC <- pa_model_accuracy(
-  .tab = ACC, .act_ftype = 1, .fct_ftype = 2
-  )                                                    %>%
-  .[, WGHT:= 0.2*ACT/max(ACT), by = .(CALMONTH, STEP)] %>%
-  .[CALMONTH >= '202401' & WGHT > 0.05 ]
+# ACC_BCK <-  copy(ACC)
+# ACC     <- copy(dtACC7)
 
-DT <- ACC[get(VAR) >0,.(STEP, ACC = get(VAR), WGHT)]
+VAR <- "EPA"
+
+dtACC0 <- 
+  dtACC7                                                       %>%
+  pa_model_accuracy(
+  .act_ftype = 1, .fct_ftype = 2
+  )  
+# %>%
+#   .[, WGHT:= 0.2*ACT/max(ACT), by = .(CALMONTH, STEP)] %>%
+#   .[CALMONTH >= '202401' & WGHT > 0.05 ]
+
+dtACC0[, .(
+  EPA = mean(EPA, na.rm = TRUE),
+  APA = mean(APA, na.rm = TRUE)
+  ), 
+  by = .(STEP)]
+
+# DT <- dtACC0[get(VAR) > 0,.(STEP, ACC = get(VAR), WGHT)]
+DT <- dtACC0[,.(STEP, ACC = get(VAR), WGHT = 0.2)]
 
 
 # Violin plot: STEP on x-axis (treat as discrete), ACC on y-axis
@@ -111,18 +126,18 @@ ggplot(DT, aes(x = factor(STEP), y = ACC)) +
   geom_violin(
     trim           = TRUE, 
     draw_quantiles = c(0.25, 0.5, 0.75),
-    color          = pa_ET_FG
+    color          = "#089b35"
     ) +
   geom_jitter(
     aes(
-      size  = WGHT/2,
+      # size  = WGHT,
       alpha = WGHT/2
     ),
     height = 0, 
-    width  = 0.15, 
-    color  = pa_ET_COLS["LG"]
+    width  = 0.25, 
+    color  = "#38e56d"
     # ,
-    # size   = 0.2,
+    , size   = 0.2
     # alpha  = 0.3
     ) +
   # Optional: a summary point for the mean on each violin
@@ -131,15 +146,15 @@ ggplot(DT, aes(x = factor(STEP), y = ACC)) +
     geom  = "point", 
     shape = 23,   # diamond shape
     size  = 3, 
-    fill  = pa_pa_ET_COLSS["CG"], 
-    color = pa_pa_ET_COLSS["CG"]
+    fill  = "#0f5e3c",
+    color = "#0f5e3c"
   ) +
   labs(
     x     = "Step",
     y     = "Accuracy",
     title = glue("Distribution of Forecast Accuracy ({`VAR`}) by Step")
   ) +
-  coord_cartesian(ylim = c(40, 100))
+  coord_cartesian(ylim = c(-100, 100))
 
 ```
 

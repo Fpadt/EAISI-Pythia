@@ -38,19 +38,6 @@ Can be executed outside Ecotone Network as OneDrive ET\Pythia is used
 library("padt")
 invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
 
-
-
-# lsrc <- "notebooks/05_data_ingestion.R"  
-# if( file.exists(lsrc)){source(lsrc)}
-
-# Configuration parameters of Open Hub DSCP_TRAN
-# FILE_SPEC <- 
-#   list(
-#     DELIM        = pa_get_config_value(key = "DELIM"),       # ';',
-#     HEADER       = pa_get_config_value(key = "HEADER"),      # FALSE,
-#     DATE_FORMAT  = pa_get_config_value(key = "DATE_FORMAT")  # '%Y-%m-%d'
-#   )
-
 # helper paths
 PATH_PA_CNFG <- file.path("padt_config")
 
