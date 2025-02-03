@@ -24,10 +24,6 @@ editor_options:
 #| label: 'setup'
 #| eval:   true
 
-
-# library(reticulate)
-# use_condaenv("sapyr")
-
 library(fpp3)
 library(feasts)
 library(tsibble)
@@ -42,7 +38,6 @@ library("padt")
 # location for generated figures
 pimg <- file.path('.', 'fig')
 
-# IALL <- DYN
 ```
 
 ## Graph Functions
@@ -338,24 +333,38 @@ augment(tsMat_fit)
 
 # Modeling
 
-### 10023
+## Forecast Material
 
 ```{r}
-#| label: 'SLS_10023'
+#| label: 'Scope FR30'
 #| eval: true
 
-ts10023 <- 
-  copy(DYN)                                                %>%
+MAT <- pa_matn1_input('10023')
+ORG <- 'FR30'
+
+# filter the scope of 182
+dtMat <- 
+  dtACC7[MATERIAL == MAT & SALESORG == ORG, 
+         .(SALESORG, PLANT, MATERIAL)]                     %>%
+  unique()                                                 %>%
+  .[SLS, on = .(SALESORG, PLANT, MATERIAL), nomatch = 0]   %>%
+  .[SALESORG == ORG & FTYPE == 4]        
+
+tsMat <- 
+  dtMat %>%
   .[, .(MATERIAL, PLANT,  CALMONTH, ACT = Q)]              %>%
-  .[, year_month:= yearmonth(CALMONTH, format = "%Y%m")]     %>% 
+  .[, year_month:= yearmonth(CALMONTH, format = "%Y%m")]   %>% 
+  .[, CALMONTH:= NULL]                                     %>%  
   as_tsibble(
     key   = c(MATERIAL, PLANT), 
     index = year_month
   ) 
 
 train <- 
-  ts10023 %>%
-  filter(year_month < yearmonth("202401", "%Y%m")) 
+  tsMat %>%
+  filter(
+    year_month < yearmonth("202401", "%Y%m")
+    ) 
 
 fit <- 
   train %>% 
@@ -371,14 +380,45 @@ fit <-
 # gg_tsresiduals() must be used with a mable containing only one model
 # fit %>% gg_tsresiduals()
 
-FCT10023 <- 
+fcMat <- 
   fit                      %>%
-  forecast(h = "1 months") 
+  forecast(h = "12 months") 
 
-FCT10023 %>%
-  autoplot(ts10023, level = NULL)
+fcMat                      %>%
+  autoplot(tsMat, level = NULL)
 
-accuracy(FCT10023, ts10023)  
+dtAC <- accuracy(fcMat, tsMat) %T>% setDT()  
+
+dtF <-
+  fcMat %T>%
+  setDT() %>%
+  .[, .(MATERIAL, PLANT, VTYPE = '060', FTYPE = 2,
+        SALESORG = 'FR30',
+        CALMONTH = format(year_month, "%Y%m"),
+        VERSMON  = "202312",
+        MODEL = .model, Q = .mean)] %>%
+  .[, STEP:= ((ymd(paste0(VERSMON, "01")) %--% ymd(paste0(CALMONTH, "01"))) 
+    / months(1)) %>% as.integer()]
+  
+dtA <- copy(dtMat) %>% .[, MODEL:= ""]
+
+dtACC <- 
+  rbind(
+    dtA[CALMONTH >= '202401'], 
+    dtF, use.names = TRUE) %>%
+  pa_model_accuracy(.act_ftype = 4, .fct_ftype = 2)
+
+# alligns with the accuracy function from HYNDMAN
+View(
+  dtACC[, .(
+    ME   = mean(E),
+    RMSE = mean(E2) %>% sqrt(),
+    MAE  = mean(AE),
+    MPE  = mean(100*E/ACT),
+    MAPE = mean(APE)
+  ), 
+  by = .(MATERIAL, PLANT, MODEL)])
+
 ```
 
 ```{r}
@@ -386,24 +426,93 @@ accuracy(FCT10023, ts10023)
 #| eval: true                  
 
 train_tr <- 
-  train  %>%
+  tsMat %>%
+  filter(
+    year_month > yearmonth("202101", "%Y%m"),
+    year_month < yearmonth("202412", "%Y%m")
+    )                                              %>%
   slide_tsibble(.size = 24, .step = 1)
 
 # fOpen_as_xlsx(as.data.table(train_tr))
 
-acc <- 
-  train_tr                                       %>%
-  model(
-    `Mean`           = MEAN(ACT)          ,
-    `Naïve`          = NAIVE(ACT)         ,
-    `Seasonal naïve` = SNAIVE(ACT)        ,
-    `RW`             = RW(ACT ~ drift())  ,
-    `ETS`            = ETS(ACT)           ,
-    `Trend Model`    = TSLM(ACT ~ trend())
-    # ,
-    # `Arima`          = ARIMA()
-  )                                              %>%
-  forecast(h = 1)                               %>%
-  accuracy(ts10023)
+  fcMat <- 
+    train_tr                                       %>%
+    model(
+        `Mean`           = MEAN(ACT)          
+      , `Naïve`          = NAIVE(ACT)         
+      , `Seasonal naïve` = SNAIVE(ACT)
+      , `RW`             = RW(ACT ~ drift())
+      , `ETS`            = ETS(ACT)           
+      , `Trend Model`    = TSLM(ACT ~ trend())
+      # `Arima`          = ARIMA()
+    )                                              %>%
+    forecast(h = 12)    
 
+  # tst <- 
+  #   fcMat %>%
+  #   filter(.id == 1) %>%
+  #   select(-.id)
+  # 
+  # tst                      %>%
+  # autoplot(tsMat, level = NULL)
+  
+
+  # accuracy(tsMat, fcMat)
+
+### Data table
+  
+dtFct <- 
+  fcMat   %T>% 
+  setDT()  %>%
+  .[, CALMONTH:= format(year_month, "%Y%m")] %>%
+  .[CALMONTH %between% c('202401', '202412')] %>%
+  .[,
+    `:=` (
+      CALDAY     = ymd("2023-12-01") %m+% months(.id), 
+      DFU        = .model, #"12-326582724328643-FR40-FR40", # .model
+      MATERIAL   = MATERIAL,
+      CUSTH      = "326582724328643", 
+      CL1        = "28643",
+      CL2        = "27243",
+      CL3        = "32658",
+      PLANT      = PLANT,
+      SALESORG   = "FR30",
+      CALMONTH   = CALMONTH,
+      DEMQT      = .mean,
+      BSNLN      = 0,
+      PRMQT      = 0,
+      BCMQT      = 0,
+      PCMQT      = 0,
+      BUOM       = "EA",
+      .id        = NULL,
+      .model     = NULL,
+      year_month = NULL,
+      ACT        = NULL,
+      .mean      = NULL
+    )] %T>%
+  setcolorder(
+    c(
+      "CALDAY",
+      "DFU",
+      "MATERIAL",
+      "CUSTH",
+      "CL1",
+      "CL2",
+      "CL3",
+      "PLANT",
+      "SALESORG", 
+      "CALMONTH",
+      "DEMQT",
+      "BSNLN",
+      "PRMQT",
+      "BCMQT",
+      "PCMQT",
+      "BUOM"
+    )
+  )
+
+  # fOpen_as_xlsx(
+  #   fcMat[.model == "Mean", CALMONTH:= format(year_month, "%Y%m")]
+  # )
+  
 ```

@@ -98,8 +98,8 @@ ggplot(
 
 # ACC_BCK <-  copy(ACC)
 # ACC     <- copy(dtACC7)
-
-
+dtACC0 <- dtACC[MODEL == "ETS"]
+dtACC0 <- dtACC[MODEL == "ETS"]
 
 dtACC0 <- 
   copy(dtACC7)                                                       %>%
@@ -138,14 +138,14 @@ ggplot(dtACC0, aes(x = factor(STEP), y = AE)) +
   geom_jitter(
     aes(
       # size  = WGHT,
-      alpha = ALPHA
+      # alpha = 0.3 #ALPHA
     ),
     height = 0, 
     width  = 0.25, 
     color  = "#38e56d"
     # ,
     , size   = 0.8
-    # alpha  = 0.3
+    , alpha  = 0.3
     ) +
   # RSME
   stat_summary(
