@@ -314,7 +314,7 @@ PATH_SLV_SLS <- pa_ds_stageing_path_get(
   "rtp"
 )
 
-PATH_GLD_SLS <- "C:\\PW\\OneDrive\\ET\\pythia\\data\\production\\Gold\\sales"
+PATH_GLD_SLS <- "C:\\PW\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data"
 
 saveRDS(
   file   = file.path(PATH_SLV_SLS, "dtACC7.rds"),
