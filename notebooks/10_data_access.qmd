@@ -132,6 +132,15 @@ MBST <- readRDS(file.path(PATH_MD, "B4_MAST.rds"))
 # FTYPE = 4 Actuals Last Version PstDR from 202101 
 
 system.time({
+  SLS <-                              # 
+    pa_td_dyn_get(
+      .vtype       = c('010')  , # 010 = Actuals, 060 = Forecast
+      .ftype       = c(4)      , # Last Version 1 = PreDR, 2 = Pos
+      .scope_matl  = TRUE 
+    ) 
+})
+
+system.time({
   ACC <-                              # 
     pa_td_dyn_get(
       .vtype       = c('010', '060')  , # 010 = Actuals, 060 = Forecast
@@ -161,8 +170,8 @@ system.time({
       .scope_sorg  = TRUE      , # restrict to Pythia Scope
       .cm_min      = '202101'  , # minimal Cal Month
       .cm_max      = '202412'  , # maximal Cal Month
-      .step_min    = 1         , # minimal forecast step ahead
-      .step_max    = 18        , # maximal forecast step ahead
+      .step_min    = NULL      , # minimal forecast step ahead
+      .step_max    = NULL        , # maximal forecast step ahead
       .lagg_min    = NULL      , # minimal diff. between VERSMON & MONTH
       .lagg_max    = NULL      , # maximal diff. between VERSMON & MONTH  
       .n           = Inf  

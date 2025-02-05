@@ -43,8 +43,13 @@ via contracts and not forecasted for FR30 and need to be excluded
 #| label: 'Exclude Promotions for FR30'
 #| eval:   true
 
-Q0 <- sum(ACC[STEP == -1 & VTYPE == '010' & FTYPE == 1 & SALESORG == SORG,  Q])
+SORG <- 'FR30'
 
+# focus on FR30
+Q0 <- sum(ACC[STEP == -1 & VTYPE == '010' & FTYPE == 1 & SALESORG == SORG,  Q])
+# Q0 <- sum(SLS[VTYPE == '010' & FTYPE == 4 & SALESORG == SORG,  Q])
+
+# Exclude Promotions 
 dtACC1 <- 
   copy(ACC)                                                          %>%
   .[(VTYPE == '010' & FTYPE == 1) | (VTYPE == '060' & FTYPE == 2)]   %>%
@@ -300,6 +305,27 @@ Q7 <- sum(dtACC_7[STEP == 1,  ACT])
 Q0
 Q7
 100*Q7/Q0
+```
+
+```{r}
+PATH_SLV_SLS <- pa_ds_stageing_path_get(
+  .staging = "silver", 
+  .functional_area = "sales", 
+  "rtp"
+)
+
+PATH_GLD_SLS <- "C:\\PW\\OneDrive\\ET\\pythia\\data\\production\\Gold\\sales"
+
+saveRDS(
+  file   = file.path(PATH_SLV_SLS, "dtACC7.rds"),
+  object = dtACC7
+)
+
+fwrite(
+  unique(dtACC7[, .(MATERIAL)]),
+  file = file.path(PATH_GLD_SLS, "SCP_182.csv")
+)
+
 ```
 
 # Analysis

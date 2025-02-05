@@ -24,15 +24,13 @@ editor_options:
 #| label: 'setup'
 #| eval:   true
 
+# public functions ---------------------------------------------------------
+invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
+
 library(fpp3)
 library(feasts)
 library(tsibble)
 library(ggrepel)
-
-
-# public functions ---------------------------------------------------------
-invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
-
 library("padt")
 
 # location for generated figures
@@ -333,22 +331,33 @@ augment(tsMat_fit)
 
 # Modeling
 
-## Forecast Material
+## Forecast Materials/Plant
 
 ```{r}
 #| label: 'Scope FR30'
 #| eval: true
+#| 
+MATL <- pa_matn1_input('10023')
+SORG <- 'FR30'
 
-MAT <- pa_matn1_input('10023')
-ORG <- 'FR30'
+PATH_SLV_SLS <- pa_ds_stageing_path_get(
+  .staging = "silver", 
+  .functional_area = "sales", 
+  "rtp"
+)
+
+dtACC7 <- readRDS(
+  file = file.path(PATH_SLV_SLS,"dtACC7.rds")
+  )
 
 # filter the scope of 182
+# MATERIAL == MAT & 
 dtMat <- 
-  dtACC7[MATERIAL == MAT & SALESORG == ORG, 
+  dtACC7[SALESORG == SORG, 
          .(SALESORG, PLANT, MATERIAL)]                     %>%
   unique()                                                 %>%
   .[SLS, on = .(SALESORG, PLANT, MATERIAL), nomatch = 0]   %>%
-  .[SALESORG == ORG & FTYPE == 4]        
+  .[SALESORG == SORG & FTYPE == 4]        
 
 tsMat <- 
   dtMat %>%
@@ -360,22 +369,31 @@ tsMat <-
     index = year_month
   ) 
 
+
+```
+
+```{r}
+#| label: 'Scope FR30'
+#| eval: true
+
 train <- 
   tsMat %>%
   filter(
     year_month < yearmonth("202401", "%Y%m")
     ) 
 
-fit <- 
-  train %>% 
-  model(
-    `Mean`           = MEAN(ACT)          ,
-    `Naïve`          = NAIVE(ACT)         ,
-    `Seasonal naïve` = SNAIVE(ACT)        ,
-    `RW`             = RW(ACT ~ drift())  ,
-    `ETS`            = ETS(ACT)           ,
-    `Trend Model`    = TSLM(ACT ~ trend())
-  )
+# system.time({
+#   fit <- 
+#     train %>% 
+#     model(
+#       `Mean`           = MEAN(ACT)          ,
+#       `Naïve`          = NAIVE(ACT)         ,
+#       `Seasonal naïve` = SNAIVE(ACT)        ,
+#       `RW`             = RW(ACT ~ drift())  ,
+#       `ETS`            = ETS(ACT)           ,
+#       `Trend Model`    = TSLM(ACT ~ trend())
+#     )
+# })
 
 # gg_tsresiduals() must be used with a mable containing only one model
 # fit %>% gg_tsresiduals()
@@ -435,42 +453,38 @@ train_tr <-
 
 # fOpen_as_xlsx(as.data.table(train_tr))
 
+# system.time({
+#   fcMat <- 
+#     train_tr                                       %>%
+#     model(
+#         `Mean`           = MEAN(ACT)          
+#       , `Naïve`          = NAIVE(ACT)         
+#       , `Seasonal naïve` = SNAIVE(ACT)
+#       , `RW`             = RW(ACT ~ drift())
+#       , `ETS`            = ETS(ACT)           
+#       , `Trend Model`    = TSLM(ACT ~ trend())
+#       # `Arima`          = ARIMA()
+#     )                                              %>%
+#     forecast(h = 12)  
+# })
+
+system.time({
   fcMat <- 
     train_tr                                       %>%
     model(
-        `Mean`           = MEAN(ACT)          
-      , `Naïve`          = NAIVE(ACT)         
-      , `Seasonal naïve` = SNAIVE(ACT)
-      , `RW`             = RW(ACT ~ drift())
-      , `ETS`            = ETS(ACT)           
-      , `Trend Model`    = TSLM(ACT ~ trend())
-      # `Arima`          = ARIMA()
-    )                                              %>%
-    forecast(h = 12)  
-  
-  fcMat <- 
-    train_tr                                       %>%
-    model(
-        `MN`             = MEAN(ACT)          
-      , `NV`             = NAIVE(ACT)         
-      , `SNV`            = SNAIVE(ACT)
-      , `RW`             = RW(ACT ~ drift())
-      , `ETS`            = ETS(ACT)           
-      , `TM`             = TSLM(ACT ~ trend())
-      # `Arima`          = ARIMA()
+        `100`             = MEAN(ACT)          
+      , `110`             = NAIVE(ACT)         
+      , `120`             = SNAIVE(ACT)
+      , `130`             = RW(ACT ~ drift())
+      , `140`             = ETS(ACT)           
+      , `150`             = TSLM(ACT ~ trend())
+      # `Arima`           = ARIMA()
     )                                              %>%
     forecast(h = 3)   
+})
 
-  # tst <- 
-  #   fcMat %>%
-  #   filter(.id == 1) %>%
-  #   select(-.id)
-  # 
-  # tst                      %>%
-  # autoplot(tsMat, level = NULL)
-  
 
-  # accuracy(tsMat, fcMat)
+# accuracy(tsMat, fcMat)
 
 ### Data table
 
@@ -495,20 +509,20 @@ dtFct <-
   .[,
     `:=` (
       VERSMON    = VERSMON %m+% months(.id) %>% format("%Y%m"), 
-      MODEL      = .model, #"12-326582724328643-FR40-FR40", # .model
-      MATERIAL   = MATERIAL,
-      CUSTH      = "#", 
-      CL1        = "#",
-      CL2        = "#",
-      CL3        = "#",
+      VTYPE      = .model,
+      FTYPE      = 2,
+      MATERIAL   = pa_matn1_input(MATERIAL),
+      CL3        = "",
+      CL2        = "",
+      CL1        = "",
       PLANT      = PLANT,
       SALESORG   = "FR30",
       CALMONTH   = CALMONTH,
-      DEMQT      = .mean,
-      BSNLN      = 0,
-      PRMQT      = 0,
-      BCMQT      = 0,
-      PCMQT      = 0,
+      DEMND_QTY  = .mean,
+      BSELN_QTY  = 0,
+      PROMO_QTY  = 0,
+      DMDCP_QTY  = 0,
+      PRMCP_QTY  = 0,
       BUOM       = "EA"
     )
   ] %>%
@@ -523,32 +537,32 @@ dtFct <-
   setcolorder(
     c(
       "VERSMON",
-      "MODEL",
+      "VTYPE",
+      "FTYPE",
       "MATERIAL",
-      "CUSTH",
-      "CL1",
-      "CL2",
       "CL3",
+      "CL2",
+      "CL1",
       "PLANT",
       "SALESORG", 
       "CALMONTH",
-      "DEMQT",
-      "BSNLN",
-      "PRMQT",
-      "BCMQT",
-      "PCMQT",
-      "BUOM",
-      "M"
+      "DEMND_QTY",
+      "BSELN_QTY",
+      "PROMO_QTY",
+      "DMDCP_QTY",
+      "PRMCP_QTY",
+      "BUOM"
     )
   ) %T>%
   setorder(VERSMON, PLANT, MATERIAL) 
 
   fwrite(
-    file = "C:\\Users\\flori\\OneDrive\\ET\\pythia\\data\\production\\Platinum\\sales\\OUT_PA_DATA_POSTDR_FORECASTS.CSV",
+    file = "C:\\Users\\flori\\OneDrive\\ET\\pythia\\data\\test\\Platinum\\sales\\OUT_PA_DATA_POSTDR_FORECASTS.CSV",
     x     = dtFct,
     sep   = ";",
     quote = FALSE
   )
+  
   # fOpen_as_xlsx(
   #   fcMat[.model == "Mean", CALMONTH:= format(year_month, "%Y%m")]
   # )
