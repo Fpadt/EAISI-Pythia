@@ -36,6 +36,16 @@ MAN <-  FALSE
 VAR <- 'EPA'
 MAT <- pa_matn1_input('10023')
 # MAT <- pa_matn1_input('433')
+
+pa_ET_COLS <- list(
+  "CG" = "#0f5e3c",
+  "YL" = "#fff200",
+  "WT" = "#FFFFFF",
+  "LG" = "#38e56d",
+  "FG" = "#089b35",
+  "JB" = "#333333",
+  "BL" = "000000"
+)
 ```
 
 # Sales versus Forecast
@@ -46,9 +56,12 @@ MAT <- pa_matn1_input('10023')
 #| label: 'display sales'
 #| eval: True
 
+library(ggrepel)
+
 ACT <- 
-  DYN[MATERIAL == MAT 
-      # & FTYPE  == '1' 
+  DYN[MATERIAL == MAT
+      & STEP == -1
+      & VTYPE == '010' & FTYPE  == '1'   
       & CALMONTH %between% c('202401', '202412') 
       ] 
 
@@ -98,7 +111,6 @@ ggplot(
 
 # ACC_BCK <-  copy(ACC)
 # ACC     <- copy(dtACC7)
-dtACC0 <- dtACC[MODEL == "ETS"]
 dtACC0 <- dtACC[MODEL == "ETS"]
 
 dtACC0 <- 
@@ -196,13 +208,24 @@ fivenum(dtACC0[STEP == 1 & AE < 15000, AE])
 #| label:  'SC-113B for M-1, M-2, M-3'
 #| eval:   true
 
+tst <- DYN[MATERIAL == MAT & 
+             ((VTYPE == '010' & FTYPE == 1 & STEP == -1) | (VTYPE == '060' & FTYPE == 2))]
+
+ACC <- pa_model_accuracy(
+  .tab = tst, 
+  .act_ftype = 1, .fct_ftype = 2
+  )
+
+DT <- ACC[get(VAR) >0,.(STEP, ACC = get(VAR))]
+
 dtFA_melt  <- 
-  copy(ACC[STEP <4])                   %>%
+  copy(ACC[STEP <4 & MATERIAL == MAT])       %>%
   melt.data.table(
     measure.vars  = c("APA", "EPA"),
     variable.name = "PE_TYPE",
     value.name    = "PE"
-    )                                  %T>% 
+    )  %>%
+  .[, STEP:= paste0("M-", STEP)] %T>% 
   setorder(CALMONTH)
 
 ggplot(
@@ -222,21 +245,21 @@ ggplot(
   geom_label(aes(label = round(PE, 1))) +
   scale_color_manual(
     labels = c("M-1", "M-2", "M-3"),
-    values = c(pa_ET_COLS["CG"], pa_ET_COLS["FG"], pa_ET_COLS["LG"])) +
+    values = c(pa_ET_COLS["CG"], pa_ET_COLS["FG"], pa_ET_COLS["LG"])
+    ) +
   labs(
     x     = "Year Month",
     y     = "Accuracy",
     title = glue("SC-113B {pa_matn1_output(`MAT`)} - Forecast Accuracy ({`VAR`}) M-1, M-2, M-3"),
     color = "Forecast Period"
   ) +
-  guides(color = guide_legend(
-    override.aes = 
-      list(
-        fill  = c(pa_pa_ET_COLSS["CG"], pa_ET_FG, pa_ET_COLS["LG"]), 
-        color = c(pa_pa_ET_COLSS["CG"], pa_ET_FG, pa_ET_COLS["LG"])
-      )
-  )
-  ) +
+  # guides(color = guide_legend(
+  #   override.aes = 
+  #     list(
+  #       fill  = c(pa_ET_COLS["CG"], pa_ET_COLS["FG"], pa_ET_COLS["LG"]), 
+  #       color = c(pa_ET_COLS["CG"], pa_ET_COLS["FG"], pa_ET_COLS["LG"])
+  #     )
+  # )) +
   coord_cartesian(ylim = c(0, 100)) +
   theme_minimal()
   
@@ -270,6 +293,10 @@ ggplot(
 library(ggplot2)
 library(ggrepel)
 
+ET_CG <- pa_ET_COLS["CG"]
+ET_FG <- pa_ET_COLS["FG"]
+ET_LG <- pa_ET_COLS["LG"]
+
 ggplot(
   data = dtFA_melt[
     CALMONTH >= '202401' & 
@@ -295,7 +322,7 @@ ggplot(
   ) +
   scale_color_manual(
     labels = c("M-1", "M-2", "M-3"),
-    values = c(pa_pa_ET_COLSS["CG"], pa_ET_FG, pa_ET_COLS["LG"])
+    values = c(ET_CG, ET_FG, ET_LG)
   ) +
   labs(
     x     = "Year Month",
@@ -305,8 +332,8 @@ ggplot(
   ) +
   guides(color = guide_legend(
     override.aes = list(
-      fill  = c(pa_pa_ET_COLSS["CG"], pa_ET_FG, pa_ET_COLS["LG"]), 
-      color = c(pa_pa_ET_COLSS["CG"], pa_ET_FG, pa_ET_COLS["LG"])
+      fill  = c(ET_CG, ET_FG, ET_LG), 
+      color = c(ET_CG, ET_FG, ET_LG)
     )
   )) +
   coord_cartesian(ylim = c(25, 100)) +
