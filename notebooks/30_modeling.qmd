@@ -446,14 +446,15 @@ View(
 #| label: 'cross validation'
 #| eval: true                  
 
+
 train_tr <- 
   tsMat %>%
-  filter(MATERIAL == MATL) %>%
+  # filter(MATERIAL == MATL) %>%  
   filter(
     year_month > yearmonth("202101", "%Y%m"),
     year_month < yearmonth("202412", "%Y%m")
     )                                              %>%
-  stretch_tsibble(.init = 36, .step = 1)
+  stretch_tsibble(.init = 32, .step = 1)
 
 # fOpen_as_xlsx(as.data.table(train_tr))
 
