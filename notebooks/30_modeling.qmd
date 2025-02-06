@@ -457,7 +457,7 @@ train_tr <-
 
 # fOpen_as_xlsx(as.data.table(train_tr))
 
-train_tr %T>% setDT() %>%
+copy(train_tr) %T>% setDT() %>%
   dcast.data.table(
     .id ~ year_month,
     fun.aggregate = sum,
