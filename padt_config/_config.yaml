@@ -243,18 +243,21 @@ datasets:
 
 theme:
   brand_colors:
-    primary: '#0f5e3c'
-    secondary: '#089b35'
-    tertiary: '#38e56d'
-    accent1: '#fff200'
-    accent2: '#ff8f00'
-    accent3: '#ff00ff'
-    neutral1: '#ffffff'
-    neutral2: '#f5f5f5'
-    neutral3: '#333333'
-    neutral4: '#000000'
+    primary:   '#0f5e3c' # Castleton Green
+    secondary: '#089b35' # Forest Green
+    tertiary:  '#38e56d' # Light Green
+    accent1:   '#fff200' # yellow
+    accent2:   '#ff8f00' #
+    accent3:   '#ff00ff' #
+    neutral1:  '#ffffff' # white
+    neutral2:  '#f5f5f5' #
+    neutral3:  '#333333' # Jet Black
+    neutral4:  '#000000' # black
   color_palette:
-  - '#123456'
-  - '#345678'
-  - '#56789A'
-  - '#789ABC'
+  - '#FFFFFF'
+  - '#fff200'
+  - '#38e56d'
+  - '#089b35'
+  - '#0f5e3c'
+  - '#333333'
+  - '#000000'
