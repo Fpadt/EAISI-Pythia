@@ -192,7 +192,6 @@ ggplot(
 fivenum(dtACC0[STEP == 1 & AE < 15000, AE])
 ```
 
-
 ```{r}
 #| label:  'SC-113B for M-1, M-2, M-3'
 #| eval:   true

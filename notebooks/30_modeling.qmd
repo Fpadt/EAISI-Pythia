@@ -569,15 +569,26 @@ dtFct <-
   ) %T>%
   setorder(VERSMON, PLANT, MATERIAL) 
 
+PATH_SLV_SLS <- pa_ds_stageing_path_get(
+  .staging = "silver", 
+  .functional_area = "sales", 
+  "rtp"
+)
+
+
   fwrite(
-    file = "C:\\Users\\flori\\OneDrive\\ET\\pythia\\data\\test\\Platinum\\sales\\OUT_PA_DATA_POSTDR_FORECASTS.CSV",
+    file = "C:\\PW\\OneDrive\\ET\\pythia\\data\\test\\Platinum\\sales\\OUT_PA_DATA_POSTDR_FORECASTS.CSV",
     x     = dtFct,
     sep   = ";",
     quote = FALSE
   )
   
+
+
   # fOpen_as_xlsx(
   #   fcMat[.model == "Mean", CALMONTH:= format(year_month, "%Y%m")]
   # )
   
 ```
+
+[](https://bitest.wessanen.com:8002/sap/bc/ui2/flp?sap-language=EN&sap-client=500#BWProcessChain-change?chainId=LC_TD_SD_DYNA_FRCT)
