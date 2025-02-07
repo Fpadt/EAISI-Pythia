@@ -41,6 +41,8 @@ pimg <- file.path('.', 'fig')
 ## Graph Functions
 
 ```{r}
+#| label: 'Graph functions'
+#| eval:   false
 
 fMP <- function(phl, IPH){
   fST(phl, IPH)
@@ -151,7 +153,7 @@ fBG <- function(phl, IPH){
 
 ```{r}
 #| label: Transform
-#| eval: true
+#| eval: false
 
 dtSLS <- 
   MATL[, .(MATERIAL, MATERIAL_TMD,
@@ -170,7 +172,7 @@ dtSLS <-
 
 ```{r}
 #| label: STL on Infusion tea
-#| eval: true
+#| eval: false
 
 ITEA <- 
   dtSLS[PRDH4 == '00100467' & SALESORG == 'NL10',
@@ -198,7 +200,7 @@ tsTEA <-
 
 ```{r}
 #| label: MAT
-#| eval: true
+#| eval: false
 
 
 MAT <- 
@@ -252,7 +254,7 @@ ggsave(
 
 ```{r}
 #| label: 'Material Salesorg' 
-#| eval:   true
+#| eval:   false
 
 pmat <- '10023'
 porg <- 'FR30'
@@ -376,7 +378,7 @@ tsMat <-
 
 ```{r}
 #| label: 'Scope FR30'
-#| eval: true
+#| eval: false
 
 train <- 
   tsMat %>%
@@ -454,7 +456,7 @@ train_tr <-
     year_month > yearmonth("202101", "%Y%m"),
     year_month < yearmonth("202412", "%Y%m")
     )                                              %>%
-  stretch_tsibble(.init = 32, .step = 1)
+  stretch_tsibble(.init = 36, .step = 1)
 
 # fOpen_as_xlsx(as.data.table(train_tr))
 

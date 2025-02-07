@@ -40,10 +40,36 @@ Promotional Articles can be identifid by MATS-PRAT7. These articles are planned
 via contracts and not forecasted for FR30 and need to be excluded
 
 ```{r}
+SC0 <- 
+  ACC[STEP == -1 & VTYPE == '010' & FTYPE == 1 & SALESORG == SORG,  
+      .(MATERIAL, Q)] 
+
+SC1 <- 
+  copy(SC0)                              %>%
+  .[, (tot = sum(Q)), by = .(MATERIAL)] %T>%
+  fOpen_as_xlsx()
+
+SC2 <- 
+  copy(dtACC2)                              %>%
+  .[, (tot = sum(Q)), by = .(MATERIAL)] %T>%
+  fOpen_as_xlsx()
+
+SC6 <- 
+    copy(dtACC6)                              %>%
+  .[, (tot = sum(Q)), by = .(MATERIAL)] %T>%
+  fOpen_as_xlsx()
+
+SC7 <- 
+    copy(dtACC7)                              %>%
+  .[, (tot = sum(Q)), by = .(MATERIAL)] %T>%
+  fOpen_as_xlsx()
+
+```
+
+
+```{r}
 #| label: 'Exclude Promotions for FR30'
 #| eval:   true
-
-SORG <- 'FR30'
 
 # focus on FR30
 Q0 <- sum(ACC[STEP == -1 & VTYPE == '010' & FTYPE == 1 & SALESORG == SORG,  Q])
@@ -116,7 +142,7 @@ Q2
 ## Base Unit of Measure
 
 ```{r}
-#| label: 'Exclude Articles with a BOM for FR30'
+#| label: 'Only Base Unit EA'
 #| eval:   true
 
 dtACC3 <- 
@@ -277,13 +303,13 @@ Focus on A-Category, accounting for 80% of the sales
 # FTYPE 4 are PostDR actuals Latest Version
 dtHST <- 
   copy(SLS)                                                     %>%
-  .[FTYPE == 4, .(MNTHS = .N), 
+  .[FTYPE == 4 & VTYPE == '010' & SALESORG == SORG, .(MNTHS = .N), 
     by = .(SALESORG, PLANT, MATERIAL)]
 
 # Only articles with 24 or more months of history
 dtACC7 <- 
   copy(dtACC6) %>%
-  dtHST[MNTHS >= 24][
+  dtHST[MNTHS >= 36][
     ., on = .(SALESORG, PLANT, MATERIAL), nomatch = 0]
 
 dtACC_7 <- 
@@ -305,6 +331,7 @@ Q7 <- sum(dtACC_7[STEP == 1,  ACT])
 Q0
 Q7
 100*Q7/Q0
+100*Q6/Q0
 ```
 
 ```{r}

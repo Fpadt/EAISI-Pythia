@@ -306,7 +306,7 @@ ggplot(
   aes(
     x     = CALMONTH, 
     y     = PE, 
-    group = factor(STEP), 
+    group = STEP, 
     color = factor(STEP)
   )
 ) +
