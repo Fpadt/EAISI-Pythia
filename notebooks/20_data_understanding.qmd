@@ -341,7 +341,8 @@ PATH_SLV_SLS <- pa_ds_stageing_path_get(
   "rtp"
 )
 
-PATH_GLD_SLS <- "C:\\PW\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data"
+PATH_GLD_MD <- "C:\\PW\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data"
+PATH_GLD_MD <- "C:\\Users\\flori\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data"
 
 saveRDS(
   file   = file.path(PATH_SLV_SLS, "dtACC7.rds"),
@@ -350,7 +351,7 @@ saveRDS(
 
 fwrite(
   unique(dtACC7[, .(MATERIAL)]),
-  file = file.path(PATH_GLD_SLS, "SCP_182.csv")
+  file = file.path(PATH_GLD_MD, "SCP_171.csv")
 )
 
 ```

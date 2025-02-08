@@ -50,6 +50,7 @@ dtMAT <-
   .[MATERIAL == MATL & SALESORG == SORG] %>%
   .[, y:= Q]
 
+ 
 ```
 
 # Modeling
@@ -166,9 +167,9 @@ tsMat_fct %>%
 #| eval: true                  
 
 tsMat_act <- 
-  tsSLS %>%
-  filter(MATERIAL == MATL)
-
+  tsSLS
+# %>%
+#   filter(MATERIAL == MATL)
 
 train <- 
   tsMat_act %>%
@@ -178,7 +179,7 @@ train_cv <-
   tsMat_act %>%
   filter(
     year(YM) >= 2021,
-    YM       <  yearmonth("202410", format = "%Y%m")
+    YM       <  yearmonth("202412", format = "%Y%m")
     )       %>%
   stretch_tsibble(.init = 34, .step = 1)
 
