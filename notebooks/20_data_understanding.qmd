@@ -40,10 +40,36 @@ Promotional Articles can be identifid by MATS-PRAT7. These articles are planned
 via contracts and not forecasted for FR30 and need to be excluded
 
 ```{r}
+SC0 <- 
+  ACC[STEP == -1 & VTYPE == '010' & FTYPE == 1 & SALESORG == SORG,  
+      .(MATERIAL, Q)] 
+
+SC1 <- 
+  copy(SC0)                              %>%
+  .[, (tot = sum(Q)), by = .(MATERIAL)] %T>%
+  fOpen_as_xlsx()
+
+SC2 <- 
+  copy(dtACC2)                              %>%
+  .[, (tot = sum(Q)), by = .(MATERIAL)] %T>%
+  fOpen_as_xlsx()
+
+SC6 <- 
+    copy(dtACC6)                              %>%
+  .[, (tot = sum(Q)), by = .(MATERIAL)] %T>%
+  fOpen_as_xlsx()
+
+SC7 <- 
+    copy(dtACC7)                              %>%
+  .[, (tot = sum(Q)), by = .(MATERIAL)] %T>%
+  fOpen_as_xlsx()
+
+```
+
+
+```{r}
 #| label: 'Exclude Promotions for FR30'
 #| eval:   true
-
-SORG <- 'FR30'
 
 # focus on FR30
 Q0 <- sum(ACC[STEP == -1 & VTYPE == '010' & FTYPE == 1 & SALESORG == SORG,  Q])
@@ -116,7 +142,7 @@ Q2
 ## Base Unit of Measure
 
 ```{r}
-#| label: 'Exclude Articles with a BOM for FR30'
+#| label: 'Only Base Unit EA'
 #| eval:   true
 
 dtACC3 <- 
@@ -277,13 +303,13 @@ Focus on A-Category, accounting for 80% of the sales
 # FTYPE 4 are PostDR actuals Latest Version
 dtHST <- 
   copy(SLS)                                                     %>%
-  .[FTYPE == 4, .(MNTHS = .N), 
+  .[FTYPE == 4 & VTYPE == '010' & SALESORG == SORG, .(MNTHS = .N), 
     by = .(SALESORG, PLANT, MATERIAL)]
 
 # Only articles with 24 or more months of history
 dtACC7 <- 
   copy(dtACC6) %>%
-  dtHST[MNTHS >= 24][
+  dtHST[MNTHS >= 36][
     ., on = .(SALESORG, PLANT, MATERIAL), nomatch = 0]
 
 dtACC_7 <- 
@@ -305,6 +331,7 @@ Q7 <- sum(dtACC_7[STEP == 1,  ACT])
 Q0
 Q7
 100*Q7/Q0
+100*Q6/Q0
 ```
 
 ```{r}
@@ -329,6 +356,216 @@ fwrite(
 ```
 
 # Analysis
+
+## Graph Functions
+
+```{r}
+#| label: 'Graph functions'
+#| eval:   false
+
+fMP <- function(phl, IPH){
+  fST(phl, IPH)
+  fSL(phl, IPH)
+  fBG(phl, IPH)
+}
+
+fST <- function(phl, IPH){
+  
+  tsSLS <- 
+    IPH[, CALMONTH:= yearmonth(CALMONTH)]                            %>%
+    as_tsibble(, index = "CALMONTH", 
+               key= c("label", "SALESORG")) 
+  
+  tsSLS                                                              %>%
+    features(Q, feat_stl)                                            %>%
+    ggplot(
+      aes(
+        x     = trend_strength, 
+        y     = seasonal_strength_year,
+        label = label,
+        col   = label)
+    ) +
+    geom_point() +
+    geom_text_repel() +
+    facet_wrap(~SALESORG) +
+    theme(legend.position = "none") +
+    scale_x_continuous(limits = c(0, 1.0)) +
+    scale_y_continuous(limits = c(0, 1.0))
+  
+  ggsave(
+    filename = paste(phl, 'season_trend.png', sep = '_'),
+    device   = "png",
+    path     = pimg,
+    width    = 5000,
+    height   = 3000,
+    units    = "px"
+  )
+
+}
+
+fSL <- function(phl, IPH){
+
+  IPH %>%
+    ggplot(
+      aes(
+        x   = CALMONTH, 
+        y   = Q,
+        col = SALESORG)
+    ) +
+    geom_line() +
+    facet_wrap(
+      ~label, 
+      # scales = 'fixed'
+      scales = 'free_y'
+    )
+  
+  ggsave(
+    filename = paste(phl, 'sales.png', sep = '_'),
+    device   = "png",
+    path     = pimg,
+    width    = 5000,
+    height   = 3000,
+    units    = "px"
+  )
+}
+
+fBG <- function(phl, IPH){
+
+  IPH %>%
+    .[, PROMO:= factor(PROMO, levels = c("0", "1"))] %>%
+    ggplot(
+      aes(
+        x     = CALMONTH, 
+        y     = Q,
+        fill  = PROMO
+        # ,
+        # col   = PROMO
+        )
+      ,
+      col  = "white",
+      size = 0.1
+    ) +
+    geom_col() +
+    facet_wrap(
+      # nrow = 1,
+      ~label, 
+      # scales = 'fixed'
+      scales = 'free_y'
+    ) +
+    theme(legend.position = "top") + # Move legend to the top +
+    scale_fill_manual(values  = c("0" = pa_pa_ET_COLSS["CG"], "1" = pa_pa_ET_COLSS["YL"]))   
+  # +
+  #   scale_color_manual(values = c("0" = pa_pa_ET_COLSS["CG"], "1" = pa_pa_ET_COLSS["YL"])) 
+  
+  ggsave(
+    filename = paste(phl, 'bar_sales.png', sep = '_'),
+    device   = "png",
+    path     = pimg,
+    width    = 5000,
+    height   = 3000,
+    units    = "px"
+  )
+}
+```
+
+```{r}
+#| label: Transform
+#| eval: false
+
+dtSLS <- 
+  MATL[, .(MATERIAL, MATERIAL_TMD,
+           PRDH1   , PRDH1_TMD,
+           PRDH2   , PRDH2_TMD,
+           PRDH3   , PRDH3_TMD,
+           PRDH4   , PRDH4_TMD)
+       ]                                                             %>%
+  .[IALL, on = .(MATERIAL)]                                          %>%
+  MATS[, .(MATERIAL = MAT_SALES, SALESORG, PROMO = PRAT7)][          
+    ., on = .(MATERIAL, SALESORG)] 
+
+```
+
+### STL
+
+```{r}
+#| label: STL on Infusion tea
+#| eval: false
+
+ITEA <- 
+  dtSLS[PRDH4 == '00100467' & SALESORG == 'NL10',
+       .(Q = sum(Q)/1000),
+         by = .(label = PRDH4_TMD, CALMONTH)
+  ]
+
+tsTEA <- 
+  ITEA[, year_month:= yearmonth(CALMONTH, '%Y%m')]         %>%
+  as_tsibble(
+    index = "year_month", 
+    key = c("label")
+  )                                                        %>%
+  model(
+    STL(
+      Q ~ trend(window = 7) +
+        season(window = "periodic"),
+      robust = TRUE)
+  )                                                        %>%
+  components()                                             %>%
+  autoplot() +
+  theme(legend.position = "none")
+
+```
+
+```{r}
+#| label: MAT
+#| eval: false
+
+
+MAT <- 
+  dtSLS[PRDH4_TMD %like% "Rice Cakes Plain",
+       .(Q = sum(Q)),
+         by = .(MATERIAL_TMD, SALESORG, CALMONTH)
+  ]
+
+tsSLS <- 
+  MAT[, year_month:= yearmonth(CALMONTH, '%Y%m')]          %>%
+  .[, label:= MATERIAL_TMD ]                               %>%
+  as_tsibble(
+    index = "year_month", 
+    key= c("label", "SALESORG")
+  ) 
+
+gp0M <- 
+  tsSLS                                                    %>%
+  features(Q, feat_stl)                                    %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = label,
+      col   = label
+    )
+  ) +
+  geom_point() +
+  geom_text_repel() +
+  # geom_text(aes(label = PRDH2_TMD),
+  #           vjust = -1, hjust = 0.5,
+  #           size = 12, size.unit = "pt"
+  #           ) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "mat_season_trend.png",
+  device   = "png",
+  path     = pimg,
+  width    = 2500,
+  height   = 1500,  
+  units    = "px"
+)
+
+```
 
 ```{r}
 #| label: '?'

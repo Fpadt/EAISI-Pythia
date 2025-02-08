@@ -34,12 +34,15 @@ PATH_MD <- pa_ds_stageing_path_get(.staging = "silver", .functional_area = "mast
 
 # Scope
 
+0MATERIAL__PRDH1
+Nav: Name of the Brand
+
 | Key | Brand            |
 |:----|:-----------------|
 | 07  | ALTER ECO        |
 | 08  | BJORG            |
 | 10  | CLIPPER (CUPPER) |
-| 15  | ZONNATURA        |
+| 15  | ZONNATURA        | NL
 | 53  | TANOSHI          |
 | 65  | NATURELA         |
 
@@ -123,6 +126,22 @@ MBST <- readRDS(file.path(PATH_MD, "B4_MAST.rds"))
 ### Dynasys
 
 ```{r}
+#| label: 'SLS'
+#| eval:   true
+#| 
+system.time({
+  SLS <-                              # 
+    pa_td_dyn_get(
+      .vtype       = c('010')  , # 010 = Actuals, 060 = Forecast
+      .ftype       = c(4)      , # Last Version 1 = PreDR, 2 = Pos
+      .salesorg    = 'FR30'    ,
+      .scope_matl  = TRUE 
+    ) 
+})
+```
+
+
+```{r}
 #| label: 'Get DYN data'
 #| eval:   true
 
@@ -136,6 +155,7 @@ system.time({
     pa_td_dyn_get(
       .vtype       = c('010')  , # 010 = Actuals, 060 = Forecast
       .ftype       = c(4)      , # Last Version 1 = PreDR, 2 = Pos
+      .salesorg    = 'FR30'    ,
       .scope_matl  = TRUE 
     ) 
 })
@@ -149,7 +169,7 @@ system.time({
       .salesorg    = NULL      , #'Optional user-supplied salesorg
       .scope_matl  = TRUE      , # restrict to Pythia Scope
       .scope_sorg  = TRUE      , # restrict to Pythia Scope
-      .cm_min      = '20201'  , # minimal Cal Month
+      .cm_min      = '202101'  , # minimal Cal Month
       .cm_max      = '202412'  , # maximal Cal Month
       .step_min    = 1         , # minimal forecast step ahead
       .step_max    = 18        , # maximal forecast step ahead
@@ -182,7 +202,7 @@ DYN <-                              #
   pa_td_dyn_get(
     .vtype       = c('010', '060')  , # 010 = Actuals, 060 = Forecast
     .ftype       = c(1, 2)          , # 1 = PreDR, 2 = PostDR 
-    .material    = '10023'          , # Optional user-supplied material
+    .material    = NULL, #'10023'          , # Optional user-supplied material
     .salesorg    = 'FR30'           , # Optional user-supplied salesorg
     .scope_matl  = TRUE             , # restrict to Pythia Scope
     .scope_sorg  = TRUE             , # restrict to Pythia Scope

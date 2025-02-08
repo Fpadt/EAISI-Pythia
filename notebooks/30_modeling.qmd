@@ -24,399 +24,106 @@ editor_options:
 #| label: 'setup'
 #| eval:   true
 
+MATL <- pa_matn1_input('10023')
+SORG <- 'FR30'
+
 # public functions ---------------------------------------------------------
 invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
-
-library(fpp3)
-library(feasts)
-library(tsibble)
-library(ggrepel)
-library("padt")
+source("notebooks/99_initialization.R")
 
 # location for generated figures
 pimg <- file.path('.', 'fig')
 
 ```
 
-## Graph Functions
-
-```{r}
-
-fMP <- function(phl, IPH){
-  fST(phl, IPH)
-  fSL(phl, IPH)
-  fBG(phl, IPH)
-}
-
-fST <- function(phl, IPH){
-  
-  tsSLS <- 
-    IPH[, CALMONTH:= yearmonth(CALMONTH)]                            %>%
-    as_tsibble(, index = "CALMONTH", 
-               key= c("label", "SALESORG")) 
-  
-  tsSLS                                                              %>%
-    features(Q, feat_stl)                                            %>%
-    ggplot(
-      aes(
-        x     = trend_strength, 
-        y     = seasonal_strength_year,
-        label = label,
-        col   = label)
-    ) +
-    geom_point() +
-    geom_text_repel() +
-    facet_wrap(~SALESORG) +
-    theme(legend.position = "none") +
-    scale_x_continuous(limits = c(0, 1.0)) +
-    scale_y_continuous(limits = c(0, 1.0))
-  
-  ggsave(
-    filename = paste(phl, 'season_trend.png', sep = '_'),
-    device   = "png",
-    path     = pimg,
-    width    = 5000,
-    height   = 3000,
-    units    = "px"
-  )
-
-}
-
-fSL <- function(phl, IPH){
-
-  IPH %>%
-    ggplot(
-      aes(
-        x   = CALMONTH, 
-        y   = Q,
-        col = SALESORG)
-    ) +
-    geom_line() +
-    facet_wrap(
-      ~label, 
-      # scales = 'fixed'
-      scales = 'free_y'
-    )
-  
-  ggsave(
-    filename = paste(phl, 'sales.png', sep = '_'),
-    device   = "png",
-    path     = pimg,
-    width    = 5000,
-    height   = 3000,
-    units    = "px"
-  )
-}
-
-fBG <- function(phl, IPH){
-
-  IPH %>%
-    .[, PROMO:= factor(PROMO, levels = c("0", "1"))] %>%
-    ggplot(
-      aes(
-        x     = CALMONTH, 
-        y     = Q,
-        fill  = PROMO
-        # ,
-        # col   = PROMO
-        )
-      ,
-      col  = "white",
-      size = 0.1
-    ) +
-    geom_col() +
-    facet_wrap(
-      # nrow = 1,
-      ~label, 
-      # scales = 'fixed'
-      scales = 'free_y'
-    ) +
-    theme(legend.position = "top") + # Move legend to the top +
-    scale_fill_manual(values  = c("0" = pa_pa_ET_COLSS["CG"], "1" = pa_pa_ET_COLSS["YL"]))   
-  # +
-  #   scale_color_manual(values = c("0" = pa_pa_ET_COLSS["CG"], "1" = pa_pa_ET_COLSS["YL"])) 
-  
-  ggsave(
-    filename = paste(phl, 'bar_sales.png', sep = '_'),
-    device   = "png",
-    path     = pimg,
-    width    = 5000,
-    height   = 3000,
-    units    = "px"
-  )
-}
-```
 
 # Transform
-
-```{r}
-#| label: Transform
-#| eval: true
-
-dtSLS <- 
-  MATL[, .(MATERIAL, MATERIAL_TMD,
-           PRDH1   , PRDH1_TMD,
-           PRDH2   , PRDH2_TMD,
-           PRDH3   , PRDH3_TMD,
-           PRDH4   , PRDH4_TMD)
-       ]                                                             %>%
-  .[IALL, on = .(MATERIAL)]                                          %>%
-  MATS[, .(MATERIAL = MAT_SALES, SALESORG, PROMO = PRAT7)][          
-    ., on = .(MATERIAL, SALESORG)] 
-
-```
-
-### STL
-
-```{r}
-#| label: STL on Infusion tea
-#| eval: true
-
-ITEA <- 
-  dtSLS[PRDH4 == '00100467' & SALESORG == 'NL10',
-       .(Q = sum(Q)/1000),
-         by = .(label = PRDH4_TMD, CALMONTH)
-  ]
-
-tsTEA <- 
-  ITEA[, year_month:= yearmonth(CALMONTH, '%Y%m')]         %>%
-  as_tsibble(
-    index = "year_month", 
-    key = c("label")
-  )                                                        %>%
-  model(
-    STL(
-      Q ~ trend(window = 7) +
-        season(window = "periodic"),
-      robust = TRUE)
-  )                                                        %>%
-  components()                                             %>%
-  autoplot() +
-  theme(legend.position = "none")
-
-```
-
-```{r}
-#| label: MAT
-#| eval: true
-
-
-MAT <- 
-  dtSLS[PRDH4_TMD %like% "Rice Cakes Plain",
-       .(Q = sum(Q)),
-         by = .(MATERIAL_TMD, SALESORG, CALMONTH)
-  ]
-
-tsSLS <- 
-  MAT[, year_month:= yearmonth(CALMONTH, '%Y%m')]          %>%
-  .[, label:= MATERIAL_TMD ]                               %>%
-  as_tsibble(
-    index = "year_month", 
-    key= c("label", "SALESORG")
-  ) 
-
-gp0M <- 
-  tsSLS                                                    %>%
-  features(Q, feat_stl)                                    %>%
-  ggplot(
-    aes(
-      x     = trend_strength, 
-      y     = seasonal_strength_year,
-      label = label,
-      col   = label
-    )
-  ) +
-  geom_point() +
-  geom_text_repel() +
-  # geom_text(aes(label = PRDH2_TMD),
-  #           vjust = -1, hjust = 0.5,
-  #           size = 12, size.unit = "pt"
-  #           ) +
-  facet_wrap(~SALESORG) +
-  theme(legend.position = "none") +
-  scale_x_continuous(limits = c(0, 1.0)) +
-  scale_y_continuous(limits = c(0, 1.0))
-
-ggsave(
-  filename = "mat_season_trend.png",
-  device   = "png",
-  path     = pimg,
-  width    = 2500,
-  height   = 1500,  
-  units    = "px"
-)
-
-```
 
 ## Material/Salesorg Analysis
 
 ```{r}
 #| label: 'Material Salesorg' 
-#| eval:   true
+#| eval:   false
 
-pmat <- '10023'
-porg <- 'FR30'
-
-dtMat <- copy(DYN) %>%
-  .[, y:= Q/1000]
-
-# Calculate the range of your data 
-min_value <- min(dtMat$y) 
-max_value <- max(dtMat$y) 
-padding <- 0.1 * (max_value - min_value) # 10% padding
-
-ggplot(
-  data    = dtMat,
-  mapping = aes(x = CALMONTH, y=y)
-) +
-  geom_col(color = "white", fill = "#0f5e3c") +
-  coord_cartesian(ylim = c(min_value - padding, max_value + padding)) +
-  labs(
-    title    = "Historical Sales ",
-    subtitle = paste(pmat, "for", porg),
-    x        = "Month/Year",
-    y        = "Sales ('000)"
-  )
-
-tsMat <- 
-  dtMat[, month:= yearmonth(CALMONTH, '%Y%m')] %>%
-  as_tsibble(
-    key   = MATERIAL,
-    index = month
-    )                  
-
-tsFT <- 
-  tsMat %>%
-  features(y, feature_set(pkgs = "feasts")) 
-
-tsMat_2023 <- 
-  tsMat                  %>%
-  filter(year(month) < 2024)
-
-tsMat_2024 <- 
-  tsMat                  %>%
-  filter(year(month) == 2024)
-
-tsMat %>%
-  autoplot(.vars = y)
-
-tsMat %>% gg_season(y, period = "year")
-
-tsMat_fit <- 
-  tsMat_2023 %>%
-  model(
-    Mean    = MEAN(y),
-    `Naïve` = NAIVE(y),
-    Drift   = NAIVE(y ~ drift())
-  ) 
-
-# Produce forecasts 
-tsMat_fc <- 
-  tsMat_fit %>%
-  forecast(new_data = tsMat_2024)
-
-# Plot the forecasts
-tsMat_fc |>
-  autoplot(tsMat_2023, level = NULL) +
-  autolayer(tsMat_2024, y, colour = "black") +
-  labs(y = "Sales ('000)",
-       title = "Historical Sales ",
-       subtitle = paste(pmat, "for", porg)
-       ) +
-  guides(colour = guide_legend(title = "Forecast"))
-
-augment(tsMat_fit)
+dtMAT <- 
+  copy(dtSLS)                            %>%
+  .[MATERIAL == MATL & SALESORG == SORG] %>%
+  .[, y:= Q]
 
 ```
 
 # Modeling
 
-## initialization
+## features
 
 ```{r}
-#| label: 'Scope FR30'
+#| label: 'TS Features'
 #| eval: true
-#| 
-MATL <- pa_matn1_input('10023')
-SORG <- 'FR30'
 
-PATH_SLV_SLS <- pa_ds_stageing_path_get(
-  .staging = "silver", 
-  .functional_area = "sales", 
-  "rtp"
-)
-
-dtACC7 <- readRDS(
-  file = file.path(PATH_SLV_SLS,"dtACC7.rds")
-  )
-
-# filter the scope of 182
-# MATERIAL == MAT & 
-dtMat <- 
-  dtACC7[SALESORG == SORG, 
-         .(SALESORG, PLANT, MATERIAL)]                     %>%
-  unique()                                                 %>%
-  .[SLS, on = .(SALESORG, PLANT, MATERIAL), nomatch = 0]   %>%
-  .[SALESORG == SORG & FTYPE == 4]        
-
-tsMat <- 
-  dtMat %>%
-  .[, .(MATERIAL, PLANT,  CALMONTH, ACT = Q)]              %>%
-  .[, year_month:= yearmonth(CALMONTH, format = "%Y%m")]   %>% 
-  .[, CALMONTH:= NULL]                                     %>%  
-  as_tsibble(
-    key   = c(MATERIAL, PLANT), 
-    index = year_month
-  ) 
-
+tsFT <- 
+  tsMat %>%
+  features(y, feature_set(pkgs = "feasts"))
 
 ```
 
 ## Forecast Materials/Plant
 
 ```{r}
-#| label: 'Scope FR30'
-#| eval: true
+#| label: 'FR30/10023'
+#| eval: false
+
+tsMat_act <- 
+  tsSLS %>%
+  filter(MATERIAL == MATL)
 
 train <- 
-  tsMat %>%
-  filter(
-    year_month < yearmonth("202401", "%Y%m")
-    ) 
+  tsMat_act %>%
+  filter(year(YM) <= 2023) 
 
-# system.time({
-#   fit <- 
-#     train %>% 
-#     model(
-#       `Mean`           = MEAN(ACT)          ,
-#       `Naïve`          = NAIVE(ACT)         ,
-#       `Seasonal naïve` = SNAIVE(ACT)        ,
-#       `RW`             = RW(ACT ~ drift())  ,
-#       `ETS`            = ETS(ACT)           ,
-#       `Trend Model`    = TSLM(ACT ~ trend())
-#     )
-# })
+test <- 
+  tsMat_act  %>%
+  filter(year(YM) == 2024)
 
-# gg_tsresiduals() must be used with a mable containing only one model
-# fit %>% gg_tsresiduals()
+# plot
+tsMat_act %>%
+  autoplot(.vars = ACT)
 
-fcMat <- 
-  fit                      %>%
-  forecast(h = "12 months") 
+tsMat_act %>% 
+  gg_season(ACT, period = "year")
 
-fcMat                      %>%
-  autoplot(tsMat, level = NULL)
+# Fit model
+tsMat_fit <- 
+  train %>%
+  model(
+    Mean    = MEAN(ACT),
+    `Naïve` = NAIVE(ACT),
+    Drift   = NAIVE(ACT ~ drift())
+  ) 
 
-dtAC <- accuracy(fcMat, tsMat) %T>% setDT()  
+View(augment(tsMat_fit))
+
+# Produce forecasts 
+tsMat_fct <- 
+  tsMat_fit                  %>%
+  forecast(h = "12 months")  
+  # %>% 
+  # forecast(new_data = test)
+
+tsMat_fct                    %>%
+  autoplot(tsMat_act, level = NULL)
+
+dtAC <- 
+  accuracy(tsMat_fct, tsMat_act) %T>% 
+  setDT()  
 
 dtF <-
-  fcMat %T>%
-  setDT() %>%
+  tsMat_fct %T>%
+  setDT()   %>%
   .[, .(MATERIAL, PLANT, VTYPE = '060', FTYPE = 2,
         SALESORG = 'FR30',
-        CALMONTH = format(year_month, "%Y%m"),
+        CALMONTH = format(YM, "%Y%m"),
         VERSMON  = "202312",
-        MODEL = .model, Q = .mean)] %>%
+        MODEL    = .model, Q = .mean)] %>%
   .[, STEP:= ((ymd(paste0(VERSMON, "01")) %--% ymd(paste0(CALMONTH, "01"))) 
     / months(1)) %>% as.integer()]
   
@@ -439,31 +146,58 @@ View(
   ), 
   by = .(MATERIAL, PLANT, MODEL)])
 
+# Plot the forecasts
+tsMat_fct %>%
+  autoplot( train, level = NULL) +
+  autolayer(test, ACT, colour = pa_brand_color_get(7)) +
+  labs(
+    y        = "Sales ('000)",
+    title    = "Historical Sales ",
+    subtitle = paste(
+      pa_matn1_output(MATL), "for", SORG)
+  ) +
+  guides(colour = guide_legend(title = "Forecast"))
 ```
 
 ## Cross Validation
+
 ```{r}
 #| label: 'cross validation'
 #| eval: true                  
 
+tsMat_act <- 
+  tsSLS %>%
+  filter(MATERIAL == MATL)
 
-train_tr <- 
-  tsMat %>%
-  # filter(MATERIAL == MATL) %>%  
+
+train <- 
+  tsMat_act %>%
+  filter(year(YM) <= 2023) 
+
+train_cv <- 
+  tsMat_act %>%
   filter(
-    year_month > yearmonth("202101", "%Y%m"),
-    year_month < yearmonth("202412", "%Y%m")
-    )                                              %>%
-  stretch_tsibble(.init = 32, .step = 1)
+    year(YM) >= 2021,
+    YM       <  yearmonth("202412", format = "%Y%m")
+    )       %>%
+  stretch_tsibble(.init = 36, .step = 1)
 
 # fOpen_as_xlsx(as.data.table(train_tr))
 
-copy(train_tr) %T>% setDT() %>%
+
+copy(train_cv)        %T>% 
+  setDT()             %>%
+  .[MATERIAL == MATL] %>%
   dcast.data.table(
-    .id ~ year_month,
+    .id ~ YM,
     fun.aggregate = sum,
     value.var = "ACT") %T>%
   View()
+
+dtVERSMON_ID <- 
+  copy(train_cv)        %T>% 
+  setDT()                %>% 
+  .[, .(VERSMON = max(YM) %>% format("%Y%m")), by = .(.id)]
 
 # system.time({
 #   fcMat <- 
@@ -481,8 +215,8 @@ copy(train_tr) %T>% setDT() %>%
 # })
 
 system.time({
-  fcMod <- 
-    train_tr                                       %>%
+  tsMat_fit <- 
+    train_cv                                       %>%
     model(
         `100`             = MEAN(ACT)          
       , `110`             = NAIVE(ACT)         
@@ -494,9 +228,9 @@ system.time({
     )    
 })
 
-fcMat <- 
-  fcMod %>%
-    forecast(h = 3)
+tsMat_fct <- 
+  tsMat_fit %>%
+  forecast(h = 12)
 
 # accuracy(tsMat, fcMat)
 
@@ -504,25 +238,15 @@ fcMat <-
 
 VERSMON <- ymd("2022-12-01")
 
-months_diff <- 
-  function(m1, m2) {
-    
-    d1 <- ymd(paste0(m1, "01"))
-    d2 <- ymd(paste0(m2, "01"))
-    
-    M <- lubridate::interval(d2, d1) / months(1) 
-    
-    return(as.integer(M))
-  }
-
-dtFct <- 
-  fcMat   %T>% 
-  setDT()  %>%
-  .[, CALMONTH:= format(year_month, "%Y%m")] %>%
+dtMat_fct <- 
+  tsMat_fct                                  %T>% 
+  setDT()                                     %>%
+  .[, CALMONTH:= format(YM, "%Y%m")]          %>%
   .[CALMONTH %between% c('202401', '202412')] %>%
+  dtVERSMON_ID[., on = .(.id)]                %>%
   .[,
     `:=` (
-      VERSMON    = VERSMON %m+% months(.id) %>% format("%Y%m"), 
+      VERSMON    = VERSMON, 
       VTYPE      = .model,
       FTYPE      = 2,
       MATERIAL   = pa_matn1_input(MATERIAL),
@@ -530,7 +254,7 @@ dtFct <-
       CL2        = "",
       CL1        = "",
       PLANT      = PLANT,
-      SALESORG   = "FR30",
+      SALESORG   = SORG,
       CALMONTH   = CALMONTH,
       DEMND_QTY  = .mean,
       BSELN_QTY  = 0,
@@ -541,10 +265,10 @@ dtFct <-
     )
   ] %>%
   .[, `:=` (
-      M          = months_diff(VERSMON, CALMONTH),
+      STEP       = months_diff(VERSMON, CALMONTH),
       .id        = NULL,
       .model     = NULL,
-      year_month = NULL,
+      YM         = NULL,
       ACT        = NULL,
       .mean      = NULL
     )] %T>%
@@ -578,18 +302,61 @@ PATH_SLV_SLS <- pa_ds_stageing_path_get(
 
 
   fwrite(
-    file = "C:\\PW\\OneDrive\\ET\\pythia\\data\\test\\Platinum\\sales\\OUT_PA_DATA_POSTDR_FORECASTS.CSV",
-    x     = dtFct,
+    file = "C:\\Users\\flori\\OneDrive\\ET\\pythia\\data\\test\\Platinum\\sales\\OUT_PA_DATA_POSTDR_FORECASTS.CSV",
+    x     = dtMat_fct,
     sep   = ";",
     quote = FALSE
   )
   
-
+# dtREP <- 
+# +     copy(dtMod) %T>%
+# +     setDT()    %T>%
+# +     setnames(
+# +       c('100', '110', '120', '130', '140','150'),
+# +       c('mn' , 'A'  , 'B'  , 'C'  , 'ETS', 'TM')
+# +       )
 
   # fOpen_as_xlsx(
   #   fcMat[.model == "Mean", CALMONTH:= format(year_month, "%Y%m")]
   # )
   
+# Extract the ETS components into new columns
+# dtREP[, error_type  := sapply(ETS, function(mod) mod$fit$spec$errortype)]
+# dtREP[, trend_type  := sapply(ETS, function(mod) mod$fit$spec$trendtype)]
+# dtREP[, season_type := sapply(ETS, function(mod) mod$fit$spec$seasontype)]  
+# dtREP[, damped      := sapply(ETS, function(mod) mod$fit$spec$damped)]
+
+```
+
+```{r}
+dtMat <- 
+  copy(dtSLS)                            %>%
+  .[MATERIAL == MATL & SALESORG == SORG] %>%
+  .[, MODEL:= NA_character_]
+
+dtAcc <- 
+  copy(dtMat_fct) %>%
+  .[, .(
+    SALESORG,
+    PLANT,
+    MATERIAL,
+    STEP,
+    CALMONTH,
+    VERSMON,
+    FTYPE,     
+    VTYPE = '060',
+    MODEL = VTYPE,
+    Q = DEMND_QTY 
+  ) 
+    ] %>%
+    rbind(dtMat, use.names = TRUE) %>%
+  pa_model_accuracy(.act_ftype = 4, .fct_ftype = 2) %>%
+  .[CALMONTH %between% c("202401", "202412")]
+
+ View(
+   dtAcc[, mean(EPA, na.rm = TRUE), by = .(STEP, MODEL)] %>%    
+   dcast.data.table(MODEL ~ STEP)
+ )
 ```
 
 [](https://bitest.wessanen.com:8002/sap/bc/ui2/flp?sap-language=EN&sap-client=500#BWProcessChain-change?chainId=LC_TD_SD_DYNA_FRCT)

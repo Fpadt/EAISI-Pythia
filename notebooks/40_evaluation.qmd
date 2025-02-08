@@ -300,3 +300,57 @@ ggplot(
   theme_minimal()
 ```
 
+<<<<<<< HEAD
+=======
+```{r}
+library(ggplot2)
+library(ggrepel)
+
+ET_CG <- pa_ET_COLS["CG"]
+ET_FG <- pa_ET_COLS["FG"]
+ET_LG <- pa_ET_COLS["LG"]
+
+ggplot(
+  data = dtFA_melt[
+    CALMONTH >= '202401' & 
+      MATERIAL == MAT &  
+      PE_TYPE == VAR
+  ], 
+  aes(
+    x     = CALMONTH, 
+    y     = PE, 
+    group = STEP, 
+    color = factor(STEP)
+  )
+) +
+  geom_line(linewidth = 2) +
+  geom_point() +
+  # Instead of geom_label(), use geom_label_repel()
+  geom_label_repel(aes(label = round(PE, 1)),
+                   # optional parameters to tweak repel behavior
+                   force         = 2,
+                   max.overlaps  = Inf,
+                   box.padding   = 0.3,
+                   point.padding = 0.3
+  ) +
+  scale_color_manual(
+    labels = c("M-1", "M-2", "M-3"),
+    values = c(ET_CG, ET_FG, ET_LG)
+  ) +
+  labs(
+    x     = "Year Month",
+    y     = "Accuracy Academic",
+    title = glue("SC-113B {pa_matn1_output(`MAT`)} - Forecast Accuracy ({`VAR`}) M-1, M-2, M-3"),
+    color = "Forecast Period"
+  ) +
+  guides(color = guide_legend(
+    override.aes = list(
+      fill  = c(ET_CG, ET_FG, ET_LG), 
+      color = c(ET_CG, ET_FG, ET_LG)
+    )
+  )) +
+  coord_cartesian(ylim = c(25, 100)) +
+  theme_minimal()
+
+```
+>>>>>>> bc06e7b638782b253f1281fcf317fe8e5dfd0790
