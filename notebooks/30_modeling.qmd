@@ -178,16 +178,16 @@ train_cv <-
   tsMat_act %>%
   filter(
     year(YM) >= 2021,
-    YM       <  yearmonth("202412", format = "%Y%m")
+    YM       <  yearmonth("202410", format = "%Y%m")
     )       %>%
-  stretch_tsibble(.init = 36, .step = 1)
+  stretch_tsibble(.init = 34, .step = 1)
 
 # fOpen_as_xlsx(as.data.table(train_tr))
 
 
-copy(train_cv)        %T>% 
-  setDT()             %>%
-  .[MATERIAL == MATL] %>%
+copy(train_cv)         %T>% 
+  setDT()              %>%
+  .[MATERIAL == MATL]  %>%
   dcast.data.table(
     .id ~ YM,
     fun.aggregate = sum,
@@ -370,5 +370,16 @@ httr::BROWSE("bwmt://WTB/sap/bw/modeling/dtpa/dtp_006eipubipunxghr7sqyu6zwv/m")
 httr::BROWSE(paste0(WTB_CHAIN, "PA_POC"))
 httr::BROWSE(paste0(WTB_CHAIN, "LC_TD_SD_DYNA_FRCT"))
 
+```
+
+```{r}
+WTB_ADSO <- "https://bitest.wessanen.com:8002/sap/bc/ui2/flp?sap-language=EN&sap-client=500#BWDatastore-manage?adsoName="
+
+
+
+httr::BROWSE(paste0(WTB_ADSO, "P_FRFPA"))
+httr::BROWSE(paste0(WTB_ADSO, "SDSFRPR4"))
+httr::BROWSE(paste0(WTB_ADSO, "SDMFRPR4"))
+httr::BROWSE(paste0(WTB_ADSO, "SDMFRCAC"))
 ```
 
