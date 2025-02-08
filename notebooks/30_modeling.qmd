@@ -354,7 +354,7 @@ dtAcc <-
   .[CALMONTH %between% c("202401", "202412")]
 
  View(
-   dtAcc[, mean(EPA, na.rm = TRUE), by = .(STEP, MODEL)] %>%    
+   dtAcc[, .(EPA = mean(EPA, na.rm = TRUE)), by = .(STEP, MODEL)] %>%    
    dcast.data.table(MODEL ~ STEP)
  )
 ```
