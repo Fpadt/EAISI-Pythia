@@ -359,4 +359,16 @@ dtAcc <-
  )
 ```
 
-[](https://bitest.wessanen.com:8002/sap/bc/ui2/flp?sap-language=EN&sap-client=500#BWProcessChain-change?chainId=LC_TD_SD_DYNA_FRCT)
+```{r}
+
+WTB_CHAIN <- "https://bitest.wessanen.com:8002/sap/bc/ui2/flp?sap-language=EN&sap-client=500#BWProcessChain-change?chainId="
+
+
+
+httr::BROWSE(paste0(WTB_CHAIN, "LC_TD_SD_DYNA_FRCT"))
+httr::BROWSE("bwmt://WTB/sap/bw/modeling/dtpa/dtp_006eipubipunxghr7sqyu6zwv/m")
+httr::BROWSE(paste0(WTB_CHAIN, "PA_POC"))
+httr::BROWSE(paste0(WTB_CHAIN, "LC_TD_SD_DYNA_FRCT"))
+
+```
+
