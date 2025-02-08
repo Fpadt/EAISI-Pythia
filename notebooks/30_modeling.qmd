@@ -237,7 +237,7 @@ tsMat_fct <-
 
 ### Data table
 
-VERSMON <- ymd("2022-12-01")
+# VERSMON <- ymd("2022-12-01")
 
 dtMat_fct <- 
   tsMat_fct                                  %T>% 
