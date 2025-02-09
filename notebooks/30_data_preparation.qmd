@@ -1,0 +1,431 @@
+---
+title   : EAISI - Pythia
+subtitle: Data Preparation
+author  : "F.J. Padt"
+date    : "`r format(Sys.time(), '%B %d, %Y')`"
+output  :
+  pdf_document:
+    df_print: paged
+    toc: yes
+    toc_depth: 1      
+editor_options:
+  chunk_output_type: console
+  markdown: 
+    wrap: 80  
+---
+
+\newpage
+
+![](../images/logo.png)
+
+# Setup
+
+```{r}
+#| label: setup
+#| eval:   true
+
+# public functions ---------------------------------------------------------
+invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
+source("notebooks/99_initialization.R")
+
+library("padt")
+
+SORG <- 'FR30'
+```
+
+# Scope 2024
+
+```{r}
+  # Articles sold in 2024
+SC0 <- copy(SLS) %>% 
+  .[CALMONTH %between% c('202401', '202412'), ] 
+
+SC_0 <- 
+  copy(SC0)      %>%
+  .[, .(Q = sum(Q)), 
+    by = .(SALESORG, PLANT, MATERIAL)]  
+# %T>%
+#   fOpen_as_xlsx()
+
+sum(SC0$Q)
+```
+
+
+## Cleansing
+
+1. get data set with all sales 2024
+2. FR30
+3. 
+
+## Promotional Articles
+
+Promotional Articles can be identifid by MATS-PRAT7. These articles are planned
+via contracts and not forecasted for FR30 and need to be excluded
+
+```{r}
+
+SC1 <- 
+  copy(SC0)                           %>%
+  MATS[PRAT7 != 1, .(SALESORG, MATERIAL)][
+    ., on = .(SALESORG, MATERIAL), nomatch = 0
+  ]   
+  
+SC_1 <-   
+  copy(SC1) %>%
+  .[, (tot = sum(Q)), 
+    by = .(SALESORG, PLANT, MATERIAL)]  
+
+sum(SC1$Q)
+100*sum(SC1$Q)/sum(SC0$Q)
+```
+
+
+```{r}
+#| label: 'Exclude Promotions for FR30'
+#| eval:   true
+
+# focus on FR30
+Q0 <- sum(SC1[,  Q])
+# Q0 <- sum(SLS[VTYPE == '010' & FTYPE == 4 & SALESORG == SORG,  Q])
+
+# Exclude Promotions 
+dtACC1 <- 
+  copy(ACC)                                                          %>%
+  .[(VTYPE == '010' & FTYPE == 1) | (VTYPE == '060' & FTYPE == 2)]   %>%
+  MATS[PRAT7 != 1 & SALESORG == SORG][
+    ., on = .(SALESORG, MATERIAL), nomatch = 0
+  ] 
+
+dtACC_1 <- 
+  copy(dtACC1)                                                       %>%
+  pa_model_accuracy(
+    .act_ftype = 1, .fct_ftype = 2
+  )                                                                  %>%
+  .[CALMONTH >= '202401']
+
+dtACC_1[!is.na(STEP), .(
+  EPA  = mean(EPA, na.rm = TRUE),
+  APA  = mean(APA, na.rm = TRUE),
+  MAE  = mean(AE , na.rm = TRUE),
+  RMSE = mean(E2 , na.rm = TRUE) %>% sqrt()   
+), 
+by = .(STEP)]
+
+Q1 <- sum(dtACC_1[STEP == 1,  ACT])
+Q0
+Q1
+100*Q1/Q0
+```
+
+## BOM
+
+Exclude Articles with a BOM. These are displays and packs and have a differnt
+quantity. Should be exploded first
+
+```{r}
+SC2 <- 
+  copy(SC1)                           %>%
+  MBTS[SALESORG == SORG, 
+       .(SALESORG, MATERIAL = MAT_SALES)][
+    ., on = .(SALESORG, MATERIAL), nomatch = 0]  
+  
+SC_2 <-   
+  copy(SC2) %>%
+  .[, (tot = sum(Q)), 
+    by = .(SALESORG, PLANT, MATERIAL)]  
+
+sum(SC2$Q)
+100*sum(SC2$Q)/sum(SC1$Q)
+100*sum(SC2$Q)/sum(SC0$Q)
+```
+
+
+```{r}
+#| label: 'Exclude Articles with a BOM for FR30'
+#| eval:   true
+
+dtACC2 <- 
+  copy(dtACC1)                                                       %>%
+  MBTS[SALESORG == SORG, .(SALESORG, MATERIAL = MAT_SALES)][
+    ., on = .(SALESORG, MATERIAL), nomatch = 0]
+
+dtACC_2 <- 
+  dtACC2                                                             %>%
+  pa_model_accuracy(
+  .act_ftype = 1, .fct_ftype = 2
+  )                                                                  %>%
+  .[CALMONTH >= '202401']
+
+dtACC_2[!is.na(STEP), .(
+  EPA  = mean(EPA, na.rm = TRUE),
+  APA  = mean(APA, na.rm = TRUE),
+  MAE  = mean(AE , na.rm = TRUE),
+  RMSE = mean(E2 , na.rm = TRUE) %>% sqrt()   
+), 
+by = .(STEP)]
+
+Q2 <- sum(dtACC_2[STEP == 1,  ACT])
+Q0
+Q2
+100*Q2/Q0
+```
+
+## Base Unit of Measure
+
+```{r}
+SC3 <- 
+  copy(SC2)                           %>%
+  MATL[BASE_UOM == 'EA', .(MATERIAL)][
+    ., on = .(MATERIAL), nomatch = 0]
+
+SC_3 <-   
+  copy(SC3) %>%
+  .[, (tot = sum(Q)), 
+    by = .(SALESORG, PLANT, MATERIAL)]  
+
+sum(SC3$Q)
+100*sum(SC3$Q)/sum(SC2$Q)
+100*sum(SC3$Q)/sum(SC1$Q)
+100*sum(SC3$Q)/sum(SC0$Q)
+```
+
+```{r}
+#| label: 'Only Base Unit EA'
+#| eval:   true
+
+dtACC3 <- 
+  copy(dtACC2)                                                       %>%
+  MATL[, .(MATERIAL, BASE_UOM, BU2_EA)][
+    ., on = .(MATERIAL), nomatch = 0]
+
+
+dtBUOM <- 
+  dtACC3[, .(
+  unCnt = uniqueN(MATERIAL),  
+  Count = .N, 
+  Sales = sum(Q), 
+  mConv = mean(BU2_EA),
+  SlsEA = ifelse(mean(BU2_EA) > 0, sum(Q) / mean(BU2_EA), 0)
+  ), 
+  by = .(BASE_UOM)]                                                  %>%
+  .[, Prec:= (100*SlsEA/sum(SlsEA)) %>% round(1)]                   %T>%
+  setorder(-SlsEA) 
+
+dtBUOM[]
+
+dtACC4 <- 
+  copy(dtACC3[BASE_UOM == 'EA'])                                     %>%
+  .[, ( fTA(.)[UCOUNT == 1, FLDNM]):= NULL]                          %>%
+  .[, SALESORG:= SORG]
+
+dtACC_4 <- 
+  copy(dtACC4)                                                       %>%
+  pa_model_accuracy(
+  .act_ftype = 1, .fct_ftype = 2
+  )                                                                  %>%
+  .[CALMONTH >= '202401']
+
+dtACC_4[!is.na(STEP), .(
+  EPA  = mean(EPA, na.rm = TRUE),
+  APA  = mean(APA, na.rm = TRUE),
+  MAE  = mean(AE , na.rm = TRUE),
+  RMSE = mean(E2 , na.rm = TRUE) %>% sqrt()   
+), 
+by = .(STEP)]
+
+Q4 <- sum(dtACC_4[STEP == 1,  ACT])
+Q0
+Q4
+100*Q4/Q0
+```
+
+Decided to focus on EA
+
+## ABC - Classification
+
+```{r}
+#| label: 'ABC Classification - function'
+#| eval:   true
+#| 
+abc_classify <- function(
+    dt, 
+    colKey           = "MATERIAL", 
+    colValue         = "Q"       ,
+    threshold_A      = 0.80      , 
+    threshold_B      = 0.15
+) {
+
+  # Basic checks
+  stopifnot(inherits(dt, "data.table"))
+  stopifnot(colKey %in% names(dt))
+  stopifnot(colValue %in% names(dt))
+  stopifnot(is.numeric(dt[[colValue]]))
+  stopifnot(threshold_A + threshold_B <= 1)
+
+  # Copy the input to avoid modifying original
+  dt_copy <- copy(dt)
+
+  # Order by Q descending
+  setorderv(dt_copy, colValue, -1)
+
+  # Compute cumulative sum and fraction of total
+  total_Q <- dt_copy[, sum(get(colValue))]
+  dt_copy[, cumQ := cumsum(get(colValue))]
+  dt_copy[, fracQ := cumQ / total_Q]
+
+  # Apply ABC classification
+  dt_copy[
+    fracQ <= threshold_A,
+    ABC := "A"
+  ][
+    fracQ > threshold_A & fracQ <= threshold_A + threshold_B,
+    ABC := "B"
+  ][
+    fracQ > threshold_A + threshold_B,
+    ABC := "C"
+  ]
+
+  # Restore original order if needed (optional step)
+  dt_copy[, order_id := .I]
+  setorder(dt_copy, order_id)
+  dt_copy[, order_id := NULL]
+  
+  # Return the modified table
+  return(dt_copy)
+}
+```
+
+```{r}
+
+SC4 <- 
+  copy(SC3)                           %>%
+  abc_classify(
+    colKey = "MATERIAL", 
+    colValue = "Q" 
+  )    %>%
+  .[ABC == 'A'] %>%
+  .[, `:=` (cumQ = NULL, fracQ = NULL, ABC = NULL)]
+
+SC_4 <-   
+  copy(SC4) %>%
+  .[, .(Q = sum(Q)), 
+    by = .(SALESORG, PLANT, MATERIAL)]  
+
+sum(SC4$Q)
+100*sum(SC4$Q)/sum(SC3$Q)
+100*sum(SC4$Q)/sum(SC2$Q)
+100*sum(SC4$Q)/sum(SC1$Q)
+100*sum(SC4$Q)/sum(SC0$Q)
+```
+
+
+```{r}
+#| label: 'ABC Classification'
+#| eval:   true
+
+# Add ABC- Classification
+dtACC5 <- 
+  copy(dtACC4)                                                  %>%
+  .[VTYPE == '010']                                             %>%
+  abc_classify(
+    colKey = "MATERIAL", 
+    colValue = "Q" 
+  )
+
+
+
+# only A-Class Articles
+dtACC6 <- 
+  copy(dtACC5[ABC == 'A', .(MATERIAL, PLANT, SALESORG)])       %>%
+  unique()                                                     %>%
+  .[dtACC4, on = .(MATERIAL, PLANT, SALESORG), nomatch = 0]
+
+
+dtACC_6 <- 
+  copy(dtACC6)                                                 %>%
+  pa_model_accuracy(
+    .act_ftype = 1, .fct_ftype = 2
+  )                                                            %>%
+  .[CALMONTH >= '202401']
+
+dtACC_6[!is.na(STEP), .(
+  EPA  = mean(EPA, na.rm = TRUE),
+  APA  = mean(APA, na.rm = TRUE),
+  MAE  = mean(AE , na.rm = TRUE),
+  RMSE = mean(E2 , na.rm = TRUE) %>% sqrt()   
+), 
+by = .(STEP)]
+
+Q6 <- sum(dtACC_6[STEP == 1,  ACT])
+Q0
+Q6
+100*Q6/Q0
+```
+
+Focus on A-Category, accounting for 80% of the sales
+
+## Sales History \> 2 Years
+
+```{r}
+
+# FTYPE 4 are PostDR actuals Latest Version
+dtHST <- 
+  copy(SLS)                                                     %>%
+  .[FTYPE == 4 & VTYPE == '010' & SALESORG == SORG, .(MNTHS = .N), 
+    by = .(SALESORG, PLANT, MATERIAL)]
+
+# Only articles with 24 or more months of history
+dtACC7 <- 
+  copy(dtACC6) %>%
+  dtHST[MNTHS >= 36][
+    ., on = .(SALESORG, PLANT, MATERIAL), nomatch = 0]
+
+dtACC_7 <- 
+  copy(dtACC7)                                                       %>%
+  pa_model_accuracy(
+  .act_ftype = 1, .fct_ftype = 2
+  )                                                                  %>%
+  .[CALMONTH >= '202401']
+
+dtACC_7[!is.na(STEP) & APA > -100, .(
+  EPA  = mean(EPA, na.rm = TRUE),
+  APA  = mean(APA, na.rm = TRUE),
+  MAE  = mean(AE , na.rm = TRUE),
+  RMSE = mean(E2 , na.rm = TRUE) %>% sqrt()   
+  ), 
+  by = .(STEP)]
+
+Q7 <- sum(dtACC_7[STEP == 1,  ACT])
+Q0
+Q7
+100*Q7/Q0
+100*Q6/Q0
+```
+
+```{r}
+PATH_SLV_SLS <- pa_ds_stageing_path_get(
+  .staging = "silver", 
+  .functional_area = "sales", 
+  "rtp"
+)
+
+PATH_GLD_MD <- "C:\\PW\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data"
+PATH_GLD_MD <- "C:\\Users\\flori\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data"
+
+# saveRDS(
+#   file   = file.path(PATH_SLV_SLS, "dtACC7.rds"),
+#   object = dtACC7
+# )
+
+fwrite(
+  unique(SC_4),
+  file = file.path(PATH_GLD_MD, "SCOPE_FR30.csv")
+)
+
+fwrite(
+  unique(SC_4[, .(MATERIAL)]),
+  file = file.path(PATH_GLD_MD, "SCOPE_BW.csv")
+)
+
+```
+

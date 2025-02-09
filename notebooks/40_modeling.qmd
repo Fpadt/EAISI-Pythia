@@ -166,12 +166,11 @@ tsMat_fct %>%
 #| label: 'cross validation'
 #| eval: true                  
 # 
-MATL <- "000000000000010023"
+MATL <- "000000000003032368"
 
 tsMat_act <- 
-  tsSLS 
-# %>%
-#   filter(MATERIAL == MATL)
+  tsSLS %>%
+  filter(MATERIAL == MATL)
 
 train <- 
   tsMat_act %>%
@@ -186,18 +185,15 @@ train_cv <-
   stretch_tsibble(.init = 34, .step = 1)
 
 # fOpen_as_xlsx(as.data.table(train_tr))
-myF <- 
-  function(x){
-    sum(x, na.rm = TRUE)
-  }
+
 
 copy(train_cv)         %T>% 
   setDT()              %>%
   # .[MATERIAL == MATL]  %>%
   dcast.data.table(
     .id ~ YM,
-    fun.aggregate = myF,
-    value.var = "Q") %T>%
+    fun.aggregate = sum,
+    value.var = "ACT") %T>%
   View()
 
 dtVERSMON_ID <- 
@@ -249,7 +245,7 @@ dtMat_fct <-
   setDT()                                     %>%
   .[, CALMONTH:= format(YM, "%Y%m")]          %>%
   .[CALMONTH %between% c('202401', '202412')] %>%
-  dtVERSMON_ID[., on = .(.id, MATERIAL)]      %>%
+  dtVERSMON_ID[., on = .(.id)]                %>%
   .[,
     `:=` (
       VERSMON    = VERSMON, 
