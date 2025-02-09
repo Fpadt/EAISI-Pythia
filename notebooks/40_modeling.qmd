@@ -166,11 +166,12 @@ tsMat_fct %>%
 #| label: 'cross validation'
 #| eval: true                  
 # 
-MATL <- "000000000003032368"
+MATL <- "000000000000010023"
 
 tsMat_act <- 
-  tsSLS %>%
-  filter(MATERIAL == MATL)
+  tsSLS 
+# %>%
+#   filter(MATERIAL == MATL)
 
 train <- 
   tsMat_act %>%
@@ -185,15 +186,18 @@ train_cv <-
   stretch_tsibble(.init = 34, .step = 1)
 
 # fOpen_as_xlsx(as.data.table(train_tr))
-
+myF <- 
+  function(x){
+    sum(x, na.rm = TRUE)
+  }
 
 copy(train_cv)         %T>% 
   setDT()              %>%
   # .[MATERIAL == MATL]  %>%
   dcast.data.table(
     .id ~ YM,
-    fun.aggregate = sum,
-    value.var = "ACT") %T>%
+    fun.aggregate = myF,
+    value.var = "Q") %T>%
   View()
 
 dtVERSMON_ID <- 
@@ -220,12 +224,12 @@ system.time({
   tsMat_fit <- 
     train_cv                                       %>%
     model(
-        `100`             = MEAN(ACT)          
-      , `110`             = NAIVE(ACT)         
-      , `120`             = SNAIVE(ACT)
-      , `130`             = RW(ACT ~ drift())
-      , `140`             = ETS(ACT)           
-      , `150`             = TSLM(ACT ~ trend())
+        `100`             = MEAN(Q)          
+      , `110`             = NAIVE(Q)         
+      , `120`             = SNAIVE(Q)
+      , `130`             = RW(Q ~ drift())
+      , `140`             = ETS(Q)           
+      , `150`             = TSLM(Q ~ trend())
       # `Arima`           = ARIMA()
     )    
 })
@@ -245,7 +249,7 @@ dtMat_fct <-
   setDT()                                     %>%
   .[, CALMONTH:= format(YM, "%Y%m")]          %>%
   .[CALMONTH %between% c('202401', '202412')] %>%
-  dtVERSMON_ID[., on = .(.id)]                %>%
+  dtVERSMON_ID[., on = .(.id, MATERIAL)]      %>%
   .[,
     `:=` (
       VERSMON    = VERSMON, 
@@ -271,7 +275,7 @@ dtMat_fct <-
       .id        = NULL,
       .model     = NULL,
       YM         = NULL,
-      ACT        = NULL,
+      Q          = NULL,
       .mean      = NULL
     )] %T>%
   setcolorder(

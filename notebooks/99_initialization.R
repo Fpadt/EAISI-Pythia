@@ -71,8 +71,7 @@ tsSLS <-
     index = YM
   )                %>%
   group_by_key()   %>%
-  fill_gaps(Q = 0) %>%
-  fill_gaps(.full = TRUE)
+  fill_gaps(.full = TRUE, Q = 0) 
 
 months_diff <- 
   function(m1, m2) {
