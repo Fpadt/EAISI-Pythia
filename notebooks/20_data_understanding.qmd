@@ -32,7 +32,6 @@ library("padt")
 SORG <- 'FR30'
 ```
 
-
 # Analysis
 
 ## Graph Functions
