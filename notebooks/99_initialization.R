@@ -9,7 +9,7 @@ SLS <-                              #
     .vtype       = c('010')  , # 010 = Actuals, 060 = Forecast
     .ftype       = c(4)      , # Last Version 1 = PreDR, 2 = Pos
     .salesorg    = 'FR30'    ,
-    .scope_matl  = TRUE 
+    .scope_matl  = FALSE     , # filter by A,B,C instead 
   ) 
 
 # PATH_SLV_SLS <- pa_ds_stageing_path_get(
@@ -30,12 +30,28 @@ dtSCOPE <- fread(
 ) %>% 
   .[, MATERIAL:= pa_matn1_input(MATERIAL)]
 
+# dtSCOPE <- MATL[BASE_UOM == 'EA', .(MATERIAL)] %>%
+#   .[dtSCOPE, on = .(MATERIAL)] %>%
+#   MATS[PRAT7 != 1, .(SALESORG, MATERIAL)][
+#     ., on = .(SALESORG, MATERIAL), nomatch = 0
+#   ]   %>%
+#   MBTS[SALESORG == SORG, 
+#        .(SALESORG, MATERIAL = MAT_SALES)][
+#          ., on = .(SALESORG, MATERIAL), nomatch = 0]  
+
 # filter the scope 
 # MATERIAL == MAT & 
+dtTS_LEN_GT_24 <-
+  copy(SLS) %>%
+  .[Q > 0, .N, by = .(SALESORG, PLANT, MATERIAL)] %>%
+  .[N > 24]
+
 dtSLS <- 
   dtSCOPE[,.(SALESORG, PLANT, MATERIAL)]                   %>%
   unique()                                                 %>%
-  .[SLS, on = .(SALESORG, PLANT, MATERIAL), nomatch = 0]  
+  .[SLS, on = .(SALESORG, PLANT, MATERIAL), nomatch = 0]   %>%
+  dtTS_LEN_GT_24[., on = .(SALESORG, PLANT, MATERIAL),
+                 , nomatch = 0] 
 
 # dtDUMMY <- 
 #   dtSLS[CALMONTH %chin% c('202401', '202402')]  %>%
