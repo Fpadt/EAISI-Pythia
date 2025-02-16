@@ -34,15 +34,14 @@ PATH_MD <- pa_ds_stageing_path_get(.staging = "silver", .functional_area = "mast
 
 # Scope
 
-0MATERIAL__PRDH1
-Nav: Name of the Brand
+0MATERIAL\_\_PRDH1 Nav: Name of the Brand
 
 | Key | Brand            |
 |:----|:-----------------|
 | 07  | ALTER ECO        |
 | 08  | BJORG            |
 | 10  | CLIPPER (CUPPER) |
-| 15  | ZONNATURA        | NL
+| 15  | ZONNATURA        |
 | 53  | TANOSHI          |
 | 65  | NATURELA         |
 
@@ -139,7 +138,6 @@ system.time({
     ) 
 })
 ```
-
 
 ```{r}
 #| label: 'Get DYN data'
