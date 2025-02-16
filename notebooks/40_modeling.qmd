@@ -229,7 +229,7 @@ system.time({
       , `130`             = RW(Q ~ drift())
       , `140`             = ETS(Q)           
       , `150`             = TSLM(Q ~ trend())
-      , `160`             = ARIMA()
+      , `160`             = ARIMA(Q)
     )    
 })
 
