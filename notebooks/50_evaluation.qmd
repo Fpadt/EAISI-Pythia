@@ -58,6 +58,49 @@ colScale <- c(colP, colS, colT, colA)
 
 # Sales versus Forecast
 
+## SAP BW
+
+
+```{r}
+WTB_CHAIN <- "https://bitest.wessanen.com:8002/sap/bc/ui2/flp?sap-language=EN&sap-client=500#BWProcessChain-change?chainId="
+
+
+
+httr::BROWSE(paste0(WTB_CHAIN, "LC_TD_SD_DYNA_FRCT"))
+```
+
+## Clean
+
+```{r}
+
+httr::BROWSE("bwmt://WTB/sap/bw/modeling/dtpa/dtp_006eipubipunxgyxudni7yybz/m")
+httr::BROWSE(paste0(WTB_CHAIN, "PA_POC"))
+httr::BROWSE(paste0(WTB_CHAIN, "LC_TD_SD_DYNA_FRCT"))
+
+```
+
+## New Load
+
+```{r}
+httr::BROWSE("bwmt://WTB/sap/bw/modeling/query/WRLD_SDPFRCT4_SC113_PA/A")
+httr::BROWSE("bwmt://WTB/sap/bw/modeling/dtpa/dtp_006eipubipunxghr7sqyu6zwv/m")
+
+
+```
+
+```{r}
+WTB_ADSO <- "https://bitest.wessanen.com:8002/sap/bc/ui2/flp?sap-language=EN&sap-client=500#BWDatastore-manage?adsoName="
+
+
+
+httr::BROWSE(paste0(WTB_ADSO, "P_FRFPA"))
+httr::BROWSE(paste0(WTB_ADSO, "SDSFRPR4"))
+httr::BROWSE(paste0(WTB_ADSO, "SDMFRPR4"))
+httr::BROWSE(paste0(WTB_ADSO, "SDMFRCAC"))
+```
+
+
+
 ## Time series
 
 ```{r}
@@ -296,4 +339,3 @@ ggplot(
   # scale_color_manual(values=c(pa_pa_ET_COLSS["CG"], pa_ET_FG))+
   theme_minimal()
 ```
-
