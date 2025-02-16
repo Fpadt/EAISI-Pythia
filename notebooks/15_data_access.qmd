@@ -53,8 +53,10 @@ PATH_MD <- pa_ds_stageing_path_get(.staging = "silver", .functional_area = "mast
 #| label: 'Get Material Master data '
 #| eval:   true
 
-dtMATL <- pa_md_mat_get(.dataset_name = "material")   # MARA/0MATERIAL
-dtMATS <- pa_md_mat_get(.dataset_name = "mat_sales")  # MVKE/0MAT_SALES
+dtMATL <- pa_md_mat_get(
+  .dataset_name = "material", .scope_matl = FALSE)   # MARA/0MATERIAL
+dtMATS <- pa_md_mat_get(
+  .dataset_name = "mat_sales", .scope_matl = FALSE)  # MVKE/0MAT_SALES
 dtMATP <- pa_md_mat_get(.dataset_name = "mat_plant")  # MARC/0MAT_PLANT
 
 dtMBTL <- readRDS(file.path(PATH_MD, "B4_MATL.rds"))

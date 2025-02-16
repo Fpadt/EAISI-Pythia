@@ -10,14 +10,14 @@ SLS <-                              #
   pa_td_dyn_get(
     .vtype       = c('010')  , # 010 = Actuals, 060 = Forecast
     .ftype       = c(4)      , # Last Version 1 = PreDR, 2 = Pos
-    .salesorg    = 'FR30'    ,
+    .salesorg    = SORG      ,
     .scope_matl  = FALSE     , # filter by A,B,C instead 
   ) 
 
-
+# 164 A-Class
 dtSCOPE <- 
   openxlsx::read.xlsx( 
-    xlsxFile = "C:\\PW\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data\\SCOPING_VALUE.xlsx",
+    xlsxFile = "C:\\Users\\flori\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data\\SCOPING_VALUE.xlsx",
     sheet    = "MAT",
     startRow = 5,
     cols     =  1:3
@@ -45,14 +45,18 @@ dtSCOPE <-
 # ) %>% 
 #   .[, MATERIAL:= pa_matn1_input(MATERIAL)]
 
-# dtSCOPE <- MATL[BASE_UOM == 'EA', .(MATERIAL)] %>%
-#   .[dtSCOPE, on = .(MATERIAL)] %>%
-#   MATS[PRAT7 != 1, .(SALESORG, MATERIAL)][
+# dtSCOPE <- dtMATL[, .(MATERIAL, BASE_UOM)]           %>%
+#   .[dtSCOPE, on = .(MATERIAL)]                       %>%
+#   dtMATS[, .(SALESORG, MATERIAL, PRAT7)][
 #     ., on = .(SALESORG, MATERIAL), nomatch = 0
-#   ]   %>%
-#   MBTS[SALESORG == SORG, 
-#        .(SALESORG, MATERIAL = MAT_SALES)][
-#          ., on = .(SALESORG, MATERIAL), nomatch = 0]  
+#   ]                                                  %>%
+#   dtMBST[WERKS == SORG,
+#        .(SALESORG = WERKS, 
+#          PLANT    = WERKS, 
+#          MATERIAL = MATNR,
+#          STLAL)][
+#          ., on = .(SALESORG, PLANT, MATERIAL), 
+#          nomatch = NA]
 
 # filter the scope 
 # MATERIAL == MAT & 
