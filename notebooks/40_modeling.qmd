@@ -243,6 +243,17 @@ tsMat_fct <-
 ### Data table
 
 # VERSMON <- ymd("2022-12-01")
+```
+
+
+```{r}
+#| label: 'BW Export'
+#| eval: true
+
+# Store the original scipen value
+old_scipen <- getOption("scipen")
+# Increase scipen to avoid scientific notation
+options(scipen = 999)
 
 dtMat_fct <- 
   tsMat_fct                                  %T>% 
@@ -332,12 +343,15 @@ PATH_SLV_SLS <- pa_ds_stageing_path_get(
 # dtREP[, season_type := sapply(ETS, function(mod) mod$fit$spec$seasontype)]  
 # dtREP[, damped      := sapply(ETS, function(mod) mod$fit$spec$damped)]
 
+# Revert back to the original scipen value
+options(scipen = old_scipen)
+options(scipen=999)
 ```
 
 ```{r}
 dtMat <- 
   copy(dtSLS)                            %>%
-  .[MATERIAL == MATL & SALESORG == SORG] %>%
+  # .[MATERIAL == MATL & SALESORG == SORG] %>%
   .[, MODEL:= NA_character_]
 
 dtAcc <- 
@@ -361,7 +375,7 @@ dtAcc <-
 
  View(
    dtAcc[, .(EPA = mean(EPA, na.rm = TRUE)), by = .(STEP, MODEL)] %>%    
-   dcast.data.table(MODEL ~ STEP)
+   dcast.data.table(MODEL ~ STEP, value.var = "EPA")
  )
 ```
 
