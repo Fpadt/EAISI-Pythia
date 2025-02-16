@@ -53,14 +53,14 @@ PATH_MD <- pa_ds_stageing_path_get(.staging = "silver", .functional_area = "mast
 #| label: 'Get Material Master data '
 #| eval:   true
 
-MATL <- pa_md_mat_get(.dataset_name = "material")   # MARA/0MATERIAL
-MATS <- pa_md_mat_get(.dataset_name = "mat_sales")  # MVKE/0MAT_SALES
-MATP <- pa_md_mat_get(.dataset_name = "mat_plant")  # MARC/0MAT_PLANT
+dtMATL <- pa_md_mat_get(.dataset_name = "material")   # MARA/0MATERIAL
+dtMATS <- pa_md_mat_get(.dataset_name = "mat_sales")  # MVKE/0MAT_SALES
+dtMATP <- pa_md_mat_get(.dataset_name = "mat_plant")  # MARC/0MAT_PLANT
 
-MBTL <- readRDS(file.path(PATH_MD, "B4_MATL.rds"))
-MBTS <- readRDS(file.path(PATH_MD, "B4_MATS.rds"))
-MBTP <- readRDS(file.path(PATH_MD, "B4_MATP.rds")) 
-MBST <- readRDS(file.path(PATH_MD, "B4_MAST.rds")) 
+dtMBTL <- readRDS(file.path(PATH_MD, "B4_MATL.rds"))
+dtMBTS <- readRDS(file.path(PATH_MD, "B4_MATS.rds"))
+dtMBTP <- readRDS(file.path(PATH_MD, "B4_MATP.rds")) 
+dtMBST <- readRDS(file.path(PATH_MD, "B4_MAST.rds")) 
 ```
 
 ### Material Test
