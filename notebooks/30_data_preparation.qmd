@@ -47,6 +47,8 @@ SC_0 <-
 # %T>%
 #   fOpen_as_xlsx()
 
+# 192575821 SCOPE: FALSE
+# 153774051 SCOPE: TRUE
 sum(SC0$Q)
 ```
 

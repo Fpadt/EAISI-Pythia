@@ -24,7 +24,7 @@ editor_options:
 #| label: 'setup'
 #| eval:   true
 
-MATL <- pa_matn1_input('10023')
+# MATL <- pa_matn1_input('10023')
 SORG <- 'FR30'
 
 # public functions ---------------------------------------------------------
@@ -50,7 +50,6 @@ dtMAT <-
   .[MATERIAL == MATL & SALESORG == SORG] %>%
   .[, y:= Q]
 
- 
 ```
 
 # Modeling
@@ -166,7 +165,7 @@ tsMat_fct %>%
 #| label: 'cross validation'
 #| eval: true                  
 # 
-MATL <- "000000000000010023"
+# MATL <- "000000000000010023"
 
 tsMat_act <- 
   tsSLS 
@@ -230,7 +229,7 @@ system.time({
       , `130`             = RW(Q ~ drift())
       , `140`             = ETS(Q)           
       , `150`             = TSLM(Q ~ trend())
-      # `Arima`           = ARIMA()
+      , `160`             = ARIMA()
     )    
 })
 
@@ -309,7 +308,9 @@ dtMat_fct <-
       "BUOM"
     )
   ) %T>%
-  setorder(VERSMON, PLANT, MATERIAL) 
+  setorder(VERSMON, PLANT, MATERIAL) %>%
+  dtTS_LEN_GT_24[., on = .(SALESORG, PLANT, MATERIAL),
+                 nomatch = 0]
 
 PATH_SLV_SLS <- pa_ds_stageing_path_get(
   .staging = "silver", 
@@ -371,12 +372,32 @@ dtAcc <-
     ] %>%
     rbind(dtMat, use.names = TRUE) %>%
   pa_model_accuracy(.act_ftype = 4, .fct_ftype = 2) %>%
-  .[CALMONTH %between% c("202401", "202412")]
+  .[CALMONTH %between% c("202401", "202412")] %>%
+  dtTS_LEN_GT_24[., on = .(SALESORG, PLANT, MATERIAL),
+                 nomatch = 0]
 
- View(
-   dtAcc[, .(EPA = mean(EPA, na.rm = TRUE)), by = .(STEP, MODEL)] %>%    
-   dcast.data.table(MODEL ~ STEP, value.var = "EPA")
- )
+myMean <- 
+  function(x){
+    mean(x, na.rm = TRUE)
+  }
+
+dtETSvsARIMA <- 
+  dtAcc[STEP == -1] %>%    
+  dcast.data.table(
+    MATERIAL + STEP ~ paste0("M", MODEL), 
+    fun.aggregate = myMean,
+    value.var     = "EPA"
+  ) %>%
+  .[, DELTA:= M140-M160]
+
+dtAGG <- 
+  dtAcc %>%    
+  dcast.data.table(
+    MODEL ~ paste0("ST_", str_pad(abs(STEP), 2,'left', '0')), 
+    fun.aggregate = myMean,
+    value.var     = "EPA"
+  ) 
+
 ```
 
 ```{r}
