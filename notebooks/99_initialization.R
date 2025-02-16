@@ -4,6 +4,8 @@ library(tsibble)
 library(ggrepel)
 library("padt")
 
+SORG <- 'FR30'
+
 SLS <-                              # 
   pa_td_dyn_get(
     .vtype       = c('010')  , # 010 = Actuals, 060 = Forecast
@@ -11,6 +13,18 @@ SLS <-                              #
     .salesorg    = 'FR30'    ,
     .scope_matl  = TRUE 
   ) 
+
+
+dtSCOPE <- 
+  openxlsx::read.xlsx( 
+    xlsxFile = "C:\\PW\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data\\SCOPING_VALUE.xlsx",
+    sheet    = "MAT",
+    startRow = 5,
+    cols     =  1:3
+  ) %T>% setDT() %>%
+  .[, MATERIAL:= pa_matn1_input(MATERIAL)] %>%
+  .[!MATERIAL %like% 'Result']
+
 
 # PATH_SLV_SLS <- pa_ds_stageing_path_get(
 #   .staging = "silver", 
@@ -22,13 +36,14 @@ SLS <-                              #
 #   file = file.path(PATH_SLV_SLS,"dtACC7.rds")
 # )
 
-PATH_GLD_MD <- "C:\\PW\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data"
-PATH_GLD_MD <- "C:\\Users\\flori\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data"
-
-dtSCOPE <- fread(
-  file = file.path(PATH_GLD_MD, "SCOPE_FR30.csv")
-) %>% 
-  .[, MATERIAL:= pa_matn1_input(MATERIAL)]
+# PATH_GLD_MD <- "C:\\PW\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data"
+# PATH_GLD_MD <- "C:\\Users\\flori\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data"
+# 
+# 
+# dtSCOPE <- fread(
+#   file = file.path(PATH_GLD_MD, "SCOPE_FR30.csv")
+# ) %>% 
+#   .[, MATERIAL:= pa_matn1_input(MATERIAL)]
 
 # filter the scope 
 # MATERIAL == MAT & 
