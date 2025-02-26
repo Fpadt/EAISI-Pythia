@@ -23,8 +23,7 @@ editor_options:
 Get all meta data needed from SAP to run locally
 
 ::: callout-note
-Note: can only be executed from **within Ecotone Network** as a connection to
-SAP is needed
+Note: can only be executed from **within Ecotone Network** as a connection to SAP is needed
 :::
 
 # Setup
@@ -74,7 +73,7 @@ if("package:padt" %in% search()){
   detach("package:padt", unload = TRUE, character.only = TRUE)}
 
 # devtools::load_all(path = "C:/RW/EAISI-Padt")
-remotes::install_github("Fpadt/EAISI-Padt")
+1
 library("padt")
 
 rstudioapi::sendToConsole("\f", execute = TRUE)
@@ -1374,8 +1373,7 @@ saveRDS(
 
 # OB - Open Hub
 
-Get a list of all available Open Hubs in BW with description and save as:
-B4_RSBOHDEST.csv
+Get a list of all available Open Hubs in BW with description and save as: B4_RSBOHDEST.csv
 
 ```{r}
 #| label:  RSBOHDEST
@@ -1461,8 +1459,7 @@ fwrite(
 
 ## Fields
 
-Get a list of all available Open Hub fields with description and save as:
-B4_RSBOHFIELDS.csv
+Get a list of all available Open Hub fields with description and save as: B4_RSBOHFIELDS.csv
 
 ```{r}
 #| label:  RSBOHFIELDS
@@ -1536,8 +1533,7 @@ fwrite(
 
 ## Pythia
 
-Open Hub with fields and description which are relevant for Pythia, save as:
-PA_OPEN_HUB.csv
+Open Hub with fields and description which are relevant for Pythia, save as: PA_OPEN_HUB.csv
 
 -   RW_DSCP
 -   RW_PYTHIA
