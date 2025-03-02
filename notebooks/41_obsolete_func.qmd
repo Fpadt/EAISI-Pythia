@@ -1,0 +1,389 @@
+---
+title: "Untitled"
+---
+
+
+```{r}
+#| eval: FALSE
+#| 
+# Generic hierarchical aggregation function
+create_hierarchical_aggregates <- function(
+    dt, 
+    hierarchy_cols, 
+    value_col = "Q", 
+    time_col = "YM", 
+    level_col = "level") {
+  # Make a copy of the data to avoid modifying the original
+  dt_copy <- copy(dt)
+  
+  # Ensure hierarchy_cols is ordered from most detailed to most aggregated
+  # Example: c("MATERIAL", "PRDH4", "PRDH3", "PRDH2", "PRDH1")
+  
+  # Mark the original data with the most detailed level name
+  dt_copy[, (level_col) := hierarchy_cols[1]]
+  
+  # Function to create aggregates for a specific level
+  create_level_aggregate <- function(level_idx) {
+    # Current level name (for identification)
+    current_level <- hierarchy_cols[level_idx]
+    
+    # Columns to group by (current level and all more aggregated levels)
+    group_cols <- c(time_col, hierarchy_cols[level_idx:length(hierarchy_cols)])
+    
+    # Create aggregation formula
+    agg_formula <- paste0(value_col, " = sum(", value_col, ", na.rm = TRUE)")
+    
+    # Perform aggregation
+    level_dt <- dt_copy[, eval(parse(text = agg_formula)), by = group_cols]
+    
+    # Add level identifier
+    level_dt[, (level_col) := current_level]
+    
+    return(level_dt)
+  }
+  
+  # Generate aggregates for all levels except the most detailed (already in dt_copy)
+  level_indices <- 2:length(hierarchy_cols)
+  
+  # Use purrr::map to create a list of aggregated data.tables
+  aggregated_levels <- purrr::map(level_indices, create_level_aggregate)
+  
+  # Add the original data to the list
+  all_levels <- c(list(dt_copy), aggregated_levels)
+  
+  # Combine all levels into a single data.table
+  dt_hierarchical <- rbindlist(all_levels, fill = TRUE)
+  
+  return(dt_hierarchical)
+}
+
+# Hierarchical aggregation with support for groups
+create_hierarchical_aggregates_with_groups <- function(
+    dt, 
+    hierarchy_cols, 
+    group_cols = NULL,
+    value_col = "Q", 
+    date_col = "YM", 
+    level_col = "level") {
+  # Make a copy of the data
+  dt_copy <- copy(dt)
+  
+  # Create combinations of all grouping variables
+  if (!is.null(group_cols) && length(group_cols) > 0) {
+    # List to hold data for each group combination
+    grouped_results <- list()
+    
+    # Get all unique combinations of group variables
+    group_combinations <- unique(dt_copy[, ..group_cols])
+    
+    # For each combination of group variables
+    for (i in 1:nrow(group_combinations)) {
+      # Extract the current combination
+      current_combo <- group_combinations[i]
+      
+      # Create a filter condition to match this combination
+      filter_condition <- paste0(
+        sapply(names(current_combo), function(col) {
+          paste0(col, " == '", current_combo[[col]], "'")
+        }),
+        collapse = " & "
+      )
+      
+      # Filter data to get just this group combination
+      group_data <- dt_copy[eval(parse(text = filter_condition))]
+      
+      # Now create hierarchical aggregates within this group
+      if (nrow(group_data) > 0) {
+        # Mark the original data with the most detailed level name
+        group_data[, (level_col) := hierarchy_cols[1]]
+        
+        # Function to create aggregates for a specific level
+        create_level_aggregate <- function(level_idx) {
+          # Current level name
+          current_level <- hierarchy_cols[level_idx]
+          
+          # Columns to group by (current level, more aggregated levels, and all group columns)
+          group_cols_for_agg <- c(date_col, 
+                                  hierarchy_cols[level_idx:length(hierarchy_cols)],
+                                  group_cols)
+          
+          # Create aggregation formula
+          agg_formula   <- paste0(".(", value_col, " = sum(", value_col, ", na.rm = TRUE))")
+          
+          # Perform aggregation
+          level_dt <- group_data[, eval(parse(text = agg_formula)), by = group_cols_for_agg]
+          
+          # Add level identifier
+          level_dt[, (level_col) := current_level]
+          
+          return(level_dt)
+        }
+        
+        # Generate aggregates for all levels except the most detailed
+        level_indices <- 2:length(hierarchy_cols)
+        
+        # Use purrr to create aggregated levels
+        if (length(level_indices) > 0) {
+          aggregated_levels <- purrr::map(level_indices, create_level_aggregate)
+          all_levels <- c(list(group_data), aggregated_levels)
+        } else {
+          all_levels <- list(group_data)
+        }
+        
+        # Combine all levels for this group
+        grouped_results[[i]] <- rbindlist(all_levels, fill = TRUE)
+      }
+    }
+    
+    # Combine all group results
+    dt_hierarchical <- rbindlist(grouped_results, fill = TRUE)
+    
+  } else {
+    # No groups - just do regular hierarchical aggregation
+    dt_copy[, (level_col) := hierarchy_cols[1]]
+    
+    # Function to create aggregates for a specific level
+    create_level_aggregate <- function(level_idx) {
+      
+      current_level <- hierarchy_cols[level_idx]
+      group_cols    <- c(date_col, hierarchy_cols[level_idx:length(hierarchy_cols)])
+      agg_formula   <- paste0(".(", value_col, " = sum(", value_col, ", na.rm = TRUE))")
+      
+      level_dt      <- dt_copy[, eval(parse(text = agg_formula)), by = group_cols]
+      level_dt[, (level_col) := current_level]
+      
+      return(level_dt)
+    }
+    
+    level_indices <- 2:length(hierarchy_cols)
+    
+    if (length(level_indices) > 0) {
+      aggregated_levels <- purrr::map(level_indices, create_level_aggregate)
+      all_levels <- c(list(dt_copy), aggregated_levels)
+    } else {
+      all_levels <- list(dt_copy)
+    }
+    
+    dt_hierarchical <- rbindlist(all_levels, fill = TRUE)
+  }
+  
+  return(dt_hierarchical)
+}
+```
+
+```{r}
+#| eval: FALSE
+#| 
+# Then create hierarchies for each window
+process_forecast_windows <- function(
+    windowed_data, 
+    hierarchy_cols, 
+    group_cols     = NULL,
+    value_col      = "Q", 
+    date_col       = "YM", 
+    level_col      = "level") {
+  # Get unique window IDs
+  window_ids <- unique(windowed_data$window_id)
+  
+  # Process each window separately
+  processed_windows <- lapply(window_ids, function(wid) {
+    # Filter to this window
+    window_data <- windowed_data[window_id == wid]
+    
+    # Create hierarchical structure for this window
+    hierarchy_data <- create_hierarchical_aggregates_with_groups(
+      dt = window_data,
+      hierarchy_cols = hierarchy_cols,
+      group_cols = group_cols,
+      value_col = value_col,
+      date_col = date_col,
+      level_col = level_col
+    )
+    
+    # Make sure window_id is maintained
+    hierarchy_data[, window_id := wid]
+    
+    return(hierarchy_data)
+  })
+  
+  # Combine all processed windows
+  all_processed <- rbindlist(processed_windows)
+  
+  return(all_processed)
+}
+
+```
+
+```{r}
+#| eval: FALSE
+#| 
+forecast_hierarchical_windows <- function(windowed_data, hierarchy_spec) {
+  # Extract hierarchy columns from the hierarchy specification
+  hierarchy_cols <- unlist(strsplit(hierarchy_spec, " / "))
+  cat("Hierarchy columns extracted:", paste(hierarchy_cols, collapse=", "), "\n")
+  
+  # Extract unique window IDs
+  window_ids <- unique(windowed_data$window_id)
+  
+  # Process each window
+  all_forecasts <- lapply(window_ids, function(w_id) {
+    # Extract data for this window
+    window_data <- windowed_data[window_id == w_id]
+    
+    cat("Processing window", w_id, "\n")
+    
+    # Process this window
+    result <- tryCatch({
+      # Convert to data.frame
+      window_df <- as.data.frame(window_data)
+      
+      # Convert IDate to yearmonth for tsibble
+      window_df$YM <- tsibble::yearmonth(window_df$YM)
+      
+      # Create tsibble
+      ts_data <- as_tsibble(window_df, index = YM, key = all_of(hierarchy_cols))
+      
+      # Fill gaps
+      ts_data <- ts_data %>% fill_gaps(Q = 0)
+      
+      # Apply hierarchical aggregation
+      hierarchical_data <- ts_data %>% 
+        aggregate_key(!!rlang::parse_expr(hierarchy_spec), Q = sum(Q, na.rm = TRUE))
+      
+      # Fit ETS models
+      hierarchical_fits <- tryCatch({
+        # Try automatic ETS first
+        hierarchical_data %>% model(ets = ETS(Q))
+      }, error = function(e) {
+        cat("  Using simpler ETS model specification\n")
+        # Try simpler model if automatic fails
+        hierarchical_data %>% model(ets = ETS(Q ~ error("A") + trend("N") + season("N")))
+      })
+      
+      # Reconcile forecasts
+      reconciled_fits <- hierarchical_fits %>%
+        reconcile(ets_min_trace = min_trace(ets, method = "ols"))
+      
+      # Always forecast for 12 months
+      forecasts <- reconciled_fits %>% forecast(h = 12)
+      cat("  Generated forecasts with", nrow(forecasts), "rows\n")
+      
+      # Extract forecast data
+      fc_tibble <- forecasts %>% as_tibble()
+      
+      # Create a simple data structure with just what we need
+      result_rows <- list()
+      
+      # Process each row in the tibble
+      for (i in 1:nrow(fc_tibble)) {
+        row <- fc_tibble[i, ]
+        
+        # Create a unique identifier for this forecast row
+        series_id_parts <- c()
+        for (col in hierarchy_cols) {
+          if (col %in% names(row)) {
+            val <- row[[col]]
+            # Extract the value (handling lists)
+            if (is.list(val)) {
+              if (length(val) > 0) {
+                val_str <- as.character(val[[1]])
+              } else {
+                val_str <- "NA"
+              }
+            } else {
+              val_str <- as.character(val)
+            }
+            series_id_parts <- c(series_id_parts, val_str)
+          } else {
+            series_id_parts <- c(series_id_parts, "NA")
+          }
+        }
+        
+        # Add the forecast date to create a truly unique identifier
+        series_id_parts <- c(series_id_parts, as.character(row$YM))
+        series_id <- paste(series_id_parts, collapse = "_")
+        
+        # Extract values carefully
+        new_row <- list(
+          window_id = w_id,
+          series_id = series_id,
+          forecast_date = as.character(row$YM),
+          forecast_mean = as.numeric(row$.mean)
+        )
+        
+        # Extract hierarchy values carefully
+        for (col in hierarchy_cols) {
+          if (col %in% names(row)) {
+            val <- row[[col]]
+            # Handle different possible types
+            if (is.list(val)) {
+              new_row[[col]] <- if(length(val) > 0) as.character(val[[1]]) else NA_character_
+            } else {
+              new_row[[col]] <- as.character(val)
+            }
+          } else {
+            new_row[[col]] <- NA_character_
+          }
+        }
+        
+        # Add to list of rows
+        result_rows[[i]] <- new_row
+      }
+      
+      # Convert list of rows to data.table
+      result_dt <- data.table::rbindlist(result_rows, fill = TRUE)
+      
+      # Check for and remove duplicates
+      if (anyDuplicated(result_dt$series_id) > 0) {
+        cat("  WARNING: Found duplicate forecasts. Removing duplicates...\n")
+        result_dt <- unique(result_dt, by = "series_id")
+        cat("  After removing duplicates:", nrow(result_dt), "rows remain\n")
+      }
+      
+      # Calculate the forecast horizon based on the difference between the 
+      # window's end date and the forecast date
+      window_end_ym <- as.character(w_id)
+      window_end_year <- as.integer(substr(window_end_ym, 1, 4))
+      window_end_month <- as.integer(substr(window_end_ym, 5, 6))
+      window_end <- tsibble::yearmonth(paste(window_end_year, window_end_month, sep = "-"))
+      
+      # Calculate the horizon for each forecast date
+      result_dt[, forecast_ym := tsibble::yearmonth(forecast_date)]
+      result_dt[, horizon := as.integer(round(12 * (forecast_ym - window_end)))]
+      
+      # Remove temporary columns
+      result_dt[, forecast_ym := NULL]
+      result_dt[, series_id := NULL]
+      
+      cat("  Completed processing for window", w_id, "with", nrow(result_dt), "forecast rows\n")
+      return(result_dt)
+    }, error = function(e) {
+      cat("ERROR in window", w_id, ":", conditionMessage(e), "\n")
+      return(NULL)
+    })
+    
+    return(result)
+  })
+  
+  # Remove any NULL results
+  all_forecasts <- all_forecasts[!sapply(all_forecasts, is.null)]
+  
+  # Combine all forecasts
+  if (length(all_forecasts) > 0) {
+    cat("Combining", length(all_forecasts), "forecast tables...\n")
+    
+    # Use rbindlist to combine
+    combined_forecasts <- data.table::rbindlist(all_forecasts, fill = TRUE)
+    
+    cat("Successfully combined forecasts into data.table with", 
+        nrow(combined_forecasts), "rows\n")
+    
+    # Sort the results by window_id, hierarchy levels, and horizon
+    setorderv(combined_forecasts, c("window_id", hierarchy_cols, "horizon"))
+    
+    return(combined_forecasts)
+  } else {
+    stop("All windows failed to process")
+  }
+}
+```

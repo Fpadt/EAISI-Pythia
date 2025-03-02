@@ -36,7 +36,6 @@ pimg <- file.path('.', 'fig')
 
 ```
 
-
 # Transform
 
 ## Material/Salesorg Analysis
@@ -162,87 +161,289 @@ tsMat_fct %>%
 ## Cross Validation
 
 ```{r}
-#| label: 'cross validation'
-#| eval: true                  
-# 
-# MATL <- "000000000000010023"
 
-tsMat_act <- 
-  tsSLS 
-# %>%
-#   filter(MATERIAL == MATL)
-
-train <- 
-  tsMat_act %>%
-  filter(year(YM) <= 2023) 
-
-train_cv <- 
-  tsMat_act %>%
-  filter(
-    year(YM) >= 2021,
-    YM       <  yearmonth("202412", format = "%Y%m")
-    )       %>%
-  stretch_tsibble(.init = 34, .step = 1)
-
-# fOpen_as_xlsx(as.data.table(train_tr))
-myF <- 
-  function(x){
-    sum(x, na.rm = TRUE)
+pa_aggregate_by_matl_field <- 
+  function(.dt, .field){
+     
+      dtMATL[, .(MATERIAL, DFU = get(.field))]                  %>%
+      .[.dt, on = .(MATERIAL)]                                  %>%
+      .[, .(Q = sum(Q)),
+        by = .(
+          DFU = paste(SALESORG, PLANT, DFU, sep = "_"),
+          SALESORG, PLANT, STEP , CALMONTH,
+          VERSMON , FTYPE, VTYPE
+          )]
   }
-
-copy(train_cv)         %T>% 
-  setDT()              %>%
-  # .[MATERIAL == MATL]  %>%
-  dcast.data.table(
-    .id ~ YM,
-    fun.aggregate = myF,
-    value.var = "Q") %T>%
-  View()
-
-dtVERSMON_ID <- 
-  copy(train_cv)        %T>% 
-  setDT()                %>% 
-  .[, .(VERSMON = max(YM) %>% format("%Y%m")), by = .(.id, MATERIAL)]
-
-# system.time({
-#   fcMat <- 
-#     train_tr                                       %>%
-#     model(
-#         `Mean`           = MEAN(ACT)          
-#       , `Naïve`          = NAIVE(ACT)         
-#       , `Seasonal naïve` = SNAIVE(ACT)
-#       , `RW`             = RW(ACT ~ drift())
-#       , `ETS`            = ETS(ACT)           
-#       , `Trend Model`    = TSLM(ACT ~ trend())
-#       # `Arima`          = ARIMA()
-#     )                                              %>%
-#     forecast(h = 12)  
-# })
-
-system.time({
-  tsMat_fit <- 
-    train_cv                                       %>%
-    model(
-        `100`             = MEAN(Q)          
-      , `110`             = NAIVE(Q)         
-      , `120`             = SNAIVE(Q)
-      , `130`             = RW(Q ~ drift())
-      , `140`             = ETS(Q)           
-      , `150`             = TSLM(Q ~ trend())
-      , `160`             = ARIMA(Q)
-    )    
-})
-
-tsMat_fct <- 
-  tsMat_fit %>%
-  forecast(h = 12)
-
-# accuracy(tsMat, fcMat)
-
-### Data table
-
-# VERSMON <- ymd("2022-12-01")
+ 
 ```
+
+### Moving Average
+
+```{r}
+
+# .dt is data.table with DFU, CALMONTH and Q
+pa_forecast_dfu_with_moving_average <- 
+  function(.dt){
+    
+    tsDFU_act <- 
+      .dt                                                 %>%
+      .[, .(DFU, CALMONTH, Q)]                            %>%
+      .[, YM:= yearmonth(CALMONTH, format = "%Y%m")]      %>% 
+      .[, CALMONTH:= NULL]                                %>%  
+      as_tsibble(
+        key   = DFU, 
+        index = YM
+      )                                                   %>%
+      group_by_key()                                      %>%
+      fill_gaps(.full = TRUE) 
+    
+    train_cv <- 
+      tsDFU_act %>%
+      filter(
+        year(YM) >= 2021,
+        YM < yearmonth("202412", format = "%Y%m")
+      ) %>%
+      stretch_tsibble(.init = 25, .step = 1) %>%
+      group_by(.id) %>%
+      mutate(.id = max(YM) %>% format("%Y%m")) %>%
+      ungroup()
+    
+    tsDFU_fit <- 
+      train_cv                                                %>%
+      model(
+        `100` = MEAN(Q                    , na.rm = TRUE)
+        # , `110` = NAIVE(Q)         
+        , `201` = MEAN(Q ~ window(size =  1), na.rm = TRUE)
+        , `202` = MEAN(Q ~ window(size =  2), na.rm = TRUE)
+        , `203` = MEAN(Q ~ window(size =  3), na.rm = TRUE)
+        , `204` = MEAN(Q ~ window(size =  4), na.rm = TRUE)
+        , `205` = MEAN(Q ~ window(size =  5), na.rm = TRUE)
+        , `206` = MEAN(Q ~ window(size =  6), na.rm = TRUE)
+        , `207` = MEAN(Q ~ window(size =  7), na.rm = TRUE)
+        , `208` = MEAN(Q ~ window(size =  8), na.rm = TRUE)
+        , `209` = MEAN(Q ~ window(size =  9), na.rm = TRUE)
+        , `210` = MEAN(Q ~ window(size = 10), na.rm = TRUE)
+        , `211` = MEAN(Q ~ window(size = 11), na.rm = TRUE)
+        , `212` = MEAN(Q ~ window(size = 12), na.rm = TRUE)
+        , `213` = MEAN(Q ~ window(size = 13), na.rm = TRUE)
+        , `214` = MEAN(Q ~ window(size = 14), na.rm = TRUE)
+        , `215` = MEAN(Q ~ window(size = 15), na.rm = TRUE)
+        , `216` = MEAN(Q ~ window(size = 16), na.rm = TRUE)
+        , `217` = MEAN(Q ~ window(size = 17), na.rm = TRUE)
+        , `218` = MEAN(Q ~ window(size = 18), na.rm = TRUE)
+        , `219` = MEAN(Q ~ window(size = 19), na.rm = TRUE)
+        , `220` = MEAN(Q ~ window(size = 20), na.rm = TRUE)
+        , `221` = MEAN(Q ~ window(size = 21), na.rm = TRUE)
+        , `222` = MEAN(Q ~ window(size = 22), na.rm = TRUE)
+        , `223` = MEAN(Q ~ window(size = 23), na.rm = TRUE)
+        , `224` = MEAN(Q ~ window(size = 24), na.rm = TRUE)   
+        , `248` = MEAN(Q ~ window(size = 48), na.rm = TRUE)      
+      )    
+    
+    tsDFU_fct <- 
+      tsDFU_fit                                    %>%
+      forecast(h = 12)
+    
+    dtDFU_fct <- 
+      tsDFU_fct                                    %>%
+      setDT()                                      %>%
+      .[, CALMONTH:= format(YM, "%Y%m")]           %>%
+      .[CALMONTH %between% c('202401', '202412')] %T>%
+      setnames(
+        old = c(".id"    , ".model", ".mean"), 
+        new = c("VERSMON", "MODEL" , "FCT")
+        )                                          %>%
+      .[, -c("Q", "YM"), with = FALSE]             %>%
+      .[, STEP:= months_diff(CALMONTH, VERSMON)]
+
+    ACT <- .dt[CALMONTH %between% c(202401, 202412), 
+               .(DFU, CALMONTH, ACT = Q)] 
+    FCT <- dtDFU_fct[, .(DFU, CALMONTH, MODEL, STEP, FCT)]
+    out <- merge(x = ACT, y = FCT, by = c("DFU", "CALMONTH"), all = TRUE)
+    out[, `:=`(
+      ACT = fifelse(is.na(ACT), 0, ACT), 
+      FCT = fifelse(is.na(FCT), 0, FCT)
+      )]
+    
+    dtDFU_acc <- out[, {
+      E = ACT - FCT
+      E2 = E^2
+      AE = abs(E)
+      APE = 100 * (AE/ifelse(ACT == 0, NA, ACT))
+      APA = 100 - APE
+      EPE = 100 * (AE/ifelse(FCT == 0, NA, FCT))
+      EPA = 100 - EPE
+      APB = 100 * (E/ifelse(ACT == 0, NA, ACT))
+      EPB = 100 * (E/ifelse(FCT == 0, NA, FCT))
+      .(DFU, CALMONTH, STEP, MODEL, 
+        ACT, FCT, E, E2, AE, APE, APA, EPE, EPA, APB, EPB)
+    }]
+    
+    myMean <- 
+      function(x){
+        mean(x, na.rm = TRUE)
+      }
+
+    dtDFU_agg <- 
+      dtDFU_acc %>%    
+      dcast.data.table(
+        MODEL ~ paste0("ST_", str_pad(abs(STEP), 2,'left', '0')), 
+        fun.aggregate = myMean,
+        value.var     = "EPA"
+      ) 
+    
+    return(
+      list(
+        'ts_act' = tsDFU_act,
+        'ts_fit' = tsDFU_fit, 
+        'ts_fct' = tsDFU_fct, 
+        'dt_fct' = dtDFU_fct, 
+        'dt_acc' = dtDFU_acc, 
+        'dt_agg' = dtDFU_agg
+      )
+    )
+
+}
+
+```
+
+### Advanced
+
+```{r}
+#| label: 'Advanced_function'
+#| eval: true   
+
+
+# .dt is data.table with DFU, CALMONTH and Q
+pa_forecast_dfu_with_advanced_models <- 
+  function(.dt){
+    
+    tsDFU_act <- 
+      .dt                                                  %>%
+      .[, .(DFU, CALMONTH, Q)]                             %>%
+      .[, YM:= yearmonth(CALMONTH, format = "%Y%m")]       %>% 
+      .[, CALMONTH:= NULL]                                 %>%  
+      as_tsibble(
+        key   = DFU, 
+        index = YM
+      )                                                    %>%
+      group_by_key()                                       %>%
+      fill_gaps(.full = TRUE, Q = 0) #todo
+    
+    train_cv <- 
+      tsDFU_act                                            %>%
+      filter(
+        year(YM) >= 2021,
+        YM < yearmonth("202412", format = "%Y%m")
+      )                                                    %>%
+      stretch_tsibble(.init = 25, .step = 1)               %>%
+      group_by(.id)                                        %>%
+      mutate(.id = max(YM) %>% format("%Y%m"))             %>%
+      ungroup()
+    
+    tsDFU_fit <- 
+      train_cv                                             %>%
+      model(
+          `100`             = MEAN(Q)
+        , `110`             = NAIVE(Q)         
+        , `120`             = SNAIVE(Q)
+        , `130`             = RW(Q ~ drift())
+        , `140`             = ETS(Q)           
+        , `150`             = TSLM(Q ~ trend())
+        , `160`             = ARIMA(Q)
+      )    
+    
+    tsDFU_fct <- 
+      tsDFU_fit                                            %>%
+      forecast(h = 12)
+    
+    dtDFU_fct <- 
+      tsDFU_fct                                            %>%
+      setDT()                                              %>%
+      .[, CALMONTH:= format(YM, "%Y%m")]                   %>%
+      .[CALMONTH %between% c('202401', '202412')]         %T>%
+      setnames(
+        old = c(".id"    , ".model", ".mean"), 
+        new = c("VERSMON", "MODEL" , "FCT")
+        )                                                  %>%
+      .[, -c("Q", "YM"), with = FALSE]                     %>%
+      .[, STEP:= months_diff(CALMONTH, VERSMON)]
+
+    ACT <- .dt[CALMONTH %between% c(202401, 202412), 
+               .(DFU, CALMONTH, ACT = Q)] 
+    FCT <- dtDFU_fct[, .(DFU, CALMONTH, MODEL, STEP, FCT)]
+    out <- merge(x = ACT, y = FCT, by = c("DFU", "CALMONTH"), all = TRUE)
+    out[, `:=`(
+      ACT = fifelse(is.na(ACT), 0, ACT), 
+      FCT = fifelse(is.na(FCT), 0, FCT)
+      )]
+    
+    dtDFU_acc <- out[, {
+      E = ACT - FCT
+      E2 = E^2
+      AE = abs(E)
+      APE = 100 * (AE/ifelse(ACT == 0, NA, ACT))
+      APA = 100 - APE
+      EPE = 100 * (AE/ifelse(FCT == 0, NA, FCT))
+      EPA = 100 - EPE
+      APB = 100 * (E/ifelse(ACT == 0, NA, ACT))
+      EPB = 100 * (E/ifelse(FCT == 0, NA, FCT))
+      .(DFU, CALMONTH, STEP, MODEL, 
+        ACT, FCT, E, E2, AE, APE, APA, EPE, EPA, APB, EPB)
+    }]
+    
+    myMean <- 
+      function(x){
+        mean(x, na.rm = TRUE)
+      }
+    
+    dtDFU_agg <- 
+      dtDFU_acc %>%    
+      dcast.data.table(
+        MODEL ~ paste0("ST_", str_pad(abs(STEP), 2,'left', '0')), 
+        fun.aggregate = myMean,
+        value.var     = "EPA"
+      ) 
+    
+    return(
+      list(
+        'ts_act' = tsDFU_act,
+        'ts_fit' = tsDFU_fit, 
+        'ts_fct' = tsDFU_fct, 
+        'dt_fct' = dtDFU_fct, 
+        'dt_acc' = dtDFU_acc, 
+        'dt_agg' = dtDFU_agg
+      )
+    )
+
+}
+
+```
+
+## Seasonal and Trend strength
+
+```{r}
+
+  tstList[['ts_act']]                     %>%
+  as_tsibble()                            %>%
+    features(Q, feat_stl)                %T>%
+    setDT()                               %>%  
+    ggplot(
+      aes(
+        x     = trend_strength, 
+        y     = seasonal_strength_year        ,
+        # label = sub('FR30_FR30_', '', DFU),
+        col   = sub('FR30_FR30_', '', DFU)
+        )
+    ) +
+    geom_point() +
+    # geom_text_repel() +
+    # facet_wrap(~SALESORG) +
+    theme(legend.position = "none") +
+    scale_x_continuous(limits = c(0, 1.0)) +
+    scale_y_continuous(limits = c(0, 1.0))
+```
+
 
 
 ```{r}
@@ -281,7 +482,7 @@ dtMat_fct <-
     )
   ] %>%
   .[, `:=` (
-      STEP       = months_diff(VERSMON, CALMONTH),
+      STEP       = months_diff(CALMONTH, VERSMON),
       .id        = NULL,
       .model     = NULL,
       YM         = NULL,
@@ -308,9 +509,7 @@ dtMat_fct <-
       "BUOM"
     )
   ) %T>%
-  setorder(VERSMON, PLANT, MATERIAL) %>%
-  dtTS_LEN_GT_24[., on = .(SALESORG, PLANT, MATERIAL),
-                 nomatch = 0]
+  setorder(VERSMON, PLANT, MATERIAL) 
 
 PATH_SLV_SLS <- pa_ds_stageing_path_get(
   .staging = "silver", 
@@ -326,6 +525,12 @@ PATH_SLV_SLS <- pa_ds_stageing_path_get(
     quote = FALSE
   )
   
+dtMat_fct2 <- 
+  fread(
+    file = "C:\\Users\\flori\\OneDrive\\ET\\pythia\\data\\test\\Platinum\\sales\\OUT_PA_DATA_POSTDR_FORECASTS.CSV",
+    keepLeadingZeros = TRUE
+  )
+
 # dtREP <- 
 # +     copy(dtMod) %T>%
 # +     setDT()    %T>%
@@ -349,11 +554,16 @@ options(scipen = old_scipen)
 options(scipen=999)
 ```
 
+## Pythia Forecast Accuracy
+
 ```{r}
+
 dtMat <- 
-  copy(dtSLS)                            %>%
+  copy(dtPRDH1)                            %>%
   # .[MATERIAL == MATL & SALESORG == SORG] %>%
-  .[, MODEL:= NA_character_]
+  .[, MODEL:= NA_character_] %>%
+  .[, MATERIAL:= pa_matn1_input(MATERIAL)]
+  .[, N:=  NULL]
 
 dtAcc <- 
   copy(dtMat_fct) %>%
@@ -372,9 +582,7 @@ dtAcc <-
     ] %>%
     rbind(dtMat, use.names = TRUE) %>%
   pa_model_accuracy(.act_ftype = 4, .fct_ftype = 2) %>%
-  .[CALMONTH %between% c("202401", "202412")] %>%
-  dtTS_LEN_GT_24[., on = .(SALESORG, PLANT, MATERIAL),
-                 nomatch = 0]
+  .[CALMONTH %between% c("202401", "202412")] 
 
 myMean <- 
   function(x){
@@ -400,27 +608,1151 @@ dtAGG <-
 
 ```
 
+# HTS
+
+## Funtion setup
+
 ```{r}
+# Create a helper function for date conversion
+calmonth_to_idate <- function(calmonth) {
+  # Ensure calmonth is integer
+  calmonth_int <- as.integer(calmonth)
+  
+  # Extract year and month components
+  year_part  <- calmonth_int %/% 100
+  month_part <- calmonth_int %% 100
+  
+  # Create date string and convert to IDate
+  date_str <- paste(year_part, month_part, "1", sep = "-")
+  return(as.IDate(date_str))
+}
 
-WTB_CHAIN <- "https://bitest.wessanen.com:8002/sap/bc/ui2/flp?sap-language=EN&sap-client=500#BWProcessChain-change?chainId="
+idate_to_calmonth <- function(idate) {
+  # Format the date to extract year and month in 'YYYYMM' format
+  return(format(idate, "%Y%m"))
+}
+
+
+#| eval: TRUE
+create_forecast_windows <- function(
+    dt, 
+    start_date        = as.IDate("2021-01-01"),
+    forecast_start_date,
+    forecast_end_date = NULL,
+    max_horizon       = 12, 
+    step              = 1,
+    date_col          = "YM") {
+  # Copy data to avoid modifying the original
+  dt_copy <- copy(dt)
+  
+  # If forecast_end_date is not provided, calculate it as 12 months after forecast_start_date
+  if (is.null(forecast_end_date)) {
+    # Get the year and month from forecast_start_date
+    start_year <- year(forecast_start_date)
+    start_month <- month(forecast_start_date)
+    
+    # Calculate the end date as 12 months later (1 year)
+    end_month <- start_month - 1
+    end_year <- start_year + 1
+    
+    # Adjust if needed
+    if (end_month <= 0) {
+      end_month <- end_month + 12
+      end_year <- end_year - 1
+    }
+    
+    # Create the forecast end date
+    forecast_end_date <- as.IDate(paste(end_year, end_month, "01", sep = "-"))
+  }
+  
+  # Calculate the end date for the first window (forecast_start_date - max_horizon months)
+  first_window_end_year <- year(forecast_start_date)
+  first_window_end_month <- month(forecast_start_date) - max_horizon
+  
+  # Adjust year if needed
+  if (first_window_end_month <= 0) {
+    first_window_end_year <- first_window_end_year - 1
+    first_window_end_month <- first_window_end_month + 12
+  }
+  
+  # Create the first window end date
+  first_window_end <- as.IDate(paste(first_window_end_year, first_window_end_month, "01", sep = "-"))
+  
+  # Calculate the end date for the last window (forecast_end_date - 1 month)
+  last_window_end_year <- year(forecast_end_date)
+  last_window_end_month <- month(forecast_end_date) - 1
+  
+  # Adjust year if needed
+  if (last_window_end_month <= 0) {
+    last_window_end_year <- last_window_end_year - 1
+    last_window_end_month <- last_window_end_month + 12
+  }
+  
+  # Create the last window end date
+  last_window_end <- as.IDate(paste(last_window_end_year, last_window_end_month, "01", sep = "-"))
+  
+  # Calculate how many windows we need to create
+  # This is the number of months between first_window_end and last_window_end, divided by step
+  months_between <- 12 * (year(last_window_end) - year(first_window_end)) + 
+                    (month(last_window_end) - month(first_window_end)) + 1
+  
+  num_windows <- ceiling(months_between / step)
+  
+  cat("Creating", num_windows, "windows from", format(first_window_end, "%Y-%m"),
+      "to", format(last_window_end, "%Y-%m"), "with step size", step, "\n")
+  
+  # List to store window data
+  window_list <- list()
+  
+  # Create windows 
+  for (i in 0:(num_windows-1)) {
+    # Calculate the end date for this window
+    window_end_year <- first_window_end_year
+    window_end_month <- first_window_end_month + (i * step)
+    
+    # Adjust year if needed
+    while (window_end_month > 12) {
+      window_end_year <- window_end_year + 1
+      window_end_month <- window_end_month - 12
+    }
+    
+    # Create the window end date
+    window_end <- as.IDate(paste(window_end_year, window_end_month, "01", sep = "-"))
+    
+    # Skip if this window would go beyond the last window end
+    if (window_end > last_window_end) {
+      next
+    }
+    
+    # Filter data from start_date to this window_end
+    window_data <- dt_copy[get(date_col) >= start_date & get(date_col) <= window_end]
+    
+    # Create window ID based on the end date (YYYYMM format)
+    window_id <- format(window_end, "%Y%m")
+    
+    # Calculate the horizon for this window
+    # This is the number of months between this window's end and the forecast start
+    months_to_forecast <- 12 * (year(forecast_start_date) - year(window_end)) + 
+                          (month(forecast_start_date) - month(window_end))
+    
+    # Add window ID and horizon information
+    window_data[, window_id := window_id]
+    # window_data[, horizon := months_to_forecast]
+    
+    # Add to list
+    window_list[[window_id]] <- window_data
+    
+    cat("Created window", window_id, 
+        # "with horizon", months_to_forecast, 
+        "months (", nrow(window_data), "rows )\n")
+  }
+  
+  # Combine all windows
+  all_windows <- rbindlist(window_list)
+  
+  # Add a summary
+  cat("Combined", length(window_list), "windows with a total of", nrow(all_windows), "rows\n")
+  
+  return(all_windows)
+}
+```
+
+## Under Construction
+
+```{r}
+#| eval: TRUE
+#| 
+forecast_hierarchical_windows <- function(
+    windowed_data, 
+    hierarchy_spec, 
+    forecast_horizon    = 12,
+    pred_interval_level = 95) {
+
+  # Extract hierarchy columns from the hierarchy specification
+  hierarchy_cols <- unlist(strsplit(hierarchy_spec, " / "))
+  cat("Hierarchy columns extracted:", paste(hierarchy_cols, collapse=", "), "\n")
+  
+  # Extract unique window IDs
+  window_ids <- unique(windowed_data$window_id)
+  
+  # Process each window
+  all_forecasts <- lapply(window_ids, function(w_id) {
+    
+    # Extract data for this window
+    window_data <- windowed_data[window_id == w_id]
+    
+    cat("Processing window", w_id, "\n")
+    
+    # Process this window
+    result <- tryCatch({
+      
+      # Create tsibble
+      ts_data <- 
+        window_data                                     %>%
+        # add yearmonth and delete CALMONTH      
+        .[, `:=` (
+          YM       = yearmonth(CALMONTH, format = "%Y%m"),
+          CALMONTH = NULL
+        )]                                              %>%
+        # coerce to tsibble with key and index
+        as_tsibble(
+          key = all_of(hierarchy_cols),
+          index = YM
+        )                                               %>%
+        # Fill gaps
+        fill_gaps(Q = 0, .full = TRUE)
+      
+      # Apply hierarchical aggregation
+      hierarchical_data <- ts_data %>% 
+        aggregate_key(
+          !!rlang::parse_expr(hierarchy_spec), 
+          Q = sum(Q, na.rm = TRUE)
+        )
+      
+      tic("h_fit")
+      # Fit ETS models
+      hierarchical_fits <- tryCatch({
+        # Try automatic ETS first
+        hierarchical_data %>% 
+          model(
+            #   `100`             = MEAN(Q)
+            # , `110`             = NAIVE(Q)         
+            # , `120`             = SNAIVE(Q)
+            # , `130`             = RW(Q ~ drift())
+            `ets`             = ETS(Q)
+            # , `150`             = TSLM(Q ~ trend())
+            # , `160`             = ARIMA(Q)
+          )
+      }, error = function(e) {
+        cat("  Using simpler ETS model specification\n")
+        # Try simpler model if automatic fails
+        hierarchical_data %>% 
+          model(
+            ets = ETS(Q ~ error("A") + trend("N") + season("N"))
+          )
+      })
+      toc()
+
+      tic("r_fit")
+      # Reconcile forecasts
+      reconciled_fits <- hierarchical_fits %>%
+        reconcile(
+          ets_mint_shrink  = min_trace(
+            models = ets, method = "mint_shrink")
+        )
+      toc()
+      
+      tic("h_fct")
+      # Generate forecasts using the forecast_horizon parameter
+      forecasts <- forecast_granular_level(
+        model          = reconciled_fits,
+        h              = forecast_horizon,
+        level          = pred_interval_level, # 95% prediction intervals 
+        hierarchy_cols = hierarchy_cols
+      )
+
+      cat("  Generated forecasts with", nrow(forecasts), "rows\n")
+      toc()
+      
+      # Create a completely new data frame for the results
+      # This avoids any issues with complex structures in the forecasts
+      result_df <- data.frame()
+      tic("proc")
+      
+      # # Process the forecasts row by row to ensure proper extraction
+      # forecast_rows <- as_tibble(forecasts)
+      # for (i in 1:nrow(forecast_rows)) {
+      #   row <- forecast_rows[i,]
+      #   
+      #   # Create a new row with basic forecast information
+      #   new_row <- data.frame(
+      #     window_id     = w_id,
+      #     CALMONTH      = format(row$YM, "%Y%m"),
+      #     forecast_date = as.character(row$YM),
+      #     forecast_mean = as.numeric(row$.mean)
+      #   )
+      #   
+      #   # Calculate step based on window end date
+      #   window_end_ym    <- as.character(w_id)
+      #   window_end_year  <- as.integer(substr(window_end_ym, 1, 4))
+      #   window_end_month <- as.integer(substr(window_end_ym, 5, 6))
+      #   window_end       <- yearmonth(paste(window_end_year, window_end_month, sep = "-"))
+      #   
+      #   # Add step column
+      #   new_row$step     <- as.integer(row$YM - window_end)
+      #   
+      #   # Add hierarchy columns one by one, carefully handling each type
+      #   for (col in hierarchy_cols) {
+      #     if (col %in% names(row)) {
+      #       # Extract the value carefully
+      #       val <- row[[col]]
+      #       
+      #       if (is.list(val)) {
+      #         # For list columns, extract the first element
+      #         if (length(val) > 0) {
+      #           new_row[[col]] <- as.character(val[[1]])
+      #         } else {
+      #           new_row[[col]] <- NA_character_
+      #         }
+      #       } else if (is.null(val)) {
+      #         # Handle NULL values
+      #         new_row[[col]] <- NA_character_
+      #       } else {
+      #         # For normal values, convert to character
+      #         new_row[[col]] <- as.character(val)
+      #       }
+      #     } else {
+      #       # If column is missing, use NA
+      #       new_row[[col]] <- NA_character_
+      #     }
+      #   }
+      #   
+      #   # Add to result data frame
+      #   result_df <- rbind(result_df, new_row)
+      # }
+      # 
+      
+      browser()
+      dtDFU_fct <- 
+        forecasts                                    %>%
+        setDT()                                      %>%
+        .[, CALMONTH:= format(YM, "%Y%m")]           %>%
+        .[CALMONTH %between% c('202401', '202412')] %T>%
+        setnames(
+          old = c(".model", ".mean"), 
+          new = c("MODEL" , "FCT")
+        )                                            %>%
+        .[, -c("Q", "YM"), with = FALSE]             %>%
+        .[, `:=` (
+          VERSMON = w_id,
+          STEP    = months_diff(CALMONTH, w_id)
+        )]
+      
+      toc()
+      cat("  Created result data frame with", nrow(result_df), "rows\n")
+      
+      # Convert to data.table
+      result_dt <- as.data.table(result_df)
+      
+      return(dtDFU_fct)
+    }, error = function(e) {
+      cat("ERROR in window", w_id, ":", conditionMessage(e), "\n")
+      cat("Error traceback:\n")
+      print(sys.calls())
+      return(NULL)
+    })
+    
+    toc()
+    return(result)
+  })
+  
+  # # Remove any NULL results ####
+  # all_forecasts <- all_forecasts[!sapply(all_forecasts, is.null)]
+  # 
+  # # Combine all forecasts
+  # if (length(all_forecasts) > 0) {
+  #   cat("Combining", length(all_forecasts), "forecast tables...\n")
+  #   
+  #   # Examine each forecast table before combining
+  #   for (i in 1:length(all_forecasts)) {
+  #     dt <- all_forecasts[[i]]
+  #     cat("Forecast table", i, "has", nrow(dt), "rows and", ncol(dt), "columns\n")
+  #     cat("Column names:", paste(names(dt), collapse=", "), "\n")
+  #     # cat("Column classes:", paste(sapply(dt, class), collapse=", "), "\n\n")
+  #   }
+  #   
+  #   # Use rbindlist with more robust error handling
+  #   tryCatch({
+  #     combined_forecasts <- data.table::rbindlist(all_forecasts, fill = TRUE)
+  #     
+  #     cat("Successfully combined forecasts into data.table with", 
+  #         nrow(combined_forecasts), "rows and", 
+  #         ncol(combined_forecasts), "columns\n")
+  #     
+  #     # # Sort the results
+  #     # setorderv(combined_forecasts, c("window_id", hierarchy_cols, "step"))
+  #     
+  #     return(combined_forecasts)
+  #   }, error = function(e) {
+  #     cat("Error in rbindlist:", e$message, "\n")
+  #     
+  #     # Try an alternative approach
+  #     cat("Attempting alternative combination method...\n")
+  #     
+  #     # Convert all tables to data.frames and use rbind
+  #     all_dfs <- lapply(all_forecasts, as.data.frame)
+  #     combined_df <- do.call(rbind, all_dfs)
+  #     
+  #     # Convert back to data.table
+  #     combined_dt <- as.data.table(combined_df)
+  #     
+  #     cat("Combined forecasts into data.table with", 
+  #         nrow(combined_dt), "rows and", 
+  #         ncol(combined_dt), "columns\n")
+  #     
+  #     return(combined_dt)
+  #   })
+  # } else {
+  #   stop("All windows failed to process")
+  # }
+  
+  return(all_forecasts)
+}
+```
+
+## Prepare Data
+
+```{r}
+#| eval: TRUE
+#| 
+dtSLS_PRDH <-
+  copy(dtSLS)                                                   %>%
+  dtMATL[, .(MATERIAL, PRDH1, PRDH2, PRDH3, PRDH4)][
+    ., on = .(MATERIAL)]                                        %>%
+    .[, YM := calmonth_to_idate(CALMONTH)]                      %>%
+  .[PRDH1 == '08' ] # & MATERIAL == '000000000000000433'] 
+
+# First, let's create our data.table with hierarchical windows as before
+# This uses all our previously defined functions
+windowed_data <- create_forecast_windows(
+  dt                  = dtSLS_PRDH,
+  start_date          = as.IDate("2021-01-01"),
+  forecast_start_date = as.IDate("2024-01-01"),
+  forecast_end_date   = as.IDate("2024-12-01"),
+  max_horizon         = 12, 
+  step                = 1,
+  date_col            = "YM"
+)
+
+View(
+  dcast.data.table(
+    windowed_data[MATERIAL == '000000000003011382'], 
+    window_id ~ CALMONTH, 
+    fun.aggregate = sum, 
+    value.var = "Q")
+  )
+
+```
+
+## Hier forecasting
+
+```{r}
+# Run the forecasting
+# Process all windows with hierarchical forecasting
+hierarchy_spec <- "PRDH1 / PRDH2 / PRDH3 / PRDH4 / MATERIAL"
+
+system.time({
+  hierarchical_forecasts2 <- forecast_hierarchical_windows(
+    windowed_data       = windowed_data[window_id == '202301'],
+    hierarchy_spec      = hierarchy_spec,
+    forecast_horizon    = 12,
+    pred_interval_level = 95
+  )
+})
+```
 
 
 
-httr::BROWSE(paste0(WTB_CHAIN, "LC_TD_SD_DYNA_FRCT"))
-httr::BROWSE("bwmt://WTB/sap/bw/modeling/dtpa/dtp_006eipubipunxghr7sqyu6zwv/m")
-httr::BROWSE(paste0(WTB_CHAIN, "PA_POC"))
-httr::BROWSE(paste0(WTB_CHAIN, "LC_TD_SD_DYNA_FRCT"))
+
+
+```{r}
+# dtALL_PRDH <-
+#   copy(SLS)                                                   %>%
+#   dtMATL[, .(MATERIAL, PRDH1, PRDH2, PRDH3, PRDH4)][
+#     ., on = .(MATERIAL)]                                        %>%
+#   .[PRDH1 == '08'] 
+
+# add product hierarchy
+dtSLS_PRDH <-
+  copy(dtSLS)                                                   %>%
+  dtMATL[, .(MATERIAL, PRDH1, PRDH2, PRDH3, PRDH4)][
+    ., on = .(MATERIAL)]                                        %>%
+  .[PRDH1 == '08'] %>%
+  .[, YM := calmonth_to_idate(CALMONTH)]
+
+
+tsTrain <- 
+  dtSLS_PRDH[
+    CALMONTH %between% c(202101, 202312)  
+    & MATERIAL == '000000000000000433'] 
+
+tsTest <- 
+  dtSLS_PRDH[
+    CALMONTH %between% c(202401, 202412)  
+    & MATERIAL == '000000000000000433']
+```
+
+```{r}
+#| eval: FALSE
+#| 
+# Create aggregates for all hierarchy levels
+create_hierarchical_aggregates <- function(dt) {
+  # Create a copy to avoid modifying the original
+  dt_agg <- copy(dt)
+  
+  # Add a column to identify original data (leaf level)
+  dt_agg[, level := "MATERIAL"]
+  
+  # Create aggregates for PRDH4 level
+  dt_prdh4 <- dt_agg[, .(Q = sum(Q)), by = .(YM, PRDH1, PRDH2, PRDH3, PRDH4)]
+  dt_prdh4[, level := "PRDH4"]
+  
+  # Create aggregates for PRDH3 level
+  dt_prdh3 <- dt_agg[, .(Q = sum(Q)), by = .(YM, PRDH1, PRDH2, PRDH3)]
+  dt_prdh3[, level := "PRDH3"]
+  
+  # Create aggregates for PRDH2 level
+  dt_prdh2 <- dt_agg[, .(Q = sum(Q)), by = .(YM, PRDH1, PRDH2)]
+  dt_prdh2[, level := "PRDH2"]
+  
+  # Create aggregates for PRDH1 level (top level)
+  dt_prdh1 <- dt_agg[, .(Q = sum(Q)), by = .(YM, PRDH1)]
+  dt_prdh1[, level := "PRDH1"]
+  
+  # Combine all levels
+  dt_hierarchical <- rbindlist(
+    list(dt_agg, dt_prdh4, dt_prdh3, dt_prdh2, dt_prdh1),
+    fill = TRUE
+  )
+  
+  return(dt_hierarchical)
+}
+```
+
+
+```{r}
+# create tsibble
+tsHTS_act <- dtSLS_PRDH                                         %>%
+  .[, .(MATERIAL, PRDH1, PRDH2, PRDH3, PRDH4, CALMONTH, Q)]     %>%
+  .[, YM:= yearmonth(CALMONTH, format = "%Y%m")]                %>% 
+  .[, CALMONTH:= NULL]                                          %>%  
+  as_tsibble(
+    key   = c(MATERIAL, PRDH1, PRDH2, PRDH3, PRDH4), 
+    index = YM
+  )                                                             %>%
+  group_by_key()                                                %>%
+  fill_gaps(.full = TRUE) 
+
+# Create cross-validation windows
+tsTrain_cv <- tsHTS_act                                         %>%
+  filter(
+    year(YM) >= 2021,
+    YM < yearmonth("202412", format = "%Y%m")
+  )                                                             %>%
+  stretch_tsibble(.init = 25, .step = 1)                        %>%
+  group_by(.id)                                                 %>%
+  mutate(.id = max(YM) %>% format("%Y%m"))                      %>%
+  ungroup() %>%
+  filter(.id == '202301')
+
+# Prepare test data
+tsTest <- tsHTS_act %>%
+  filter(
+    year(YM) == 2024,
+    YM >= yearmonth("202401", format = "%Y%m"),
+    YM <= yearmonth("202412", format = "%Y%m")
+  )
+```
+
+## Forecast Function
+
+```{r}
+#' Hierarchical Time Series Forecasting with Cross-Validation
+#'
+#' @description
+#' Performs hierarchical time series forecasting using ETS models at multiple levels
+#' of aggregation, properly handling cross-validation windows.
+#'
+#' @param tsTrain_cv A stretched tsibble containing training data for cross-validation
+#' @param tsTest Test data for evaluation
+#' @param h Forecast horizon (default: 12)
+#' @param reconciliation_method Method for reconciliation (default: "ols")
+#' @return A list containing forecasts, accuracy metrics, and plots
+#'
+#' @import fabletools
+#' @import fable
+#' @import dplyr
+#' @import purrr
+#' @import tidyr
+#'
+hierarchical_cv_forecast <- function(
+    tsTrain_cv, 
+    tsTest, 
+    h = 12, 
+    reconciliation_method = "ols") {
+  
+  # browser()
+  # First, nest the data by .id to preserve cross-validation windows
+  nested_cv <- tsTrain_cv %>%
+    group_by(.id)         %>%
+    nest()                %>%
+    mutate(
+      # Process each window separately
+      window_results = map2(
+        .x = data, 
+        .y = .id, 
+        .f = function(window_data, current_id) {  
+          # Pass .id directly
+          # Convert back to tsibble
+          window_tsibble <- window_data %>%
+            as_tsibble(key = c(MATERIAL, PRDH1, PRDH2, PRDH3, PRDH4), index = YM)
+          
+          ## Extract the end date of this window for filtering test data
+          # window_end       <- max(window_tsibble$YM)
+          
+          ## Calculate end date for test data using yearmonth arithmetic
+          # window_end_year  <- year(window_end)
+          # window_end_month <- month(window_end)
+          # end_test_month   <- window_end_month + h
+          # end_test_year    <- window_end_year + floor((end_test_month - 1) / 12)
+          # end_test_month   <- ((end_test_month - 1) %% 12) + 1
+          # end_test_date    <- yearmonth(paste0(end_test_year, "-", end_test_month))
+          
+          # Filter test data for evaluation (next h months after window end)
+          window_test <- tsTest                                %>%
+            filter(
+              year(YM) == 2024,
+              YM >= yearmonth("202401", format = "%Y%m"),
+              YM <= yearmonth("202401", format = "%Y%m")
+            )
+        
+        # Apply hierarchical aggregation within this window
+        window_hierarchical <- window_tsibble                  %>%
+          aggregate_key(
+            MATERIAL / PRDH4 / PRDH3 / PRDH2 / PRDH1,
+            Q = sum(Q, na.rm = TRUE)
+          )                                                    %>%
+          model(
+            ets = ETS(Q)
+          )
+        
+        # Generate reconciled forecasts
+        window_fc <- window_hierarchical                       %>%
+          reconcile(
+            ets_min_trace = min_trace(
+              ets, 
+              method = reconciliation_method
+              )
+          )                                                    %>%
+          forecast(h = h)                                      %>%
+          mutate(
+            # .mean = pmax(0, .mean),
+            .id   = current_id  # Add the window ID to each forecast
+          )
+        
+        # Evaluate accuracy if test data is available
+        window_accuracy <- NULL
+        if (nrow(window_test) > 0) {
+          # Prepare test data with hierarchical aggregation
+          window_test_hierarchical <- window_test               %>%
+            aggregate_key(
+              MATERIAL / PRDH4 / PRDH3 / PRDH2 / PRDH1,
+              Q = sum(Q, na.rm = TRUE)
+            )
+          
+          window_accuracy <- window_fc                          %>%
+            accuracy(window_test_hierarchical)                  %>%
+            mutate(.id = current_id)  # Add the window ID to accuracy metrics too
+        }
+        
+        return(list(
+          window_id = current_id,
+          forecasts = window_fc,
+          accuracy  = window_accuracy
+        ))
+      })
+    )
+  
+  # Extract all forecasts and accuracy metrics
+  all_window_ids <- nested_cv %>% pull(.id)
+  
+  # We don't need to unnest and then join - the .id is already in the forecasts
+  all_forecasts <- nested_cv                                    %>%
+    mutate(forecasts = map(window_results, ~ .x$forecasts))     %>%
+    select(.id, forecasts)                                      %>%
+    unnest(forecasts)  # This will preserve the .id column we added
+  
+  all_accuracy <- nested_cv                                     %>%
+    mutate(accuracy = map(window_results, ~ .x$accuracy))       %>%
+    select(.id, accuracy)                                       %>%
+    unnest(accuracy, keep_empty = TRUE)                         %>%
+    filter(!is.null(RMSE))
+  
+  # Summarize accuracy by level and window ID
+  accuracy_summary <- all_accuracy                              %>%
+    group_by(
+      .id, 
+      .model, 
+      is_aggregated(PRDH1), 
+      is_aggregated(PRDH2), 
+      is_aggregated(PRDH3), 
+      is_aggregated(PRDH4), 
+      is_aggregated(MATERIAL)
+      )                                                         %>%
+    summarise(
+      RMSE = mean(RMSE, na.rm = TRUE),
+      MAE  = mean(MAE , na.rm = TRUE),
+      MAPE = mean(MAPE, na.rm = TRUE),
+      MASE = mean(MASE, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  # Create visualization for the most recent window
+  most_recent_id <- max(all_window_ids)
+  most_recent_fc <- all_forecasts                               %>% 
+    filter(.id == most_recent_id)
+  
+  return(list(
+    all_forecasts    = all_forecasts,
+    accuracy_summary = accuracy_summary,
+    most_recent_fc   = most_recent_fc
+  ))
+}
+```
+
+## Execute HTS
+
+```{r}
+# Run the hierarchical forecasting with cross-validation
+results <- hierarchical_cv_forecast(
+  tsTrain_cv, 
+  tsTest, 
+  h = 12, 
+  reconciliation_method = "ols"
+)
+
+# View results
+print(results$accuracy_summary)
 
 ```
 
 ```{r}
-WTB_ADSO <- "https://bitest.wessanen.com:8002/sap/bc/ui2/flp?sap-language=EN&sap-client=500#BWDatastore-manage?adsoName="
+# Generate plots at each level
+levels <- c("PRDH1", "PRDH2", "PRDH3", "PRDH4", "MATERIAL")
+plots <- list()
 
-
-
-httr::BROWSE(paste0(WTB_ADSO, "P_FRFPA"))
-httr::BROWSE(paste0(WTB_ADSO, "SDSFRPR4"))
-httr::BROWSE(paste0(WTB_ADSO, "SDMFRPR4"))
-httr::BROWSE(paste0(WTB_ADSO, "SDMFRCAC"))
+for (lvl in levels) {
+  # Try-catch block to handle potential plotting errors
+  tryCatch({
+    # Filter forecasts for the current level
+    is_last_level <- lvl == levels[length(levels)]
+    
+    # Get one specific series at this level for plotting
+    # This ensures we're not trying to plot too many series at once
+    level_fc <- most_recent_fc %>%
+      filter(is_aggregated(!!sym(lvl))) 
+    
+    if (lvl != "MATERIAL") {
+      level_fc <- level_fc %>% 
+        filter(!is_aggregated(levels[which(levels == lvl) + 1]))
+    }
+    
+    # If there are too many series, take just a sample
+    if (length(unique(level_fc[[".key"]])) > 10) {
+      sample_keys <- unique(level_fc[[".key"]])[1:10]
+      level_fc <- level_fc %>% filter(.key %in% sample_keys)
+    }
+    
+    # Create a basic plot first
+    p <- ggplot() +
+      geom_line(data = level_fc, aes(x = YM, y = .mean, color = .key)) +
+      labs(
+        title = paste("Forecasts at", lvl, "level"),
+        subtitle = paste("Window ending:", max(all_window_ids)),
+        x = "Month",
+        y = "Sales",
+        color = "Series"
+      ) +
+      theme_minimal()
+    
+    # Add actual data if available
+    level_test <- tsTest %>%
+      aggregate_key(
+        MATERIAL / PRDH4 / PRDH3 / PRDH2 / PRDH1,
+        Q = sum(Q, na.rm = TRUE)
+      ) 
+    
+    if (lvl != "MATERIAL") {
+      level_test <- level_test %>%
+        filter(is_aggregated(!!sym(lvl)) & !is_aggregated(levels[which(levels == lvl) + 1]))
+    } else {
+      level_test <- level_test %>%
+        filter(is_aggregated(!!sym(lvl)))
+    }
+    
+    # Match test data to the same keys used in forecasts
+    if (nrow(level_test) > 0 && ".key" %in% names(level_fc)) {
+      level_test <- level_test %>% 
+        filter(.key %in% unique(level_fc$.key))
+      
+      if (nrow(level_test) > 0) {
+        p <- p + geom_line(data = level_test, 
+                          aes(x = YM, y = Q, color = .key),
+                          linetype = "dashed")
+      }
+    }
+    
+    plots[[lvl]] <- p
+  }, error = function(e) {
+    # If there's an error, create a simple message plot instead
+    plots[[lvl]] <- ggplot() + 
+      annotate("text", x = 0.5, y = 0.5, 
+               label = paste("Unable to plot", lvl, "level:", e$message)) +
+      theme_void() +
+      xlim(0, 1) + ylim(0, 1)
+  })
+}
 ```
 
+
+```{r}
+# Main execution script
+#' @export
+run_hts_forecast_workflow <- function() {
+  
+  # 1. Create test data for evaluation
+  cat("Preparing test data...\n")
+  tsTest <- tsHTS_act %>%
+    filter(
+      year(YM) == 2024,
+      YM >= yearmonth("202401", format = "%Y%m")
+    )
+  
+  # 2. Process cross-validation data
+  cv_results <- tsTrain_cv %>%
+    group_by(.id) %>%
+    group_split() %>%
+    # Process each training window
+    map_dfr(function(training_window) {
+      cat(paste0("Processing training window ending: ", unique(training_window$.id), "\n"))
+      
+      # Fit and forecast
+      hts_fc <- hierarchical_ets_forecast(
+        training_window, 
+        h = 12, 
+        reconciliation_method = "wls"
+      )
+      
+      # Filter test data for this time period
+      current_test <- tsTest %>%
+        filter(
+          format(YM, "%Y%m") > unique(training_window$.id),
+          format(YM, "%Y%m") <= format(
+            yearmonth(unique(training_window$.id), format = "%Y%m") + months(12), 
+            "%Y%m"
+          )
+        )
+      
+      # Evaluate
+      accuracy_metrics <- evaluate_hierarchical_forecasts(hts_fc, current_test)
+      
+      # Return results
+      return(tibble(
+        .id        = unique(training_window$.id),
+        metrics    = list(accuracy_metrics),
+        forecasts  = list(hts_fc)
+      ))
+    })
+  
+  # 3. Summarize and visualize results
+  cat("Summarizing results...\n")
+  
+  # Combine all metrics
+  all_metrics <- cv_results %>%
+    unnest(metrics) %>%
+    group_by(.model) %>%
+    summarise(
+      RMSE = mean(RMSE, na.rm = TRUE),
+      MAE = mean(MAE, na.rm = TRUE),
+      MAPE = mean(MAPE, na.rm = TRUE),
+      MASE = mean(MASE, na.rm = TRUE)
+    )
+  
+  # Get the last training window for final visualization
+  final_window <- cv_results %>%
+    filter(window_end == max(window_end))
+  
+  # Create visualizations
+  plots <- plot_hierarchical_forecasts(
+    final_window$forecasts[[1]],
+    test_data = tsTest
+  )
+  
+  # 4. Return results
+  cat("Workflow complete.\n")
+  return(list(
+    metrics = all_metrics,
+    cv_results = cv_results,
+    plots = plots
+  ))
+}
+
+# Example usage:
+# results <- run_hts_forecast_workflow()
+# print(results$metrics)
+# results$plots$PRDH1  # View top-level forecast plot
+```
+
+```{r}
+#' Simple Hierarchical Forecast Plotter
+#'
+#' @description
+#' Creates simple, reliable plots for hierarchical time series forecasts
+#' at different aggregation levels.
+#'
+#' @param forecasts The forecast object from hierarchical_cv_forecast()
+#' @param test_data The actual test data for comparison
+#' @param levels A vector of level names to plot
+#' @param max_series Maximum number of series to plot per level (default: 5)
+#' @return A list of ggplot objects, one for each level
+#'
+#' @import ggplot2
+#' @import dplyr
+#'
+plot_hierarchical_simple <- function(forecasts, test_data, 
+                                     levels = c("PRDH1", "PRDH2", "PRDH3", "PRDH4", "MATERIAL"),
+                                     max_series = 5) {
+  # Create an empty list to store plots
+  plot_list <- list()
+  
+  # Loop through each level
+  for (lvl in levels) {
+    cat("Creating plot for level:", lvl, "\n")
+    
+    # Handle forecasts ----------------------------------------
+    # Extract forecast data at this level
+    fc_data <- forecasts
+    
+    # For each level, we filter differently
+    if (lvl == "PRDH1") {
+      # Top level - usually just one or a few series
+      fc_filtered <- fc_data %>%
+        filter(is_aggregated(PRDH1) & !is_aggregated(PRDH2))
+    } else if (lvl == "PRDH2") {
+      fc_filtered <- fc_data %>%
+        filter(is_aggregated(PRDH2) & !is_aggregated(PRDH3))
+    } else if (lvl == "PRDH3") {
+      fc_filtered <- fc_data %>%
+        filter(is_aggregated(PRDH3) & !is_aggregated(PRDH4))
+    } else if (lvl == "PRDH4") {
+      fc_filtered <- fc_data %>%
+        filter(is_aggregated(PRDH4) & !is_aggregated(MATERIAL))
+    } else if (lvl == "MATERIAL") {
+      fc_filtered <- fc_data %>%
+        filter(!is_aggregated(MATERIAL))
+    }
+    
+    # If no forecasts at this level, skip to next level
+    if (nrow(fc_filtered) == 0) {
+      cat("No forecast data for level:", lvl, "\n")
+      # Create an empty plot with a message
+      p <- ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, 
+                 label = paste("No forecast data available for", lvl, "level")) +
+        theme_void() +
+        xlim(0, 1) + ylim(0, 1)
+      
+      plot_list[[lvl]] <- p
+      next
+    }
+    
+    # Limit to max_series if needed
+    unique_keys <- unique(fc_filtered$.key)
+    if (length(unique_keys) > max_series) {
+      cat("Limiting to", max_series, "series for level:", lvl, "\n")
+      series_to_plot <- unique_keys[1:max_series]
+      fc_filtered <- fc_filtered %>% filter(.key %in% series_to_plot)
+    }
+    
+    # Convert to data frame for plotting
+    fc_df <- as.data.frame(fc_filtered) %>%
+      # Create a column for series label
+      mutate(series = paste0(lvl, ": ", .key))
+    
+    # Handle actual data ---------------------------------------
+    # Prepare test data with the same hierarchical structure
+    test_filtered <- NULL
+    
+    if (!is.null(test_data) && nrow(test_data) > 0) {
+      test_hierarchical <- test_data %>%
+        aggregate_key(
+          MATERIAL / PRDH4 / PRDH3 / PRDH2 / PRDH1,
+          Q = sum(Q, na.rm = TRUE)
+        )
+      
+      # Filter test data to match the forecast level
+      if (lvl == "PRDH1") {
+        test_filtered <- test_hierarchical %>%
+          filter(is_aggregated(PRDH1) & !is_aggregated(PRDH2))
+      } else if (lvl == "PRDH2") {
+        test_filtered <- test_hierarchical %>%
+          filter(is_aggregated(PRDH2) & !is_aggregated(PRDH3))
+      } else if (lvl == "PRDH3") {
+        test_filtered <- test_hierarchical %>%
+          filter(is_aggregated(PRDH3) & !is_aggregated(PRDH4))
+      } else if (lvl == "PRDH4") {
+        test_filtered <- test_hierarchical %>%
+          filter(is_aggregated(PRDH4) & !is_aggregated(MATERIAL))
+      } else if (lvl == "MATERIAL") {
+        test_filtered <- test_hierarchical %>%
+          filter(!is_aggregated(MATERIAL))
+      }
+      
+      # Match test data to the same keys as the forecasts
+      if (nrow(test_filtered) > 0) {
+        test_filtered <- test_filtered %>% 
+          filter(.key %in% unique(fc_filtered$.key))
+        
+        if (nrow(test_filtered) > 0) {
+          # Convert to data frame for plotting
+          test_df <- as.data.frame(test_filtered) %>%
+            # Create a column for series label
+            mutate(series = paste0(lvl, ": ", .key))
+        } else {
+          test_df <- NULL
+        }
+      } else {
+        test_df <- NULL
+      }
+    } else {
+      test_df <- NULL
+    }
+    
+    # Create plot ---------------------------------------------
+    cat("Building plot for level:", lvl, "\n")
+    
+    # Start with an empty plot
+    p <- ggplot()
+    
+    # Add forecast lines
+    p <- p + 
+      geom_line(data = fc_df, 
+                aes(x = YM, y = .mean, color = series),
+                size = 1) +
+      geom_ribbon(data = fc_df,
+                  aes(x = YM, 
+                      ymin = `80%_lower`, 
+                      ymax = `80%_upper`,
+                      fill = series),
+                  alpha = 0.2)
+    
+    # Add actual data if available
+    if (!is.null(test_df) && nrow(test_df) > 0) {
+      p <- p + 
+        geom_line(data = test_df,
+                  aes(x = YM, y = Q, color = series),
+                  linetype = "dashed",
+                  size = 1.2)
+    }
+    
+    # Add labels and theme
+    p <- p +
+      labs(
+        title = paste("Forecasts at", lvl, "Level"),
+        subtitle = "Solid lines: forecasts, Dashed lines: actuals, Ribbons: 80% prediction intervals",
+        x = "Month",
+        y = "Sales",
+        color = "Series",
+        fill = "Series"
+      ) +
+      theme_minimal() +
+      theme(
+        legend.position = "bottom",
+        plot.title = element_text(face = "bold", size = 14),
+        plot.subtitle = element_text(size = 10),
+        axis.title = element_text(face = "bold"),
+        legend.title = element_text(face = "bold")
+      )
+    
+    # Store the plot
+    plot_list[[lvl]] <- p
+  }
+  
+  return(plot_list)
+}
+```
+
+
+## HTS Groups
+
+```{r}
+library(data.table)
+library(caret)  # For dummyVars
+library(glmnet)
+library(ranger)
+```
+
+```{r}
+#| label: 'OHE with Caret'
+#| eval: FALSE
+
+# Assuming your_data is already a data.table
+DT <- copy(dtMATL[, .(MATL_TYPE)])
+
+# 1. Preprocessing
+# Convert categorical to dummy variables
+categorical_cols <- names(DT)[sapply(DT, is.character)]
+
+DT_dummy <- dummyVars(~., data = DT[, .SD, .SDcols = categorical_cols])
+dummy_dt <- as.data.table(predict(DT_dummy, DT))
+
+# Combine with numeric features
+numeric_cols <- names(DT)[sapply(DT, is.numeric)]
+DT_processed <- cbind(
+    dummy_dt,
+    DT[, .SD, .SDcols = numeric_cols]
+)
+```
+
+```{r}
+#| label: 'OHE with data.table'
+#| eval: TRUE
+
+DT <- dtMATL[, .(MATERIAL, MATL_GROUP, PRDH4, PRDH3, PRDH2, PRDH1)] %>%
+  .[dtSLS, on = .(MATERIAL)] %>%
+  .[, .(MATL_GROUP, 
+        PRDH4, PRDH3, PRDH2, PRDH1,
+        Q)]
+
+# Get categorical columns
+categorical_cols <- names(DT)[sapply(DT, is.character)]
+
+# Create dummy variables using data.table
+dummy_dt <- DT[, .SD, .SDcols = categorical_cols]
+
+for (col in categorical_cols) {
+    levels <- unique(dummy_dt[[col]])
+    for (lvl in levels) {
+        dummy_dt[, paste0(col, "_", lvl) := as.integer(get(col) == lvl)]
+    }
+}
+
+dummy_dt[, (categorical_cols) := NULL]
+
+DT_processed <-  copy(dummy_dt)
+```
+
+```{r}
+#| label: PCA
+#| eval: TRUE
+
+# 2. PCA
+# Prepare matrix for PCA
+pca_matrix <- scale(as.matrix(DT_processed))
+pca_result <- prcomp(pca_matrix)
+
+# Get loadings as data.table
+pca_loadings <- as.data.table(pca_result$rotation, keep.rownames = TRUE)
+setnames(pca_loadings, "rn", "feature")
+
+# Top contributors to each component
+top_contributors <- melt(pca_loadings, id.vars = "feature", 
+                        variable.name = "component")
+                        
+# Use the proper data.table function for order
+setorderv(top_contributors, c("component", "value"), order = c(1, -1), 
+         na.last = TRUE)
+
+# Then take the top 5 by component 
+top_contributors <- top_contributors[, .SD[1:5], by = component]
+```

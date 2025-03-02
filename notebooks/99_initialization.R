@@ -4,7 +4,21 @@ library(tsibble)
 library(ggrepel)
 library("padt")
 
+months_diff <- 
+  function(m1, m2) {
+    
+    d1 <- ymd(paste0(m1, "01"))
+    d2 <- ymd(paste0(m2, "01"))
+    
+    M <- lubridate::interval(d2, d1) / months(1) 
+    
+    return(as.integer(M))
+  }
+
 SORG <- 'FR30'
+
+dtMATL <- pa_md_mat_get(
+  .dataset_name = "material", .scope_matl = FALSE)
 
 SLS <-                              # 
   pa_td_dyn_get(
@@ -12,7 +26,8 @@ SLS <-                              #
     .ftype       = c(4)      , # Last Version 1 = PreDR, 2 = Pos
     .salesorg    = SORG      ,
     .scope_matl  = FALSE     , # filter by A,B,C instead 
-  ) 
+  ) %>%
+  .[, STEP:= months_diff("202501", CALMONTH)]
 
 # 164 A-Class
 dtSCOPE <- 
@@ -69,8 +84,14 @@ dtSLS <-
   dtSCOPE[,.(SALESORG, PLANT, MATERIAL)]                   %>%
   unique()                                                 %>%
   .[SLS, on = .(SALESORG, PLANT, MATERIAL), nomatch = 0]   %>%
-  dtTS_LEN_GT_24[., on = .(SALESORG, PLANT, MATERIAL),
-                 , nomatch = 0] 
+  .[, N:= .N, by = .(SALESORG, PLANT, MATERIAL)]           %>%
+  .[N >= 40]
+
+# %>%
+#   dtTS_LEN_GT_24[., on = .(SALESORG, PLANT, MATERIAL),
+#                  , nomatch = 0]                            
+
+
 
 # dtDUMMY <- 
 #   dtSLS[CALMONTH %chin% c('202401', '202402')]  %>%
@@ -96,25 +117,6 @@ dtSLS <-
 #   file = file.path(PATH_GLD_MD, "SCP_156.csv")
 # ) 
 
-tsSLS <- 
-  rbind(dtSLS) %>%
-  .[, .(SALESORG, PLANT, MATERIAL, CALMONTH, Q)]     %>%
-  .[, YM:= yearmonth(CALMONTH, format = "%Y%m")]     %>% 
-  .[, CALMONTH:= NULL]                               %>%  
-  as_tsibble(
-    key   = c(SALESORG, PLANT, MATERIAL), 
-    index = YM
-  )                %>%
-  group_by_key()   %>%
-  fill_gaps(.full = TRUE, Q = 0) 
 
-months_diff <- 
-  function(m1, m2) {
-    
-    d1 <- ymd(paste0(m1, "01"))
-    d2 <- ymd(paste0(m2, "01"))
-    
-    M <- lubridate::interval(d2, d1) / months(1) 
-    
-    return(as.integer(M))
-  }
+
+

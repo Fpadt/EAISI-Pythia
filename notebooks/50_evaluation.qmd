@@ -38,10 +38,10 @@ VAR <- 'EPA'
 MAT <- pa_matn1_input('10023')
 # MAT <- pa_matn1_input('433')
 
-colP <- pa_color_get("primary")
-colS <- pa_color_get("secondary")
-colT <- pa_color_get("tertiary")
-colA <- pa_color_get("accent1")
+colP <- pa_brand_color_get("primary")
+colS <- pa_brand_color_get("secondary")
+colT <- pa_brand_color_get("tertiary")
+colA <- pa_brand_color_get("accent1")
 
 colScale <- c(colP, colS, colT, colA)
 
@@ -59,7 +59,6 @@ colScale <- c(colP, colS, colT, colA)
 # Sales versus Forecast
 
 ## SAP BW
-
 
 ```{r}
 WTB_CHAIN <- "https://bitest.wessanen.com:8002/sap/bc/ui2/flp?sap-language=EN&sap-client=500#BWProcessChain-change?chainId="
@@ -99,13 +98,16 @@ httr::BROWSE(paste0(WTB_ADSO, "SDMFRPR4"))
 httr::BROWSE(paste0(WTB_ADSO, "SDMFRCAC"))
 ```
 
-
-
 ## Time series
 
 ```{r}
 #| label: 'display sales'
 #| eval: True
+
+MAT <- '07'
+
+ACT <- 
+  dtPRDH1[MATERIAL == MAT]
 
 ACT <- 
   DYN[MATERIAL == MAT
@@ -141,8 +143,8 @@ ggplot(
   guides(color = guide_legend(
     override.aes = 
       list(
-        fill  = colScale,  
-        color = colScale 
+        fill  = colScale[1],  
+        color = colScale[1] 
       )
   )
   ) +
@@ -250,6 +252,8 @@ ggplot(
 fivenum(dtACC0[STEP == 1 & AE < 15000, AE])
 ```
 
+## SC-113B
+
 ```{r}
 #| label:  'SC-113B for M-1, M-2, M-3'
 #| eval:   true
@@ -324,6 +328,8 @@ if(MAN){
 }
 ```
 
+## APE vs ECO
+
 ```{r}
 #| label:  'APE vs ECO'
 #| eval:   false
@@ -339,6 +345,8 @@ ggplot(
   # scale_color_manual(values=c(pa_pa_ET_COLSS["CG"], pa_ET_FG))+
   theme_minimal()
 ```
+
+## Violin FA PA
 
 ```{r}
 #| label: 'violin plot of Forecast Accuracy PA'
@@ -446,4 +454,3 @@ ggplot(dtACC0, aes(x = factor(-STEP), y = AE)) +
   coord_cartesian(ylim = c(0, 25000))
 
 ```
-
