@@ -382,3 +382,144 @@ forecast_hierarchical_windows <- function(windowed_data, hierarchy_spec,
   
   return(combined_forecasts)
 }
+
+# Create a helper function for date conversion
+calmonth_to_idate <- function(calmonth) {
+  # Ensure calmonth is integer
+  calmonth_int <- as.integer(calmonth)
+  
+  # Extract year and month components
+  year_part  <- calmonth_int %/% 100
+  month_part <- calmonth_int %% 100
+  
+  # Create date string and convert to IDate
+  date_str <- paste(year_part, month_part, "1", sep = "-")
+  return(as.IDate(date_str))
+}
+
+idate_to_calmonth <- function(idate) {
+  # Format the date to extract year and month in 'YYYYMM' format
+  return(format(idate, "%Y%m"))
+}
+
+create_forecast_windows <- function(
+    dt, 
+    start_date        = as.IDate("2021-01-01"),
+    forecast_start_date,
+    forecast_end_date = NULL,
+    max_horizon       = 12, 
+    step              = 1,
+    date_col          = "YM") {
+  # Copy data to avoid modifying the original
+  dt_copy <- copy(dt)
+  
+  # If forecast_end_date is not provided, calculate it as 12 months after forecast_start_date
+  if (is.null(forecast_end_date)) {
+    # Get the year and month from forecast_start_date
+    start_year <- year(forecast_start_date)
+    start_month <- month(forecast_start_date)
+    
+    # Calculate the end date as 12 months later (1 year)
+    end_month <- start_month - 1
+    end_year <- start_year + 1
+    
+    # Adjust if needed
+    if (end_month <= 0) {
+      end_month <- end_month + 12
+      end_year <- end_year - 1
+    }
+    
+    # Create the forecast end date
+    forecast_end_date <- as.IDate(paste(end_year, end_month, "01", sep = "-"))
+  }
+  
+  # Calculate the end date for the first window (forecast_start_date - max_horizon months)
+  first_window_end_year <- year(forecast_start_date)
+  first_window_end_month <- month(forecast_start_date) - max_horizon
+  
+  # Adjust year if needed
+  if (first_window_end_month <= 0) {
+    first_window_end_year <- first_window_end_year - 1
+    first_window_end_month <- first_window_end_month + 12
+  }
+  
+  # Create the first window end date
+  first_window_end <- as.IDate(paste(first_window_end_year, first_window_end_month, "01", sep = "-"))
+  
+  # Calculate the end date for the last window (forecast_end_date - 1 month)
+  last_window_end_year <- year(forecast_end_date)
+  last_window_end_month <- month(forecast_end_date) - 1
+  
+  # Adjust year if needed
+  if (last_window_end_month <= 0) {
+    last_window_end_year <- last_window_end_year - 1
+    last_window_end_month <- last_window_end_month + 12
+  }
+  
+  # Create the last window end date
+  last_window_end <- as.IDate(paste(last_window_end_year, last_window_end_month, "01", sep = "-"))
+  
+  # Calculate how many windows we need to create
+  # This is the number of months between first_window_end and last_window_end, divided by step
+  months_between <- 12 * (year(last_window_end) - year(first_window_end)) + 
+    (month(last_window_end) - month(first_window_end)) + 1
+  
+  num_windows <- ceiling(months_between / step)
+  
+  cat("Creating", num_windows, "windows from", format(first_window_end, "%Y-%m"),
+      "to", format(last_window_end, "%Y-%m"), "with step size", step, "\n")
+  
+  # List to store window data
+  window_list <- list()
+  
+  # Create windows 
+  for (i in 0:(num_windows-1)) {
+    # Calculate the end date for this window
+    window_end_year <- first_window_end_year
+    window_end_month <- first_window_end_month + (i * step)
+    
+    # Adjust year if needed
+    while (window_end_month > 12) {
+      window_end_year <- window_end_year + 1
+      window_end_month <- window_end_month - 12
+    }
+    
+    # Create the window end date
+    window_end <- as.IDate(paste(window_end_year, window_end_month, "01", sep = "-"))
+    
+    # Skip if this window would go beyond the last window end
+    if (window_end > last_window_end) {
+      next
+    }
+    
+    # Filter data from start_date to this window_end
+    window_data <- dt_copy[get(date_col) >= start_date & get(date_col) <= window_end]
+    
+    # Create window ID based on the end date (YYYYMM format)
+    window_id <- format(window_end, "%Y%m")
+    
+    # Calculate the horizon for this window
+    # This is the number of months between this window's end and the forecast start
+    months_to_forecast <- 12 * (year(forecast_start_date) - year(window_end)) + 
+      (month(forecast_start_date) - month(window_end))
+    
+    # Add window ID and horizon information
+    window_data[, window_id := window_id]
+    # window_data[, horizon := months_to_forecast]
+    
+    # Add to list
+    window_list[[window_id]] <- window_data
+    
+    cat("Created window", window_id, 
+        # "with horizon", months_to_forecast, 
+        "months (", nrow(window_data), "rows )\n")
+  }
+  
+  # Combine all windows
+  all_windows <- rbindlist(window_list)
+  
+  # Add a summary
+  cat("Combined", length(window_list), "windows with a total of", nrow(all_windows), "rows\n")
+  
+  return(all_windows)
+}

@@ -30,6 +30,7 @@ SORG <- 'FR30'
 # public functions ---------------------------------------------------------
 invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
 source("notebooks/99_initialization.R")
+source("C:/RW/EAISI-Pythia/notebooks/49.R")
 
 # location for generated figures
 pimg <- file.path('.', 'fig')
@@ -610,396 +611,6 @@ dtAGG <-
 
 # HTS
 
-## Funtion setup
-
-```{r}
-# Create a helper function for date conversion
-calmonth_to_idate <- function(calmonth) {
-  # Ensure calmonth is integer
-  calmonth_int <- as.integer(calmonth)
-  
-  # Extract year and month components
-  year_part  <- calmonth_int %/% 100
-  month_part <- calmonth_int %% 100
-  
-  # Create date string and convert to IDate
-  date_str <- paste(year_part, month_part, "1", sep = "-")
-  return(as.IDate(date_str))
-}
-
-idate_to_calmonth <- function(idate) {
-  # Format the date to extract year and month in 'YYYYMM' format
-  return(format(idate, "%Y%m"))
-}
-
-
-#| eval: TRUE
-create_forecast_windows <- function(
-    dt, 
-    start_date        = as.IDate("2021-01-01"),
-    forecast_start_date,
-    forecast_end_date = NULL,
-    max_horizon       = 12, 
-    step              = 1,
-    date_col          = "YM") {
-  # Copy data to avoid modifying the original
-  dt_copy <- copy(dt)
-  
-  # If forecast_end_date is not provided, calculate it as 12 months after forecast_start_date
-  if (is.null(forecast_end_date)) {
-    # Get the year and month from forecast_start_date
-    start_year <- year(forecast_start_date)
-    start_month <- month(forecast_start_date)
-    
-    # Calculate the end date as 12 months later (1 year)
-    end_month <- start_month - 1
-    end_year <- start_year + 1
-    
-    # Adjust if needed
-    if (end_month <= 0) {
-      end_month <- end_month + 12
-      end_year <- end_year - 1
-    }
-    
-    # Create the forecast end date
-    forecast_end_date <- as.IDate(paste(end_year, end_month, "01", sep = "-"))
-  }
-  
-  # Calculate the end date for the first window (forecast_start_date - max_horizon months)
-  first_window_end_year <- year(forecast_start_date)
-  first_window_end_month <- month(forecast_start_date) - max_horizon
-  
-  # Adjust year if needed
-  if (first_window_end_month <= 0) {
-    first_window_end_year <- first_window_end_year - 1
-    first_window_end_month <- first_window_end_month + 12
-  }
-  
-  # Create the first window end date
-  first_window_end <- as.IDate(paste(first_window_end_year, first_window_end_month, "01", sep = "-"))
-  
-  # Calculate the end date for the last window (forecast_end_date - 1 month)
-  last_window_end_year <- year(forecast_end_date)
-  last_window_end_month <- month(forecast_end_date) - 1
-  
-  # Adjust year if needed
-  if (last_window_end_month <= 0) {
-    last_window_end_year <- last_window_end_year - 1
-    last_window_end_month <- last_window_end_month + 12
-  }
-  
-  # Create the last window end date
-  last_window_end <- as.IDate(paste(last_window_end_year, last_window_end_month, "01", sep = "-"))
-  
-  # Calculate how many windows we need to create
-  # This is the number of months between first_window_end and last_window_end, divided by step
-  months_between <- 12 * (year(last_window_end) - year(first_window_end)) + 
-                    (month(last_window_end) - month(first_window_end)) + 1
-  
-  num_windows <- ceiling(months_between / step)
-  
-  cat("Creating", num_windows, "windows from", format(first_window_end, "%Y-%m"),
-      "to", format(last_window_end, "%Y-%m"), "with step size", step, "\n")
-  
-  # List to store window data
-  window_list <- list()
-  
-  # Create windows 
-  for (i in 0:(num_windows-1)) {
-    # Calculate the end date for this window
-    window_end_year <- first_window_end_year
-    window_end_month <- first_window_end_month + (i * step)
-    
-    # Adjust year if needed
-    while (window_end_month > 12) {
-      window_end_year <- window_end_year + 1
-      window_end_month <- window_end_month - 12
-    }
-    
-    # Create the window end date
-    window_end <- as.IDate(paste(window_end_year, window_end_month, "01", sep = "-"))
-    
-    # Skip if this window would go beyond the last window end
-    if (window_end > last_window_end) {
-      next
-    }
-    
-    # Filter data from start_date to this window_end
-    window_data <- dt_copy[get(date_col) >= start_date & get(date_col) <= window_end]
-    
-    # Create window ID based on the end date (YYYYMM format)
-    window_id <- format(window_end, "%Y%m")
-    
-    # Calculate the horizon for this window
-    # This is the number of months between this window's end and the forecast start
-    months_to_forecast <- 12 * (year(forecast_start_date) - year(window_end)) + 
-                          (month(forecast_start_date) - month(window_end))
-    
-    # Add window ID and horizon information
-    window_data[, window_id := window_id]
-    # window_data[, horizon := months_to_forecast]
-    
-    # Add to list
-    window_list[[window_id]] <- window_data
-    
-    cat("Created window", window_id, 
-        # "with horizon", months_to_forecast, 
-        "months (", nrow(window_data), "rows )\n")
-  }
-  
-  # Combine all windows
-  all_windows <- rbindlist(window_list)
-  
-  # Add a summary
-  cat("Combined", length(window_list), "windows with a total of", nrow(all_windows), "rows\n")
-  
-  return(all_windows)
-}
-```
-
-## Under Construction
-
-```{r}
-#| eval: TRUE
-#| 
-forecast_hierarchical_windows <- function(
-    windowed_data, 
-    hierarchy_spec, 
-    forecast_horizon    = 12,
-    pred_interval_level = 95) {
-
-  # Extract hierarchy columns from the hierarchy specification
-  hierarchy_cols <- unlist(strsplit(hierarchy_spec, " / "))
-  cat("Hierarchy columns extracted:", paste(hierarchy_cols, collapse=", "), "\n")
-  
-  # Extract unique window IDs
-  window_ids <- unique(windowed_data$window_id)
-  
-  # Process each window
-  all_forecasts <- lapply(window_ids, function(w_id) {
-    
-    # Extract data for this window
-    window_data <- windowed_data[window_id == w_id]
-    
-    cat("Processing window", w_id, "\n")
-    
-    # Process this window
-    result <- tryCatch({
-      
-      # Create tsibble
-      ts_data <- 
-        window_data                                     %>%
-        # add yearmonth and delete CALMONTH      
-        .[, `:=` (
-          YM       = yearmonth(CALMONTH, format = "%Y%m"),
-          CALMONTH = NULL
-        )]                                              %>%
-        # coerce to tsibble with key and index
-        as_tsibble(
-          key = all_of(hierarchy_cols),
-          index = YM
-        )                                               %>%
-        # Fill gaps
-        fill_gaps(Q = 0, .full = TRUE)
-      
-      # Apply hierarchical aggregation
-      hierarchical_data <- ts_data %>% 
-        aggregate_key(
-          !!rlang::parse_expr(hierarchy_spec), 
-          Q = sum(Q, na.rm = TRUE)
-        )
-      
-      tic("h_fit")
-      # Fit ETS models
-      hierarchical_fits <- tryCatch({
-        # Try automatic ETS first
-        hierarchical_data %>% 
-          model(
-            #   `100`             = MEAN(Q)
-            # , `110`             = NAIVE(Q)         
-            # , `120`             = SNAIVE(Q)
-            # , `130`             = RW(Q ~ drift())
-            `ets`             = ETS(Q)
-            # , `150`             = TSLM(Q ~ trend())
-            # , `160`             = ARIMA(Q)
-          )
-      }, error = function(e) {
-        cat("  Using simpler ETS model specification\n")
-        # Try simpler model if automatic fails
-        hierarchical_data %>% 
-          model(
-            ets = ETS(Q ~ error("A") + trend("N") + season("N"))
-          )
-      })
-      toc()
-
-      tic("r_fit")
-      # Reconcile forecasts
-      reconciled_fits <- hierarchical_fits %>%
-        reconcile(
-          ets_mint_shrink  = min_trace(
-            models = ets, method = "mint_shrink")
-        )
-      toc()
-      
-      tic("h_fct")
-      # Generate forecasts using the forecast_horizon parameter
-      forecasts <- forecast_granular_level(
-        model          = reconciled_fits,
-        h              = forecast_horizon,
-        level          = pred_interval_level, # 95% prediction intervals 
-        hierarchy_cols = hierarchy_cols
-      )
-
-      cat("  Generated forecasts with", nrow(forecasts), "rows\n")
-      toc()
-      
-      # Create a completely new data frame for the results
-      # This avoids any issues with complex structures in the forecasts
-      result_df <- data.frame()
-      tic("proc")
-      
-      # # Process the forecasts row by row to ensure proper extraction
-      # forecast_rows <- as_tibble(forecasts)
-      # for (i in 1:nrow(forecast_rows)) {
-      #   row <- forecast_rows[i,]
-      #   
-      #   # Create a new row with basic forecast information
-      #   new_row <- data.frame(
-      #     window_id     = w_id,
-      #     CALMONTH      = format(row$YM, "%Y%m"),
-      #     forecast_date = as.character(row$YM),
-      #     forecast_mean = as.numeric(row$.mean)
-      #   )
-      #   
-      #   # Calculate step based on window end date
-      #   window_end_ym    <- as.character(w_id)
-      #   window_end_year  <- as.integer(substr(window_end_ym, 1, 4))
-      #   window_end_month <- as.integer(substr(window_end_ym, 5, 6))
-      #   window_end       <- yearmonth(paste(window_end_year, window_end_month, sep = "-"))
-      #   
-      #   # Add step column
-      #   new_row$step     <- as.integer(row$YM - window_end)
-      #   
-      #   # Add hierarchy columns one by one, carefully handling each type
-      #   for (col in hierarchy_cols) {
-      #     if (col %in% names(row)) {
-      #       # Extract the value carefully
-      #       val <- row[[col]]
-      #       
-      #       if (is.list(val)) {
-      #         # For list columns, extract the first element
-      #         if (length(val) > 0) {
-      #           new_row[[col]] <- as.character(val[[1]])
-      #         } else {
-      #           new_row[[col]] <- NA_character_
-      #         }
-      #       } else if (is.null(val)) {
-      #         # Handle NULL values
-      #         new_row[[col]] <- NA_character_
-      #       } else {
-      #         # For normal values, convert to character
-      #         new_row[[col]] <- as.character(val)
-      #       }
-      #     } else {
-      #       # If column is missing, use NA
-      #       new_row[[col]] <- NA_character_
-      #     }
-      #   }
-      #   
-      #   # Add to result data frame
-      #   result_df <- rbind(result_df, new_row)
-      # }
-      # 
-      
-      browser()
-      dtDFU_fct <- 
-        forecasts                                    %>%
-        setDT()                                      %>%
-        .[, CALMONTH:= format(YM, "%Y%m")]           %>%
-        .[CALMONTH %between% c('202401', '202412')] %T>%
-        setnames(
-          old = c(".model", ".mean"), 
-          new = c("MODEL" , "FCT")
-        )                                            %>%
-        .[, -c("Q", "YM"), with = FALSE]             %>%
-        .[, `:=` (
-          VERSMON = w_id,
-          STEP    = months_diff(CALMONTH, w_id)
-        )]
-      
-      toc()
-      cat("  Created result data frame with", nrow(result_df), "rows\n")
-      
-      # Convert to data.table
-      result_dt <- as.data.table(result_df)
-      
-      return(dtDFU_fct)
-    }, error = function(e) {
-      cat("ERROR in window", w_id, ":", conditionMessage(e), "\n")
-      cat("Error traceback:\n")
-      print(sys.calls())
-      return(NULL)
-    })
-    
-    toc()
-    return(result)
-  })
-  
-  # # Remove any NULL results ####
-  # all_forecasts <- all_forecasts[!sapply(all_forecasts, is.null)]
-  # 
-  # # Combine all forecasts
-  # if (length(all_forecasts) > 0) {
-  #   cat("Combining", length(all_forecasts), "forecast tables...\n")
-  #   
-  #   # Examine each forecast table before combining
-  #   for (i in 1:length(all_forecasts)) {
-  #     dt <- all_forecasts[[i]]
-  #     cat("Forecast table", i, "has", nrow(dt), "rows and", ncol(dt), "columns\n")
-  #     cat("Column names:", paste(names(dt), collapse=", "), "\n")
-  #     # cat("Column classes:", paste(sapply(dt, class), collapse=", "), "\n\n")
-  #   }
-  #   
-  #   # Use rbindlist with more robust error handling
-  #   tryCatch({
-  #     combined_forecasts <- data.table::rbindlist(all_forecasts, fill = TRUE)
-  #     
-  #     cat("Successfully combined forecasts into data.table with", 
-  #         nrow(combined_forecasts), "rows and", 
-  #         ncol(combined_forecasts), "columns\n")
-  #     
-  #     # # Sort the results
-  #     # setorderv(combined_forecasts, c("window_id", hierarchy_cols, "step"))
-  #     
-  #     return(combined_forecasts)
-  #   }, error = function(e) {
-  #     cat("Error in rbindlist:", e$message, "\n")
-  #     
-  #     # Try an alternative approach
-  #     cat("Attempting alternative combination method...\n")
-  #     
-  #     # Convert all tables to data.frames and use rbind
-  #     all_dfs <- lapply(all_forecasts, as.data.frame)
-  #     combined_df <- do.call(rbind, all_dfs)
-  #     
-  #     # Convert back to data.table
-  #     combined_dt <- as.data.table(combined_df)
-  #     
-  #     cat("Combined forecasts into data.table with", 
-  #         nrow(combined_dt), "rows and", 
-  #         ncol(combined_dt), "columns\n")
-  #     
-  #     return(combined_dt)
-  #   })
-  # } else {
-  #   stop("All windows failed to process")
-  # }
-  
-  return(all_forecasts)
-}
-```
-
 ## Prepare Data
 
 ```{r}
@@ -1009,8 +620,9 @@ dtSLS_PRDH <-
   copy(dtSLS)                                                   %>%
   dtMATL[, .(MATERIAL, PRDH1, PRDH2, PRDH3, PRDH4)][
     ., on = .(MATERIAL)]                                        %>%
-    .[, YM := calmonth_to_idate(CALMONTH)]                      %>%
-  .[PRDH1 == '08' ] # & MATERIAL == '000000000000000433'] 
+    .[, YM := calmonth_to_idate(CALMONTH)]  
+# %>%
+  # .[PRDH1 == '08' ] # & MATERIAL == '000000000000000433'] 
 
 # First, let's create our data.table with hierarchical windows as before
 # This uses all our previously defined functions
@@ -1024,13 +636,13 @@ windowed_data <- create_forecast_windows(
   date_col            = "YM"
 )
 
-View(
-  dcast.data.table(
-    windowed_data[MATERIAL == '000000000003011382'], 
-    window_id ~ CALMONTH, 
-    fun.aggregate = sum, 
-    value.var = "Q")
-  )
+# View(
+#   dcast.data.table(
+#     windowed_data[MATERIAL == '000000000003011382'], 
+#     window_id ~ CALMONTH, 
+#     fun.aggregate = sum, 
+#     value.var = "Q")
+#   )
 
 ```
 
@@ -1039,15 +651,44 @@ View(
 ```{r}
 # Run the forecasting
 # Process all windows with hierarchical forecasting
-hierarchy_spec <- "PRDH1 / PRDH2 / PRDH3 / PRDH4 / MATERIAL"
+# hierarchy_spec <- "PRDH1 / PRDH2 / PRDH3 / PRDH4 / MATERIAL"
 
+# 42.R
 system.time({
-  hierarchical_forecasts2 <- forecast_hierarchical_windows(
-    windowed_data       = windowed_data[window_id == '202301'],
-    hierarchy_spec      = hierarchy_spec,
+  source("C:/RW/EAISI-Pythia/notebooks/49.R")
+  
+  # 1622.91
+  hts_1 <- forecast_hierarchical_windows(
+    windowed_data       = windowed_data,
+    hierarchy_spec      = "PRDH1/PRDH2/PRDH3/PRDH4/MATERIAL",
     forecast_horizon    = 12,
     pred_interval_level = 95
   )
+  
+  export_for_bi(forecasts = hts_1)
+  saveRDS(object = hts_1, "hts_1.rds")
+})
+```
+
+
+```{r}
+# 46.R
+system.time({
+    source("C:/RW/EAISI-Pythia/notebooks/46.R")
+  
+  # Run forecast with both hierarchies
+  hts_2 <- forecast_hierarchical_windows(
+    windowed_data           = windowed_data,
+    product_hierarchy_spec  = "PRDH1/PRDH2/PRDH3/PRDH4/MATERIAL",
+    customer_hierarchy_spec = NULL, #"CUST1/CUST2/CUSTOMER",
+    use_cross_hierarchy     = TRUE,  # Set to TRUE for cross-product, FALSE for simple concatenation
+    forecast_horizon        = 12,
+    pred_interval_level     = 95,
+    reconciliation_method   = "mint_shrink"
+  )
+
+  export_for_bi(forecasts = hts_2)  
+  saveRDS(object = hts_2, "hts_2.rds")
 })
 ```
 

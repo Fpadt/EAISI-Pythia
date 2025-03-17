@@ -51,3 +51,4 @@ Results
 nul
 .tmp
 .config.yaml
+*.rds
