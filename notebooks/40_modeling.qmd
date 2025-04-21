@@ -66,54 +66,75 @@ tsFT <-
 
 ```
 
-## Forecast Materials/Plant
+## 10023 Forecast Materials/Plant 10023
 
 ```{r}
 #| label: 'FR30/10023'
 #| eval: false
 
-tsMat_act <- 
-  tsSLS %>%
-  filter(MATERIAL == MATL)
+tsSLS <- 
+  dtSLS                                               %>%
+  .[MATERIAL == pa_matn1_input('10023')
+    & CALMONTH < 202501, 
+    .(MATERIAL, CALMONTH, Q)]                         %>%
+  .[, YM:= yearmonth(CALMONTH, format = "%Y%m")]      %>% 
+  .[, CALMONTH:= NULL]                                %>%  
+  as_tsibble(
+    key   = MATERIAL, 
+    index = YM
+  )                                                   %>%
+  group_by_key()                                      %>%
+  fill_gaps(.full = TRUE) 
 
 train <- 
-  tsMat_act %>%
-  filter(year(YM) <= 2023) 
+  tsSLS %>%
+  filter(year(YM) <= 2023)  
 
 test <- 
-  tsMat_act  %>%
-  filter(year(YM) == 2024)
+  tsSLS  %>%
+  filter(year(YM) == 2024) 
+# %>%
+#   filter(YM == yearmonth('202401', format = "%Y%m"))
 
 # plot
-tsMat_act %>%
-  autoplot(.vars = ACT)
+tsSLS %>%
+  autoplot(.vars = Q)
 
-tsMat_act %>% 
-  gg_season(ACT, period = "year")
+tsSLS %>% 
+  gg_season(Q, period = "year")
 
 # Fit model
-tsMat_fit <- 
+tsFIT <- 
   train %>%
   model(
-    Mean    = MEAN(ACT),
-    `Naïve` = NAIVE(ACT),
-    Drift   = NAIVE(ACT ~ drift())
+    Mean    = MEAN(Q),
+    `Naïve` = NAIVE(Q),
+    Drift   = NAIVE(Q ~ drift()),
+    ETS     = ETS(Q)
   ) 
 
-View(augment(tsMat_fit))
+View(augment(tsFIT))
 
 # Produce forecasts 
-tsMat_fct <- 
-  tsMat_fit                  %>%
+tsFCT <- 
+  tsFIT                  %>%
   forecast(h = "12 months")  
   # %>% 
   # forecast(new_data = test)
 
-tsMat_fct                    %>%
-  autoplot(tsMat_act, level = NULL)
+tsFCT                    %>%
+  autoplot(tsSLS, level = NULL)
 
-dtAC <- 
-  accuracy(tsMat_fct, tsMat_act) %T>% 
+dtACC <- 
+  accuracy(
+    tsFCT, 
+    test, 
+    measures = c(point_accuracy_measures, 
+                 list("EPE" = EPE, "EPA" = EPA,
+                      "APE" = APE, "APA" = APA
+                      )
+                 )
+    ) %T>% 
   setDT()  
 
 dtF <-
@@ -636,13 +657,13 @@ windowed_data <- create_forecast_windows(
   date_col            = "YM"
 )
 
-# View(
-#   dcast.data.table(
-#     windowed_data[MATERIAL == '000000000003011382'], 
-#     window_id ~ CALMONTH, 
-#     fun.aggregate = sum, 
-#     value.var = "Q")
-#   )
+View(
+  dcast.data.table(
+    windowed_data[MATERIAL == '000000000003011382'],
+    window_id ~ CALMONTH,
+    fun.aggregate = sum,
+    value.var = "Q")
+  )
 
 ```
 
@@ -675,7 +696,7 @@ system.time({
 # 46.R
 system.time({
     source("C:/RW/EAISI-Pythia/notebooks/46.R")
-  
+  # 1703.85 
   # Run forecast with both hierarchies
   hts_2 <- forecast_hierarchical_windows(
     windowed_data           = windowed_data,
@@ -1397,3 +1418,77 @@ setorderv(top_contributors, c("component", "value"), order = c(1, -1),
 # Then take the top 5 by component 
 top_contributors <- top_contributors[, .SD[1:5], by = component]
 ```
+
+
+## my accuracy ECO
+
+
+
+```{r}
+library(fable)
+library(fabletools)
+library(tsibble)
+library(dplyr)
+library(data.table)
+
+aus_holidays <- tourism |>
+  filter(Purpose == "Holiday") |>
+  summarise(Trips = sum(Trips)/1e3)
+fit <- aus_holidays |>
+  model(ETS(Trips))
+
+report(fit)
+
+accuracy(
+  fit, 
+  measures = list(
+    "RMSE" = RMSE, 
+    "EPA"  = EPA, 
+    "EPE"  = EPE,
+    "APA"  = APA, 
+    "APE"  = APE
+  )
+)
+```
+
+# APA & EPA
+
+```{r}
+
+# APE - "Actual Percentage Error" - a custom accuracy measure
+APE <- function(.actual, .train, .resid, na.rm = TRUE, ...) {
+  
+  # .data is typically the tibble containing .actual, .fitted, .resid, etc.
+  # mean(100 * abs(.resid) / .actual, na.rm = na.rm)
+  100 * abs(.resid) / .actual
+}
+
+# APA - "Academic Percentage Accuracy" - a custom accuracy measure
+APA <- function(.actual, .resid, na.rm = TRUE, ...) {
+
+  # .data is typically the tibble containing .actual, .fitted, .resid, etc.
+  # mean(100 * (.actual - abs(.resid)) / .actual, na.rm = na.rm)
+  100 * (.actual - abs(.resid)) / .actual
+}
+
+# EPE - "Ecotone Percentage Error" - a custom accuracy measure
+EPE <- function(.actual, .train, .resid, na.rm = TRUE, ...) {
+  
+  # .data is typically the tibble containing .actual, .fitted, .resid, etc.
+  fct <- .actual + .resid
+  # mean(100 * abs(.resid) / fct, na.rm = na.rm)
+  100 * abs(.resid) / fct
+  
+}
+
+# EPE - "Ecotone Percentage Accuracy" - a custom accuracy measure
+EPA <- function(.actual, .resid, na.rm = TRUE, ...) {
+
+  # .data is typically the tibble containing .actual, .fitted, .resid, etc.
+  fct <- .actual + .resid
+  # mean(100 * (fct - abs(.resid)) / fct, na.rm = na.rm)
+  100 * (fct - abs(.resid)) / fct
+  
+}
+```
+
