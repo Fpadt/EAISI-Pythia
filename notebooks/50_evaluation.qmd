@@ -159,15 +159,17 @@ ggplot(
 
 # ACC_BCK <-  copy(ACC)
 # ACC     <- copy(dtACC7)
-dtACC0 <- dtACC[MODEL == "ETS"]
+# dtACC0 <- dtACC[MODEL == "ETS"]
+
+dtACC7 <- dtACC
 
 dtACC0 <- 
   copy(dtACC7)                                                       %>%
   pa_model_accuracy(
-  .act_ftype = 1, .fct_ftype = 2
+  .act_ftype = 2, .fct_ftype = 2
   )                                                                  %>%
   .[CALMONTH >= '202401']                                            %>%
-  .[!is.na(STEP) &  STEP <= 18]
+  .[!is.na(STEP) &  STEP <= 12]
 
 dtACC0[, .(
   EPA  = mean(EPA, na.rm = TRUE),
@@ -193,7 +195,7 @@ ggplot(dtACC0, aes(x = factor(STEP), y = AE)) +
   geom_violin(
     trim           = TRUE, 
     draw_quantiles = c(0.25, 0.5, 0.75),
-    color          = "#089b35"
+    color          = "#089b35"#,"#E48907"
     ) +
   geom_jitter(
     aes(
@@ -202,7 +204,7 @@ ggplot(dtACC0, aes(x = factor(STEP), y = AE)) +
     ),
     height = 0, 
     width  = 0.25, 
-    color  = "#38e56d"
+    color  = "#38e56d", #"#F6A12D"
     # ,
     , size   = 0.8
     , alpha  = 0.3
@@ -239,7 +241,106 @@ ggplot(dtACC0, aes(x = factor(STEP), y = AE)) +
       "extreme RMSE at Step 8 is caused by forecast errors",
       "made in May 2023", sep = "\n")
   ) +
-  coord_cartesian(ylim = c(0, 25000))
+  coord_cartesian(ylim = c(0, 30000)) + 
+  theme_minimal()
+
+```
+
+## Pythia
+
+```{r}
+#| label: 'violin plot of Forecast Accuracy'
+#| eval: true
+
+# ACC_BCK <-  copy(ACC)
+# ACC     <- copy(dtACC7)
+# dtACC0 <- dtACC[MODEL == "ETS"]
+
+dtACC7 <- 
+  rbind(dtFC, dtACC[VTYPE == '010'], 
+    use.names = TRUE) %>%
+  .[, STEP:= abs(STEP)]
+
+dtACC0 <- 
+  copy(dtACC7)                                                       %>%
+  pa_model_accuracy(
+  .act_ftype = 2, .fct_ftype = 2
+  )                                                                  %>%
+  .[CALMONTH >= '202401']                                            %>%
+  .[!is.na(STEP) &  STEP <= 12]
+
+dtACC0[, .(
+  EPA  = mean(EPA, na.rm = TRUE),
+  APA  = mean(APA, na.rm = TRUE),
+  MAE  = mean(AE , na.rm = TRUE),
+  RMSE = mean(E2 , na.rm = TRUE) %>% sqrt()   
+  ), 
+  by = .(STEP)]
+
+dtALPHA <-  
+  copy(dtACC7) %>%
+  .[, .(SQ = sum(Q)), 
+    by = .(SALESORG, PLANT, MATERIAL)] %>%
+  .[, .(SALESORG, PLANT, MATERIAL, 
+        ALPHA = round(sqrt(SQ/max(SQ)), 2))] 
+
+dtACC0 <- 
+  dtALPHA[dtACC0, on =.(SALESORG, PLANT, MATERIAL)]
+
+# Violin plot: STEP on x-axis (treat as discrete), ACC on y-axis
+ggplot(dtACC0, aes(x = factor(STEP), y = AE)) +
+  # Violin layer to show the distribution
+  geom_violin(
+    trim           = TRUE, 
+    draw_quantiles = c(0.25, 0.5, 0.75),
+    color          = "#E48907"
+    ) +
+  geom_jitter(
+    aes(
+      # size  = WGHT,
+      # alpha = 0.3 #ALPHA
+    ),
+    height = 0, 
+    width  = 0.25, 
+    color  = "#F6A12D"
+    # ,
+    , size   = 0.8
+    , alpha  = 0.3
+    ) +
+  # RSME
+  stat_summary(
+    mapping = aes(x = factor(STEP), y = E2),
+    fun   = function(x) {sqrt(mean(x))}, 
+    geom  = "point", 
+    shape = 23,   # diamond shape
+    size  = 3, 
+    fill  = "#0f5e3c",
+    color = "#0f5e3c"
+  ) +
+  # MAE
+  stat_summary(
+    mapping = aes(x = factor(STEP), y = AE),
+    fun   = function(x) {mean(x)}, 
+    geom  = "point", 
+    shape = 22,   # diamond shape
+    size  = 3, 
+    fill  = "#FF0000",
+    color = "#FF0000"
+    
+  ) +
+  labs(
+    x     = "Step",
+    y     = "Absolute Error",
+    title = glue(
+      "{SORG}: Distribution of Absolute Forecast Error's by Step"),
+    subtitle = glue(
+      "Articles (Class-A): {length(unique(dtACC0$MATERIAL))},  data points: {nrow(dtACC0)}"),
+    caption = paste(
+      "extreme RMSE at Step 8 is caused by forecast errors",
+      "made in May 2023", sep = "\n")
+  ) +
+  coord_cartesian(ylim = c(0, 30000)) +
+  theme_minimal()
 
 ```
 
@@ -454,3 +555,25 @@ ggplot(dtACC0, aes(x = factor(-STEP), y = AE)) +
   coord_cartesian(ylim = c(0, 25000))
 
 ```
+
+
+```{r}
+CSV <- "C:\\PW\\OneDrive\\ET\\pythia\\data\\test\\Bronze\\sales\\OUT_BI_DATA_POSTDR_FORECASTS.CSV"
+
+CSV <- normalizePath("C:\\PW\\OneDrive\\ET\\pythia\\data\\test\\Platinum\\sales\\20250217_085700_OUT_PA_DATA_POSTDR_FORECASTS.CSV")
+
+
+dtFC <- 
+  fread(file = CSV) %>%
+  .[, Q:= DEMND_QTY] %>%
+  .[, MODEL:= 'ETS'] %>%
+  .[, names(dtACC), with=FALSE] %>%
+  .[, VTYPE:= as.character(VTYPE)] %>%
+  .[VTYPE == '140'] %>%
+  .[, VTYPE:= '060'] %>%
+  .[, MATERIAL:= pa_matn1_input(MATERIAL)] 
+
+
+
+```
+

@@ -41,9 +41,6 @@ SYS <- substr(SID, 1, 3)
 no_sapyr <- FALSE
 source("C:/RW/ETRMK/00_RProj/00_Global/KnitR_SetUp.R")
 
-# lsrc <- "notebooks/04_initialization.R"  
-# if( file.exists(lsrc)){source(lsrc)}
-
 # MASP
 ## MATERIAL
 fltMATL_TYPE      <- c('HAWA', 'FERT', 'VOLL')
@@ -74,7 +71,7 @@ if("package:padt" %in% search()){
   detach("package:padt", unload = TRUE, character.only = TRUE)}
 
 # devtools::load_all(path = "C:/RW/EAISI-Padt")
-1
+remotes::install_github("Fpadt/EAISI-Padt")
 library("padt")
 
 rstudioapi::sendToConsole("\f", execute = TRUE)

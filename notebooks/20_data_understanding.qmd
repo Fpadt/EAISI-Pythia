@@ -26,11 +26,54 @@ editor_options:
 
 # public functions ---------------------------------------------------------
 invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
+source("notebooks/99_initialization.R")
+source("C:/RW/EAISI-Pythia/notebooks/49.R")
 
-library("padt")
+# location for generated figures
+pimg <- file.path('.', 'fig')
 
-SORG <- 'FR30'
 ```
+
+# Cust now data
+
+```{r}
+dt1 <- fread("C:\\PW\\OneDrive\\ET\\pythia\\data\\production\\Bronze\\sales\\SDSFRLV3_202501.csv")  %T>%
+  setnames(c(
+    "COMP_CODE" , "SALESORG"  , "PLANT",
+    "MATERIAL"  , "CUST_HIE03", "CALMONTH",
+    "VTYPE"     , "FTYPE"     , "VERSMON" ,
+    "RECORDMODE", "UPD_DATE"  , 
+    "CUST_HIE02", "CUST_HIE01", "DEMND_QTY",  "BSELN_QTY", 
+    "PROMO_QTY" , "DMDCP_QTY" , "PRMCP_QTY",  "BASE_UOM")) %>%
+  .[SALESORG == "FR30", .(
+    MATERIAL, CUST_HIE01, CUST_HIE02, CUST_HIE03, CALMONTH, DEMND_QTY)] 
+  
+dt2 <- fread("C:\\PW\\OneDrive\\ET\\pythia\\data\\production\\Bronze\\sales\\SDSFRLV3_202412_2021.csv")  %T>%
+  setnames(c(
+    "COMP_CODE" , "SALESORG"  , "PLANT",
+    "MATERIAL"  , "CUST_HIE03", "CALMONTH",
+    "VTYPE"     , "FTYPE"     , "VERSMON" ,
+    "RECORDMODE", "UPD_DATE"  , 
+    "CUST_HIE02", "CUST_HIE01", "DEMND_QTY",  "BSELN_QTY", 
+    "PROMO_QTY" , "DMDCP_QTY" , "PRMCP_QTY",  "BASE_UOM")) %>%
+  .[SALESORG == "FR30", .(
+    MATERIAL, CUST_HIE01, CUST_HIE02, CUST_HIE03, CALMONTH, DEMND_QTY)] 
+
+dt <- rbind(dt1, dt2) %>%
+  .[, CALMONTH:= as.character(CALMONTH)] %>%
+  .[, Q:= DEMND_QTY] 
+
+dtSLS <- 
+  dtMATL[, .(
+    MATERIAL, MATERIAL_TMD,
+    PRDH1   , PRDH1_TMD,
+    PRDH2   , PRDH2_TMD,
+    PRDH3   , PRDH3_TMD,
+    PRDH4   , PRDH4_TMD)
+  ]                                                             %>%
+  .[dt, on = .(MATERIAL)]  
+```
+
 
 # Analysis
 
@@ -150,15 +193,17 @@ fBG <- function(phl, IPH){
 #| eval: false
 
 dtSLS <- 
-  MATL[, .(MATERIAL, MATERIAL_TMD,
-           PRDH1   , PRDH1_TMD,
-           PRDH2   , PRDH2_TMD,
-           PRDH3   , PRDH3_TMD,
-           PRDH4   , PRDH4_TMD)
-       ]                                                             %>%
-  .[IALL, on = .(MATERIAL)]                                          %>%
-  MATS[, .(MATERIAL = MAT_SALES, SALESORG, PROMO = PRAT7)][          
-    ., on = .(MATERIAL, SALESORG)] 
+  dtMATL[, .(
+    MATERIAL, MATERIAL_TMD,
+    PRDH1   , PRDH1_TMD,
+    PRDH2   , PRDH2_TMD,
+    PRDH3   , PRDH3_TMD,
+    PRDH4   , PRDH4_TMD)
+  ]                                                             %>%
+  .[SLS, on = .(MATERIAL)]                                        
+# %>%
+#   MATS[, .(MATERIAL = MAT_SALES, SALESORG, PROMO = PRAT7)][          
+#     ., on = .(MATERIAL, SALESORG)] 
 
 ```
 
@@ -169,9 +214,12 @@ dtSLS <-
 #| eval: false
 
 ITEA <- 
-  dtSLS[PRDH4 == '00100467' & SALESORG == 'NL10',
+  dtSLS[PRDH4 == '00100467',
        .(Q = sum(Q)/1000),
          by = .(label = PRDH4_TMD, CALMONTH)
+  ]
+
+
   ]
 
 tsTEA <- 
@@ -188,9 +236,643 @@ tsTEA <-
   )                                                        %>%
   components()                                             %>%
   autoplot() +
-  theme(legend.position = "none")
+  theme(legend.position = "none") 
+
 
 ```
+
+# ETS
+## material - now
+
+```{r}
+mat <- "000000000003025448"
+mat <- ''
+mat <- 
+cst <- ''
+cst <- 
+
+plotMAT_CST_ETS_AAA('000000000003025248', '31037')
+
+plotMAT_CST_ETS_AAA('000000000003025447', '30975')
+plotMAT_ETS_AAA('000000000003025447', '30936')
+plotPH2_ETS_AAA('2020')
+
+# plotMAT_CST_ETS_AAA('000000000003024349', '30995')
+# plotMAT_ETS_AAA('000000000003024349')
+# plotPH2_ETS_AAA('2020')
+
+plotMAT_CST_ETS('000000000003025447', '30975') #A, N, N
+plotMAT_ETS('000000000003025447', '30936') #M, N, N
+
+plotPH2_ETS('2020',"#00BFC4") # M, N, M 	Hot Drinks             M, N , M
+plotPH2_ETS('2030',"#00BA38") # M, N, M 	Dairy Alt             M, N , M
+#plotPH2_ETS('2080') # M, N, M 	Juices and Cold Drinks A, N , N
+plotPH2_ET('2080', "#619CFF") # M, N, M 	Juices and Cold Drinks   A, N , N
+plotPH2_ET('2090', "#F8766D") # M, N, M 	Bread and Bakery         A, Ad, N
+plotPH2_ETS('2010', "#F564E3") # M, N, M 	Sweets in Between      M, N , M
+plotPH2_ETS('2040', "#B79F00") # M, N, M 	Breakfast Cereals
+```
+
+```{r}
+
+  DT <- 
+    dtSLS[PRDH2 == '2020' ,
+          .(Q = sum(Q)),
+          by = .(label = PRDH2_TMD, CALMONTH)
+  ]  
+  
+  tsDT <- 
+    DT[, year_month := yearmonth(CALMONTH, '%Y%m')] %>%
+    as_tsibble(
+      index = "year_month", 
+      key = c("label")
+    ) %>%
+    filter(year(year_month) >= 2021) %>%
+    fill_gaps(Q =0, .full = TRUE) 
+  
+# Fit an ETS model
+fit <- tsDT %>%
+  model(ETS(Q)) # Auto ETS
+
+# Generate forecast with prediction intervals
+forecast_data <- fit %>%
+  forecast(h = 12)  # Forecasting next 12 periods
+
+# Plot forecast with custom colors
+forecast_data %>%
+  autoplot(tsDT, level = c(80, 95)) +  # Include prediction intervals
+  scale_color_manual(values = c(
+    "Historical Data" = "#333333", 
+    "Forecast" = "#0f5e3c")) +
+  scale_fill_manual(values = c(
+    "80%" = "#D9D9D9", 
+    "95%" = "#F6A12D")) +
+  labs(title = "ETS Forecast", x = "Time", y = "Value") +
+  theme_minimal()
+
+autoplot(forecast_data, tsDT) +
+  scale_color_manual(values = c("black", "red"), 
+                     labels = c("Historical Data", "Forecast")) +
+  scale_fill_manual(values = c("red", "orange"), 
+                    labels = c("80% PI", "95% PI")) +
+  labs(title = "ETS Forecast", x = "Time", y = "Value") +
+  theme_minimal() +
+  guides(color = guide_legend(title = "Legend"), 
+         fill = guide_legend(title = "Prediction Intervals"))
+
+
+# Manually construct the plot using ggplot2
+ggplot() +
+  # Historical data line
+  geom_line(data = tsDT, aes(x = year_month, y = Q, color = "Historical Data"), linewidth = 1) +
+  # Forecasted values
+  geom_line(data = forecast_data, aes(x = year_month, y = .mean, color = "Forecast"), size = 1) +
+  # Prediction intervals (80% and 95%)
+  geom_ribbon(data = forecast_data, aes(x = year_month, ymin = .lower, ymax = .upper, fill = "80% PI"), alpha = 0.3) +
+  geom_ribbon(data = forecast_data, aes(x = year_month, ymin = .lower, ymax = .upper, fill = "95% PI"), alpha = 0.2) +
+  # Custom colors for lines and fills
+  scale_color_manual(values = c("Historical Data" = "black", "Forecast" = "blue")) +
+  scale_fill_manual(values = c("80% PI" = "lightblue", "95% PI" = "lightgray")) +
+  labs(title = "ETS Forecast", x = "Time", y = "Value", color = "Legend", fill = "Prediction Intervals") +
+  theme_minimal()
+```
+
+# Prediction Int
+```{r}
+
+
+# Generate forecast with prediction intervals
+forecast_data <- fit %>%
+  forecast(h = 12) %>%
+  mutate(
+    lower_80 = quantile(Q, p = 0.10),  # Lower bound of 80% PI
+    upper_80 = quantile(Q, p = 0.90),  # Upper bound of 80% PI
+    lower_95 = quantile(Q, p = 0.025), # Lower bound of 95% PI
+    upper_95 = quantile(Q, p = 0.975)  # Upper bound of 95% PI
+  )
+
+# Manually construct the plot using ggplot2
+ggplot() +
+  # Historical data line
+  geom_line(data = tsDT, aes(x = year_month, y = Q, color = "Historical Data"), size = 2,  alpha = 0.6) +
+  # Prediction intervals (80% and 95%)
+  geom_ribbon(data = forecast_data, aes(x = year_month, ymin = lower_95, ymax = upper_95, fill = "95% PI"), alpha = 0.9) +  
+  geom_ribbon(data = forecast_data, aes(x = year_month, ymin = lower_80, ymax = upper_80, fill = "80% PI"), alpha = 1) +
+  # Forecasted values
+  geom_line(data = forecast_data, aes(x = year_month, y = .mean, color = "Forecast"), size = 2, linetype = "dashed") +
+  # Custom colors for lines and fills
+  scale_color_manual(values = c(
+    "Historical Data" = "#333333", 
+    "Forecast"        = "#FFFFFF")
+    ) +
+  scale_fill_manual(values = c(
+    "80% PI" = "#0f5e3c", 
+    "95% PI" = "#F6A12D")
+    ) +
+  labs(title = "ETS Forecast", x = "year_month", y = "Value", color = "Legend", fill = "Prediction Intervals") +
+  theme_minimal()
+
+```
+
+```{r}
+# Create a data frame with x values and corresponding normal density
+x <- seq(-4, 4, length.out = 1000)
+y <- dnorm(x, mean = 0, sd = 1)
+normal_df <- data.frame(x = x, y = y)
+
+# Create the plot
+ggplot(normal_df, aes(x = x, y = y)) +
+  geom_line(color = "red", size = 3) +
+  labs(
+    title = "Standard Normal Distribution",
+    x = "Value",
+    y = "Density"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white"),
+    panel.grid = element_blank(),
+    text = element_text(color = "black"),
+    axis.text = element_text(color = "black"),
+    plot.title = element_text(hjust = 0.5)
+  )
+```
+
+
+```{r}
+plotMAT_CST_ETS_AAA <- function(mat, cst){
+
+  DT <- 
+    dtSLS[MATERIAL == mat & CUST_HIE03 == cst,
+          .(Q = sum(Q)),
+          by = .(label = MATERIAL_TMD, CALMONTH, CUST_HIE03)
+  ]  
+  
+  tsDT_ets <- 
+    DT[, year_month := yearmonth(CALMONTH, '%Y%m')] %>%
+    as_tsibble(
+      index = "year_month", 
+      key = c("label")
+    ) %>%
+    filter(year(year_month) >= 2021) %>%
+    fill_gaps(Q =0, .full = TRUE) %>%
+    # Fit an ETS model
+    model(
+      ETS = ETS(Q ~ error("A") + trend("A") + season("A"))
+    ) %>%
+    # Extract components
+    components() 
+  
+  tsDT_ets %>%
+    filter(year(year_month) >= 2021) %>%
+    pivot_longer(cols = c(level, season, remainder, Q),
+                 names_to = "component", 
+                 values_to = "value") %>%
+    # Rename the components to match ETS terminology
+    mutate(component = case_when(
+      component == "level" ~ "trend",
+      component == "remainder" ~ "error",
+      component == "Q" ~ "sales", # Rename the original series
+      TRUE ~ component
+    )) %>%
+    # Reorder the components as factors in the desired order
+    mutate(component = factor(component, 
+                              levels = c("sales", "error", "trend", "season"),
+                              ordered = TRUE)) %>%
+    ggplot(aes(x = year_month, y = value, fill = component)) +
+    # geom_line(linewidth = 3) +
+    geom_col(width = 30, color = "white") + # Adjust width as needed based on your date scale  
+    scale_fill_manual(values = c(  # Changed from scale_color_manual to scale_fill_manual
+      "sales"  = "#D9D9D9" , #"#2A77F5",
+      "error"  = "#D9D9D9",       # Error component
+      "trend"  = "#D9D9D9",#"#F6A12D",     # Trend component
+      "season" = "#0f5e3c"      # Seasonal component   
+    )) +
+    facet_grid(component ~ ., scales = "fixed") +
+    theme_minimal() +
+    labs(title = "ETS(A,A,A): error + trend + season",
+         x = "Date",
+         y = "Value", 
+         subtitle = glue("{mat} - {cst}")
+         ) +
+           theme(legend.position = "none")
+}
+
+plotMAT_ETS_AAA <- function(mat,ph1){
+
+  DT <- 
+    dtSLS[MATERIAL == mat & CUST_HIE01 == ph1,
+          .(Q = sum(Q)),
+          by = .(label = MATERIAL_TMD, CALMONTH)
+  ]  
+  
+  tsDT_ets <- 
+    DT[, year_month := yearmonth(CALMONTH, '%Y%m')] %>%
+    as_tsibble(
+      index = "year_month", 
+      key = c("label")
+    ) %>%
+    filter(year(year_month) >= 2021) %>%
+    fill_gaps(Q =0, .full = TRUE) %>%
+    # Fit an ETS model
+    model(
+      ETS = ETS(Q ~ error("A") + trend("A") + season("A"))
+    ) %>%
+    # Extract components
+    components() 
+  
+  tsDT_ets %>%
+    filter(year(year_month) >= 2021) %>%
+    pivot_longer(cols = c(level, season, remainder, Q),
+                 names_to = "component", 
+                 values_to = "value") %>%
+    # Rename the components to match ETS terminology
+    mutate(component = case_when(
+      component == "level" ~ "trend",
+      component == "remainder" ~ "error",
+      component == "Q" ~ "sales", # Rename the original series
+      TRUE ~ component
+    )) %>%
+    # Reorder the components as factors in the desired order
+    mutate(component = factor(component, 
+                              levels = c("sales", "error", "trend", "season"),
+                              ordered = TRUE)) %>%
+    ggplot(aes(x = year_month, y = value, fill = component)) +
+    # geom_line(linewidth = 3) +
+    geom_col(width = 30, color = "white") + # Adjust width as needed based on your date scale  
+    scale_fill_manual(values = c(  # Changed from scale_color_manual to scale_fill_manual
+      "sales"  = "#F6A12D", #"#2A77F5",
+      "error"  = "#D9D9D9",       # Error component
+      "trend"  = "#F6A12D",     # Trend component
+      "season" = "#F6A12D" #"#0f5e3c"      # Seasonal component   
+    )) +
+    facet_grid(component ~ ., scales = "fixed") +
+    theme_minimal() +
+    labs(title = "ETS(A,A,A): error + trend + season",
+         x = "Date",
+         y = "Value", 
+         subtitle = glue("{mat}")
+         ) +
+           theme(legend.position = "none")
+}
+
+plotPH2_ETS_AAA <- function(ph2){
+
+  DT <- 
+    dtSLS[PRDH2 == ph2 ,
+          .(Q = sum(Q)),
+          by = .(label = PRDH2_TMD, CALMONTH)
+  ]  
+  
+  tsDT_ets <- 
+    DT[, year_month := yearmonth(CALMONTH, '%Y%m')] %>%
+    as_tsibble(
+      index = "year_month", 
+      key = c("label")
+    ) %>%
+    filter(year(year_month) >= 2021) %>%
+    fill_gaps(Q =0, .full = TRUE) %>%
+    # Fit an ETS model
+    model(
+      ETS = ETS(Q ~ error("A") + trend("A") + season("A"))
+    ) %>%
+    # Extract components
+    components() 
+  
+  tsDT_ets %>%
+    filter(year(year_month) >= 2021) %>%
+    pivot_longer(cols = c(level, season, remainder, Q),
+                 names_to = "component", 
+                 values_to = "value") %>%
+    # Rename the components to match ETS terminology
+    mutate(component = case_when(
+      component == "level" ~ "trend",
+      component == "remainder" ~ "error",
+      component == "Q" ~ "sales", # Rename the original series
+      TRUE ~ component
+    )) %>%
+    # Reorder the components as factors in the desired order
+    mutate(component = factor(component, 
+                              levels = c("sales", "error", "trend", "season"),
+                              ordered = TRUE)) %>%
+    ggplot(aes(x = year_month, y = value, fill = component)) +
+    # geom_line(linewidth = 3) +
+    geom_col(width = 30, color = "white") + # Adjust width as needed based on your date scale  
+    scale_fill_manual(values = c(  # Changed from scale_color_manual to scale_fill_manual
+      "sales"  = "#0f5e3c",#"#2A77F5",
+      "error"  = "#D9D9D9",       # Error component
+      "trend"  = "#0f5e3c",#"#F6A12D",     # Trend component
+      "season" = "#0f5e3c"      # Seasonal component   
+    )) +
+    facet_grid(component ~ ., scales = "fixed") +
+    theme_minimal() +
+    labs(title = "ETS(A,A,A): error + trend + season",
+         x = "Date",
+         y = "Value", 
+         subtitle = glue("{ph2}")
+         ) +
+           theme(legend.position = "none")
+}
+```
+
+```{r}
+plotMAT_CST_ETS <- function(mat, cst){
+
+  DT <- 
+    dtSLS[MATERIAL == mat & CUST_HIE03 == cst,
+          .(Q = sum(Q)),
+          by = .(label = MATERIAL_TMD, CALMONTH, CUST_HIE03)
+  ]  
+  
+  tsETS <- 
+    DT[, year_month := yearmonth(CALMONTH, '%Y%m')] %>%
+    as_tsibble(
+      index = "year_month", 
+      key = c("label")
+    ) %>%
+    filter(year(year_month) >= 2021) %>%
+    fill_gaps(Q =0, .full = TRUE) %>%
+    # Fit an ETS model
+    model(
+      ETS = ETS(Q ~ error() + trend() + season())
+    ) 
+  
+  tsDT_ets <- 
+    tsETS %>%
+    # Extract components
+    components() 
+  browser()
+  tsDT_ets %>%
+    filter(year(year_month) >= 2021) %>%
+    pivot_longer(cols = c(level, remainder, Q), #, season
+                 names_to = "component", 
+                 values_to = "value") %>%
+    # Rename the components to match ETS terminology
+    mutate(component = case_when(
+      component == "level" ~ "trend",
+      component == "remainder" ~ "error",
+      component == "Q" ~ "sales", # Rename the original series
+      TRUE ~ component
+    )) %>%
+    # Reorder the components as factors in the desired order
+    mutate(component = factor(component, 
+                              levels = c("sales", "error", "trend"),
+                              # levels = c("sales", "error", "trend", "season"),
+                              ordered = TRUE)) %>%
+    ggplot(aes(x = year_month, y = value, fill = component)) +
+    # geom_line(linewidth = 3) +
+    geom_col(width = 30, color = "white") + # Adjust width as needed based on your date scale  
+    scale_fill_manual(values = c(  # Changed from scale_color_manual to scale_fill_manual
+      "sales"  = "#D9D9D9" , #"#2A77F5",
+      "error"  = "#D9D9D9",       # Error component
+      "trend"  = "#D9D9D9"#,#"#F6A12D",     # Trend component
+      # "season" = "#0f5e3c"      # Seasonal component   
+    )) +
+    facet_grid(component ~ ., scales = "fixed") +
+    theme_minimal() +
+    labs(title = "ETS(A,A,A): error + trend + season",
+         x = "Date",
+         y = "Value", 
+         subtitle = glue("{mat} - {cst}")
+         ) +
+           theme(legend.position = "none")
+  
+  # return(tsETS)
+}
+
+plotMAT_ETS <- function(mat,ph1){
+
+  DT <- 
+    dtSLS[MATERIAL == mat & CUST_HIE01 == ph1,
+          .(Q = sum(Q)),
+          by = .(label = MATERIAL_TMD, CALMONTH)
+  ]  
+  
+  tsDT_ets <- 
+    DT[, year_month := yearmonth(CALMONTH, '%Y%m')] %>%
+    as_tsibble(
+      index = "year_month", 
+      key = c("label")
+    ) %>%
+    filter(year(year_month) >= 2021) %>%
+    fill_gaps(Q =0, .full = TRUE) %>%
+    # Fit an ETS model
+    model(
+      ETS = ETS(Q ~ error() + trend() + season())
+    ) %>%
+    # Extract components
+    components() 
+    browser()
+  tsDT_ets %>%
+    filter(year(year_month) >= 2021) %>%
+    pivot_longer(cols = c(level, season, remainder, Q),
+                 names_to = "component", 
+                 values_to = "value") %>%
+    # Rename the components to match ETS terminology
+    mutate(component = case_when(
+      component == "level" ~ "trend",
+      component == "remainder" ~ "error",
+      component == "Q" ~ "sales", # Rename the original series
+      TRUE ~ component
+    )) %>%
+    # Reorder the components as factors in the desired order
+    mutate(component = factor(component, 
+                              levels = c("sales", "error", "trend", "season"),
+                              ordered = TRUE)) %>%
+    ggplot(aes(x = year_month, y = value, fill = component)) +
+    # geom_line(linewidth = 3) +
+    geom_col(width = 30, color = "white") + # Adjust width as needed based on your date scale  
+    scale_fill_manual(values = c(  # Changed from scale_color_manual to scale_fill_manual
+      "sales"  = "#F6A12D", #"#2A77F5",
+      "error"  = "#D9D9D9",       # Error component
+      "trend"  = "#F6A12D",     # Trend component
+      "season" = "#F6A12D" #"#0f5e3c"      # Seasonal component   
+    )) +
+    facet_grid(component ~ ., scales = "fixed") +
+    theme_minimal() +
+    labs(title = "ETS(A,A,A): error + trend + season",
+         x = "Date",
+         y = "Value", 
+         subtitle = glue("{mat}")
+         ) +
+           theme(legend.position = "none")
+}
+
+plotPH2_ETS <- function(ph2, col){
+
+  DT <- 
+    dtSLS[PRDH2 == ph2 ,
+          .(Q = sum(Q)),
+          by = .(label = PRDH2_TMD, CALMONTH)
+  ]  
+  
+  tsDT_ets <- 
+    DT[, year_month := yearmonth(CALMONTH, '%Y%m')] %>%
+    as_tsibble(
+      index = "year_month", 
+      key = c("label")
+    ) %>%
+    filter(year(year_month) >= 2021) %>%
+    fill_gaps(Q =0, .full = TRUE) %>%
+    # Fit an ETS model
+    model(
+      ETS = ETS(Q ~ error() + trend() + season())
+    ) %>%
+    # Extract components
+    components() 
+  # browser()
+  tsDT_ets %>%
+    filter(year(year_month) >= 2021) %>%
+    pivot_longer(cols = c(level, season, remainder, Q),
+                 names_to = "component", 
+                 values_to = "value") %>%
+    # Rename the components to match ETS terminology
+    mutate(component = case_when(
+      component == "level" ~ "trend",
+      component == "remainder" ~ "error",
+      component == "Q" ~ "sales", # Rename the original series
+      TRUE ~ component
+    )) %>%
+    # Reorder the components as factors in the desired order
+    mutate(component = factor(component, 
+                              levels = c("sales", "error", "trend", "season"),
+                              ordered = TRUE)) %>%
+    ggplot(aes(x = year_month, y = value, fill = component)) +
+    # geom_line(linewidth = 3) +
+    geom_col(width = 30, color = "white") + # Adjust width as needed based on your date scale  
+    scale_fill_manual(values = c(  # Changed from scale_color_manual to scale_fill_manual
+      "sales"  = col,
+      "error"  = "#D9D9D9",       # Error component
+      "trend"  = "#F6A12D",     # Trend component
+      "season" = "#0f5e3c"      # Seasonal component   
+    )) +
+    facet_grid(component ~ ., scales = "free_y") +
+    theme_minimal() +
+    labs(title = attr(tsDT_ets,"method"),
+         x = "Date",
+         y = "Value", 
+         subtitle = glue("{ph2}")
+         ) +
+           theme(legend.position = "none")
+}
+
+plotPH2_ET <- function(ph2, col){
+
+  DT <- 
+    dtSLS[PRDH2 == ph2 ,
+          .(Q = sum(Q)),
+          by = .(label = PRDH2_TMD, CALMONTH)
+  ]  
+  
+  tsDT_ets <- 
+    DT[, year_month := yearmonth(CALMONTH, '%Y%m')] %>%
+    as_tsibble(
+      index = "year_month", 
+      key = c("label")
+    ) %>%
+    filter(year(year_month) >= 2021) %>%
+    fill_gaps(Q =0, .full = TRUE) %>%
+    # Fit an ETS model
+    model(
+      ETS = ETS(Q ~ error() + trend() + season())
+    ) %>%
+    # Extract components
+    components() 
+  # browser()
+  tsDT_ets %>%
+    filter(year(year_month) >= 2021) %>%
+    pivot_longer(cols = c(level, remainder, Q),
+                 names_to = "component", 
+                 values_to = "value") %>%
+    # Rename the components to match ETS terminology
+    mutate(component = case_when(
+      component == "level" ~ "trend",
+      component == "remainder" ~ "error",
+      component == "Q" ~ "sales", # Rename the original series
+      TRUE ~ component
+    )) %>%
+    # Reorder the components as factors in the desired order
+    mutate(component = factor(component, 
+                              levels = c("sales", "error", "trend"),
+                              ordered = TRUE)) %>%
+    ggplot(aes(x = year_month, y = value, fill = component)) +
+    # geom_line(linewidth = 3) +
+    geom_col(width = 30, color = "white") + # Adjust width as needed based on your date scale  
+    scale_fill_manual(values = c(  # Changed from scale_color_manual to scale_fill_manual
+      "sales"  = col,
+      "error"  = "#D9D9D9",       # Error component
+      "trend"  = "#F6A12D"#,     # Trend component
+      # "season" = "#0f5e3c"      # Seasonal component   
+    )) +
+    facet_grid(component ~ ., scales = "free_y") +
+    theme_minimal() +
+    labs(title = attr(tsDT_ets,"method"),
+         x = "Date",
+         y = "Value", 
+         subtitle = glue("{ph2}")
+         ) +
+           theme(legend.position = "none")
+}
+```
+
+```{r}
+# 2010 Sweets in Between  
+# 2020, hot
+# 2080 cold
+
+ITEA <- 
+  dtSLS[PRDH2 == '2010',
+       .(Q = sum(Q)/1000),
+         by = .(label = PRDH2_TMD, CALMONTH)
+  ]
+
+tsTEA_ets <- ITEA[, year_month := yearmonth(CALMONTH, '%Y%m')] %>%
+  as_tsibble(
+    index = "year_month", 
+    key = c("label")
+  ) %>%
+  filter(year(year_month) >= 2021) %>%
+  # Fit an ETS model
+  model(
+    ETS = ETS(Q ~ error("A") + trend("A") + season("A"))
+  ) %>%
+  # Extract components
+  components() 
+
+tsTEA_ets %>%
+  filter(year(year_month) >= 2021) %>%
+  pivot_longer(cols = c(level, season, remainder, Q),
+               names_to = "component", 
+               values_to = "value") %>%
+  # Rename the components to match ETS terminology
+  mutate(component = case_when(
+    component == "level" ~ "trend",
+    component == "remainder" ~ "error",
+    component == "Q" ~ "sales", # Rename the original series
+    TRUE ~ component
+  )) %>%
+  # Reorder the components as factors in the desired order
+  mutate(component = factor(component, 
+                           levels = c("sales", "error", "trend", "season"),
+                           ordered = TRUE)) %>%
+  ggplot(aes(x = year_month, y = value, fill = component)) +
+  # geom_line(linewidth = 3) +
+  geom_col(width = 30, color = "white") + # Adjust width as needed based on your date scale  
+  scale_fill_manual(values = c(  # Changed from scale_color_manual to scale_fill_manual
+    "sales"  = "#2A77F5",
+    "error"  = "#D9D9D9",       # Error component
+    "trend"  = "#F6A12D",     # Trend component
+    "season" = "#0f5e3c"      # Seasonal component   
+  )) +
+  facet_grid(component ~ ., scales = "fixed") +
+  theme_minimal() +
+  labs(title = "ETS(A,A,A): error + trend + season",
+       x = "Date",
+       y = "Value") +
+  theme(legend.position = "none")
+```
+
 
 ```{r}
 #| label: MAT
@@ -484,7 +1166,97 @@ fMP(phl = 'mat', IPH)
 
 ```
 
-#### Bjorg
+#### Bjorg FR30 ST now
+
+```{r}
+#| label: FR30 - 
+#| eval: true
+
+dtST <- 
+  dtSLS[!PRDH2 %chin% c('2100', '2120', '2070', '2110', '2050', '2060'),
+        .(Q = sum(Q)/1000),
+        by = .(label = PRDH2_TMD, CALMONTH)
+  ]
+
+tsST <- 
+  dtST[, year_month := yearmonth(CALMONTH, '%Y%m')] %>%
+  as_tsibble(
+    index = "year_month", 
+    key = c("label")
+  ) %>%
+  filter(year(year_month) >= 2021) 
+
+tsST %>%
+  features(Q, feat_stl)     %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = label,
+      col   = label)
+  ) +
+  geom_point(size=3) +
+  geom_text_repel(
+    size = 6,
+    force = 10,           # Increase repulsion force between labels
+    point.padding = 1,    # Padding around points (units in mm)
+    box.padding = 1,      # Padding around text boxes (units in mm)
+    min.segment.length = 0,  # Draw leader lines even for close labels
+    nudge_x = 0.00,       # Nudge labels horizontally
+    nudge_y = 0.05,       # Nudge labels vertically
+    max.overlaps = Inf,   # Allow all labels to be shown without omission
+    segment.size = 0.5,   # Adjust line thickness
+    segment.color = "grey50"  # Set line color
+  ) +
+  # facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+
+```
+
+## hot drinks
+
+```{r}
+#| label: FR30 - 
+#| eval: true
+
+dtST <- 
+  dtSLS[, Q:= DEMND_QTY]  %>%
+  .[PRDH1 == '10' & PRDH2 %chin% c('2020')]
+
+tsST <- 
+  dtST[, year_month := yearmonth(CALMONTH, '%Y%m')] %>%
+  as_tsibble(
+    index = "year_month", 
+    key = c("MATERIAL", "CUST_HIE03")
+  ) 
+
+tsFT  <- 
+  features(tsST, Q, feat_stl) 
+
+tsST %>%
+  features(Q, feat_stl)     %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = NA,
+      col   = "red")
+  ) +
+  geom_point() +
+  # geom_jitter(width = 5, height = 0, size = 1, alpha = 0.7) +
+  # geom_text_repel() +
+  # facet_wrap(~SALESORG) +
+  theme(legend.position = "none") 
+# +
+#   scale_x_continuous(limits = c(0, 1.0)) +
+#   scale_y_continuous(limits = c(0, 1.0))
+
+
+```
+
 
 ```{r}
 #| label: PH2 - Bjorg

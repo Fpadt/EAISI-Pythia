@@ -52,12 +52,11 @@ SC_0 <-
 sum(SC0$Q)
 ```
 
-
 ## Cleansing
 
-1. get data set with all sales 2024
-2. FR30
-3. 
+1.  get data set with all sales 2024
+2.  FR30
+3.  
 
 ## Promotional Articles
 
@@ -80,7 +79,6 @@ SC_1 <-
 sum(SC1$Q)
 100*sum(SC1$Q)/sum(SC0$Q)
 ```
-
 
 ```{r}
 #| label: 'Exclude Promotions for FR30'
@@ -140,7 +138,6 @@ sum(SC2$Q)
 100*sum(SC2$Q)/sum(SC1$Q)
 100*sum(SC2$Q)/sum(SC0$Q)
 ```
-
 
 ```{r}
 #| label: 'Exclude Articles with a BOM for FR30'
@@ -320,7 +317,6 @@ sum(SC4$Q)
 100*sum(SC4$Q)/sum(SC0$Q)
 ```
 
-
 ```{r}
 #| label: 'ABC Classification'
 #| eval:   true
@@ -430,4 +426,3 @@ fwrite(
 )
 
 ```
-

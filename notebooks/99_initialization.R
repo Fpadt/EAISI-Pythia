@@ -32,7 +32,8 @@ SLS <-                              #
 # 164 A-Class
 dtSCOPE <- 
   openxlsx::read.xlsx( 
-    xlsxFile = "C:\\Users\\flori\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data\\SCOPING_VALUE.xlsx",
+    xlsxFile = "C:\\PW\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data\\SCOPING_VALUE.xlsx",
+    # xlsxFile = "C:\\Users\\flori\\OneDrive\\ET\\pythia\\data\\test\\Gold\\master_data\\SCOPING_VALUE.xlsx",
     sheet    = "MAT",
     startRow = 5,
     cols     =  1:3
@@ -86,6 +87,30 @@ dtSLS <-
   .[SLS, on = .(SALESORG, PLANT, MATERIAL), nomatch = 0]   %>%
   .[, N:= .N, by = .(SALESORG, PLANT, MATERIAL)]           %>%
   .[N >= 40]
+
+system.time({
+  ACC <-                              # 
+    pa_td_dyn_get(
+      .vtype       = c('010', '060')  , # 010 = Actuals, 060 = Forecast
+      .ftype       = c(2)          , # 1 = PreDR, 2 = PostDR 
+      .material    = NULL      , # Optional user-supplied material
+      .salesorg    = NULL      , #'Optional user-supplied salesorg
+      .scope_matl  = FALSE      , # restrict to Pythia Scope
+      .scope_sorg  = "FR30"      , # restrict to Pythia Scope
+      .cm_min      = '202101'  , # minimal Cal Month
+      .cm_max      = '202412'  , # maximal Cal Month
+      .step_min    = 1         , # minimal forecast step ahead
+      .step_max    = 12        , # maximal forecast step ahead
+      .lagg_min    = -1        , # minimal diff. between VERSMON & MONTH
+      .lagg_max    = -1        , # maximal diff. between VERSMON & MONTH  
+      .n           = Inf  
+    ) 
+  
+  dtACC <- 
+    dtSCOPE[,.(SALESORG, PLANT, MATERIAL)]                   %>%
+    unique()                                                 %>%
+    .[ACC, on = .(SALESORG, PLANT, MATERIAL), nomatch = 0] 
+})
 
 # %>%
 #   dtTS_LEN_GT_24[., on = .(SALESORG, PLANT, MATERIAL),
