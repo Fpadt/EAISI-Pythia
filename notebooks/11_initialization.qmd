@@ -1447,7 +1447,7 @@ RSBOHDEST <-
   B4_RSBOHDESTT %>%
   .[B4_RSBOHDEST, 
     on = .(SYSTID, CLIENT, OBJVERS, OHDEST)] %T>%
-  setorder(OHDEST)
+  setorder(OHDEST) 
 
 # write RSBOHDEST ####
 fwrite(
@@ -1521,7 +1521,20 @@ RSBOHFIELDS <-
   B4_RSBOHFIELDST %>%
   .[B4_RSBOHFIELDS, 
     on = .(SYSTID, CLIENT, OHDEST, OBJVERS, FIELDNM)] %T>%
-  setorder(OHDEST, POSIT)
+  setorder(OHDEST, POSIT) %>%
+  .[OHDEST %chin% c(
+    "DSCP_MATE",
+    "DSCP_MATP",
+    "DSCP_MATS",
+    "DSCP_CUST",
+    "OH_FRPR1",
+    "OH_FRPR2",
+    "OH_FRPR4"),
+    .(OHDEST , POSIT,
+      FIELDNM, TXTLG, 
+      KEYFLAG, DATATYPE, LENG, CONVEXIT, DECIMALS
+      )
+  ] 
 
 # Write RSBOHFIELDS ####
 fwrite(
