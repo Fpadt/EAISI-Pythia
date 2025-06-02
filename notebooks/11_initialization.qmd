@@ -65,16 +65,16 @@ fltACCNT_GRP      <- c('0001', 'CPD' , 'ZINC')
 #| label: 'install padt package'
 #| eval: true
 
-rstudioapi::restartSession()
-
-if("package:padt" %in% search()){
-  detach("package:padt", unload = TRUE, character.only = TRUE)}
+# rstudioapi::restartSession()
+# 
+# if("package:padt" %in% search()){
+#   detach("package:padt", unload = TRUE, character.only = TRUE)}
 
 # devtools::load_all(path = "C:/RW/EAISI-Padt")
-remotes::install_github("Fpadt/EAISI-Padt")
+# remotes::install_github("Fpadt/EAISI-Padt")
 library("padt")
 
-rstudioapi::sendToConsole("\f", execute = TRUE)
+# rstudioapi::sendToConsole("\f", execute = TRUE)
 
 
 ```
