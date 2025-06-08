@@ -1,24 +1,31 @@
 ---
-title   : EAISI - Pythia
+title: EAISI - Pythia
 subtitle: Data Ingestion
-author  : "F.J. Padt"
-date    : "`r format(Sys.time(), '%B %d, %Y')`"
-output  :
-  pdf_document:
-    df_print: paged
-    toc: yes
-    toc_depth: 1      
-editor_options:
-  chunk_output_type: console
-  markdown: 
-    wrap: 80  
+author: "F.J. Padt"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+  html:
+    code-fold: 
+      true
+    code-tools:
+      toggle: true
+    self-contained: true
+execute:
+  eval: false
 ---
 
+<img src="../images/logo.png" style="width:20%; float: right; margin-left: 20px; margin-bottom: 10px;"/>
+
 \newpage
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
 
-![](../images/logo.png)
+## Purpose
 
-# Purpose
 
 Refresh data sets for the Pythia project from BW OpenHub to Pythia on OneDrive
 ET.
@@ -31,7 +38,7 @@ Can be executed outside Ecotone Network as OneDrive ET\Pythia is used
 
 ```{r}
 #| label:  setup
-#| eval:   true
+#| eval:   false
 
 # public functions ---------------------------------------------------------
 # devtools::load_all(path = "C:/RW/EAISI-Padt")
@@ -102,7 +109,7 @@ Transform .csv files in Bronze to .parquet in Silver
 ```{r}
 #| label:   'Sales to Dynasys RTP'
 #| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
-#| eval:    true
+#| eval: false
 
 pa_transform(
   source_path  = PATH_BRZ_SLS,
@@ -121,7 +128,7 @@ Transform .csv files in Bronze to .parquet in Silver
 ```{r}
 #| label:   'Sales to Dynasys 2018'
 #| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
-#| eval:    true
+#| eval: false
 
 pa_transform(
   source_path  = PATH_BRZ_SLS,
@@ -138,7 +145,7 @@ pa_transform(
 ```{r}
 #| label:   'Stock from BW' 
 #| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)' 
-#| eval:    true  
+#| eval: false  
 
 pa_transform(
   source_path  = PATH_BRZ_STK,
@@ -161,7 +168,7 @@ Transform .csv files in Bronze to .parquet in Silver
 ```{r}
 #| label:   'Sales from Dynasys 2018'
 #| comment: 'Ingestion from Bronze (S1B) to Silver (S2S)'
-#| eval:    true
+#| eval: false
 
 # Helper function with defaults ####
 fHelper_Transform <- 
@@ -218,7 +225,7 @@ fHelper_Transform(
 
 ```{r}
 #| label: 'MATERIAL'
-#| eval:   true
+#| eval: false
 
 # !!!!File needs to be Converted to UTF-8
 
@@ -235,8 +242,8 @@ pa_transform(
 ### MAT_SALES
 
 ```{r}
-#| label: 'MAT_SALES',
-#| eval:   true
+#| label: 'MAT_SALES'
+#| eval: false
 
 pa_transform(
   source_path  = PATH_BRZ__MD,
@@ -251,8 +258,8 @@ pa_transform(
 ### MAT_PLANT
 
 ```{r}
-#| label: 'MAT_PLANT',
-#| eval:   true
+#| label: 'MAT_PLANT'
+#| eval: false
 
 pa_transform(
   source_path  = PATH_BRZ__MD,
@@ -267,8 +274,8 @@ pa_transform(
 ### BOMX
 
 ```{r}
-#| label: 'BOMX',
-#| eval:   true
+#| label: 'BOMX'
+#| eval: false
 
 pa_transform(
   source_path  = PATH_BRZ__MD,
@@ -284,8 +291,8 @@ pa_transform(
 ### CUST_SALES
 
 ```{r}
-#| label: 'CUST_SALES',
-#| eval:   true
+#| label: 'CUST_SALES'
+#| eval: false
 
 # TODO: !!!! UTF-8 conversion
 pa_transform(
@@ -303,8 +310,8 @@ pa_transform(
 ### PLANT
 
 ```{r}
-#| label: 'PLANT',
-#| eval:   true
+#| label: 'PLANT'
+#| eval: false
 
 pa_transform(
   source_path  = PATH_BRZ__MD,
@@ -320,8 +327,8 @@ pa_transform(
 ### SALESORG
 
 ```{r}
-#| label: 'SALESORG',
-#| eval:   true
+#| label: 'SALESORG'
+#| eval: false
 
 pa_transform(
   source_path  = PATH_BRZ__MD,
@@ -338,7 +345,7 @@ pa_transform(
 
 ```{r}
 #| label: 'PROMO'
-#| eval:   true
+#| eval: false
 
 REL_FLDS <- 
   wb_to_df(

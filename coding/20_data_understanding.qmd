@@ -1,294 +1,260 @@
 ---
-title   : EAISI - Pythia
-subtitle: Data Access
-author  : "F.J. Padt"
-date    : "`r format(Sys.time(), '%B %d, %Y')`"
-output  :
-  pdf_document:
-    df_print: paged
-    toc: yes
-    toc_depth: 1      
-editor_options:
-  chunk_output_type: console
-  markdown: 
-    wrap: 80  
+title: EAISI - Pythia
+subtitle: Data Understanding
+author: "F.J. Padt"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+  html:
+    code-fold: 
+      true
+    code-tools:
+      toggle: true
+    self-contained: true
+execute:
+  eval: false
 ---
 
-\newpage
+<img src="../images/logo.png" style="width:20%; float: right; margin-left: 20px; margin-bottom: 10px;"/>
 
-![](../images/logo.png)
+\newpage
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+
+## Purpose
 
 # Setup
 
 ```{r}
 #| label: setup
-#| eval:   true
+#| eval: false
 
 # public functions ---------------------------------------------------------
 invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
 
 library("padt")
 
-PATH_MD <- pa_ds_stageing_path_get(.staging = "silver", .functional_area = "master_data", "material")
-```
-
-# Scope
-
-0MATERIAL\_\_PRDH1 Nav: Name of the Brand
-
-| Key | Brand            |
-|:----|:-----------------|
-| 07  | ALTER ECO        |
-| 08  | BJORG            |
-| 10  | CLIPPER (CUPPER) |
-| 15  | ZONNATURA        |
-| 53  | TANOSHI          |
-| 65  | NATURELA         |
-
-# Master Data
-
-## Material
-
-```{r}
-#| label: 'Get Material Master data '
-#| eval:   true
-
-dtMATL <- pa_md_mat_get(
-  .dataset_name = "material", .scope_matl = FALSE)   # MARA/0MATERIAL
-dtMATS <- pa_md_mat_get(
-  .dataset_name = "mat_sales", .scope_matl = FALSE)  # MVKE/0MAT_SALES
-dtMATP <- pa_md_mat_get(.dataset_name = "mat_plant")  # MARC/0MAT_PLANT
-
-dtMBTL <- readRDS(file.path(PATH_MD, "B4_MATL.rds"))
-dtMBTS <- readRDS(file.path(PATH_MD, "B4_MATS.rds"))
-dtMBTP <- readRDS(file.path(PATH_MD, "B4_MATP.rds")) 
-dtMBST <- readRDS(file.path(PATH_MD, "B4_MAST.rds")) 
-```
-
-### Material Test
-
-```{r}
-#| label: 'Get Material Master data - Test '
-#| eval:   False
-
-
-# # Test
-# MATL <- pa_md_mat_get(
-#   .dataset_name = "material", 
-#   .scope_matl   = FALSE)                         # 6035
-# MATL <- pa_md_mat_get(
-#   .dataset_name = "material", 
-#   .scope_matl   = TRUE)                          # 2329
-# MATL <- pa_md_mat_get(
-#   .dataset_name = "material", 
-#   .material     = '10023',
-#   .scope_matl   = FALSE)                         # 1
-# 
-# MATS <- pa_md_mat_get(
-#   .dataset_name = "mat_sales", 
-#   .scope_matl   = FALSE, 
-#   .scope_sorg   = FALSE)                         # 7977
-# MATS <- pa_md_mat_get(
-#   .dataset_name = "mat_sales", 
-#   .scope_matl   = TRUE , 
-#   .scope_sorg   = FALSE)                         # 3374
-# MATS <- pa_md_mat_get(
-#   .dataset_name = "mat_sales", 
-#   .scope_matl   = FALSE, 
-#   .scope_sorg   = TRUE )                         # 3191
-# MATS <- pa_md_mat_get(
-#   .dataset_name = "mat_sales", 
-#   .scope_matl   = TRUE , 
-#   .scope_sorg   = TRUE )                         # 2162
-# MATS <- pa_md_mat_get(
-#   .dataset_name = "mat_sales",  
-#   .material     = '10023')                       # 2
-# MATS <- pa_md_mat_get(
-#   .dataset_name = "mat_sales",  
-#   .material     = '10023', 
-#   .salesorg     = 'FR30')                        # 1
-# 
-# MATP <- pa_md_mat_get(
-#   .dataset_name = "mat_plant",
-#   .scope_matl   = FALSE)                         # 8101
-# MATP <- pa_md_mat_get(
-#   .dataset_name = "mat_plant", 
-#   .scope_matl   = TRUE)                          # 3307
-# MATP <- pa_md_mat_get(
-#   .dataset_name = "mat_plant", 
-#   .material     = '10023')                       # 2
-
-```
-
-# Transaction Data
-
-## Sales
-
-### Dynasys
-
-```{r}
-#| label: 'SLS'
-#| eval:   true
-#| 
-system.time({
-  SLS <-                              # 
-    pa_td_dyn_get(
-      .vtype       = c('010')  , # 010 = Actuals, 060 = Forecast
-      .ftype       = c(4)      , # Last Version 1 = PreDR, 2 = Pos
-      .salesorg    = NULL, #'FR30'    ,
-      .scope_matl  = FALSE 
-    ) 
-})
-```
-
-```{r}
-#| label: 'Get DYN data'
-#| eval:   true
-
-# FTYPE = 1 Actuals for Accuracy PreDR from 202401
-# FTYPE = 2 Actuals for Accuracy PstDR from 202401
-# FTYPE = 3 Actuals Last Version PreDR from 202101 
-# FTYPE = 4 Actuals Last Version PstDR from 202101 
-
-system.time({
-  SLS <-                              # 
-    pa_td_dyn_get(
-      .vtype       = c('010')  , # 010 = Actuals, 060 = Forecast
-      .ftype       = c(4)      , # Last Version 1 = PreDR, 2 = Pos
-      .salesorg    = 'FR30'    ,
-      .scope_matl  = TRUE 
-    ) 
-})
-
-system.time({
-  ACC <-                              # 
-    pa_td_dyn_get(
-      .vtype       = c('010', '060')  , # 010 = Actuals, 060 = Forecast
-      .ftype       = c(1, 2)          , # 1 = PreDR, 2 = PostDR 
-      .material    = NULL      , # Optional user-supplied material
-      .salesorg    = NULL      , #'Optional user-supplied salesorg
-      .scope_matl  = TRUE      , # restrict to Pythia Scope
-      .scope_sorg  = TRUE      , # restrict to Pythia Scope
-      .cm_min      = '202101'  , # minimal Cal Month
-      .cm_max      = '202412'  , # maximal Cal Month
-      .step_min    = 1         , # minimal forecast step ahead
-      .step_max    = 18        , # maximal forecast step ahead
-      .lagg_min    = -1        , # minimal diff. between VERSMON & MONTH
-      .lagg_max    = -1        , # maximal diff. between VERSMON & MONTH  
-      .n           = Inf  
-    ) 
-})
-
-system.time({
-  SLS <-                              # 
-    pa_td_dyn_get(
-      .vtype       = c('010')  , # 010 = Actuals, 060 = Forecast
-      .ftype       = c(3, 4)   , # Last Version 1 = PreDR, 2 = PostDR 
-      .material    = NULL      , # Optional user-supplied material
-      .salesorg    = NULL      , #'Optional user-supplied salesorg
-      .scope_matl  = TRUE      , # restrict to Pythia Scope
-      .scope_sorg  = TRUE      , # restrict to Pythia Scope
-      .cm_min      = '202101'  , # minimal Cal Month
-      .cm_max      = '202412'  , # maximal Cal Month
-      .step_min    = NULL      , # minimal forecast step ahead
-      .step_max    = NULL        , # maximal forecast step ahead
-      .lagg_min    = NULL      , # minimal diff. between VERSMON & MONTH
-      .lagg_max    = NULL      , # maximal diff. between VERSMON & MONTH  
-      .n           = Inf  
-    ) 
-})
-
-DYN <-                              # 
-  pa_td_dyn_get(
-    .vtype       = c('010', '060')  , # 010 = Actuals, 060 = Forecast
-    .ftype       = c(1, 2)          , # 1 = PreDR, 2 = PostDR 
-    .material    = NULL, #'10023'          , # Optional user-supplied material
-    .salesorg    = 'FR30'           , # Optional user-supplied salesorg
-    .scope_matl  = TRUE             , # restrict to Pythia Scope
-    .scope_sorg  = TRUE             , # restrict to Pythia Scope
-    .cm_min      = '202101'         , # minimal Cal Month
-    .cm_max      = '202412'         , # maximal Cal Month
-    .step_min    = 1                , # minimal forecast step ahead
-    .step_max    = 18               , # maximal forecast step ahead
-    .lagg_min    = NULL             , # minimal diff. between VERSMON & MONTH
-    .lagg_max    = NULL             , # maximal diff. between VERSMON & MONTH  
-    .n           = Inf  
-  ) 
-
-DYN[VTYPE == '010'] %>%
-  dcast.data.table(
-    FTYPE + VERSMON ~ CALMONTH,
-    fun.aggregate = sum,
-    value.var = "Q"
-  ) %T>% View()
-
-# awesome check
-DYN[CALMONTH > '202312'] %>%
-  dcast.data.table(
-    VTYPE + FTYPE + STEP ~ CALMONTH,
-    fun.aggregate = sum,
-    value.var = "Q"
-  ) %T>% View()
-
-# ACTC <-
-#   dcast.data.table(
-#     DYN,
-#     ... ~ paste0("TYP_", FTYPE),
-#     value.var = "Q"
-#   ) %>%
-#   .[, ABSE:= abs(TYP_1 - TYP_2)] %>%
-#   .[, PERC:= round(100 * ABSE/ TYP_1, 1)] %>%
-#   .[ABSE != 0 ] %T>%
-#   setorder(-PERC) %T>%
-#   View()
-
-
-```
-
-### RTP
-
-```{r}
-#| label: 'Get RTP data'
-#| eval:   true
-
-RTP <-
-  pa_td_sap_get(
-    .ftype        = 5              , # 5 = rtp, 6 = ipm     
-    .material     = '10023'        , # Optional user-supplied material
-    .salesorg     = 'FR30'         , # Optional user-supplied salesorg
-    .scope_matl   = TRUE           , # restrict to Pythia Scope
-    .scope_sorg   = TRUE           , # restrict to Pythia Scope
-    .cm_min       = '202101'       , # minimal Cal Month
-    .cm_max       = '202506'       , # maximal Cal Month,
-    .n            = Inf
-  )
-
-```
-
-### IPM
-
-```{r}
-#| label: 'Get IMP data'
-#| eval:   true
-
-IPM <-
-  pa_td_sap_get(
-    .ftype        = 6              , # 5 = rtp, 6 = ipm  
-    .material     = '10023'        , # Optional user-supplied material
-    .salesorg     = 'FR30'         , # Optional user-supplied salesorg
-    .scope_matl   = TRUE           , # restrict to Pythia Scope
-    .scope_sorg   = TRUE           , # restrict to Pythia Scope
-    .cm_min       = '202101'       , # minimal Cal Month
-    .cm_max       = '202506'       , # maximal Cal Month,
-    .n            = Inf
-  )
-
+SORG <- 'FR30'
 ```
 
 # Analysis
 
-```{r}
+## Graph Functions
 
+```{r}
+#| label: 'Graph functions'
+#| eval:   false
+
+fMP <- function(phl, IPH){
+  fST(phl, IPH)
+  fSL(phl, IPH)
+  fBG(phl, IPH)
+}
+
+fST <- function(phl, IPH){
+  
+  tsSLS <- 
+    IPH[, CALMONTH:= yearmonth(CALMONTH)]                            %>%
+    as_tsibble(, index = "CALMONTH", 
+               key= c("label", "SALESORG")) 
+  
+  tsSLS                                                              %>%
+    features(Q, feat_stl)                                            %>%
+    ggplot(
+      aes(
+        x     = trend_strength, 
+        y     = seasonal_strength_year,
+        label = label,
+        col   = label)
+    ) +
+    geom_point() +
+    geom_text_repel() +
+    facet_wrap(~SALESORG) +
+    theme(legend.position = "none") +
+    scale_x_continuous(limits = c(0, 1.0)) +
+    scale_y_continuous(limits = c(0, 1.0))
+  
+  ggsave(
+    filename = paste(phl, 'season_trend.png', sep = '_'),
+    device   = "png",
+    path     = pimg,
+    width    = 5000,
+    height   = 3000,
+    units    = "px"
+  )
+
+}
+
+fSL <- function(phl, IPH){
+
+  IPH %>%
+    ggplot(
+      aes(
+        x   = CALMONTH, 
+        y   = Q,
+        col = SALESORG)
+    ) +
+    geom_line() +
+    facet_wrap(
+      ~label, 
+      # scales = 'fixed'
+      scales = 'free_y'
+    )
+  
+  ggsave(
+    filename = paste(phl, 'sales.png', sep = '_'),
+    device   = "png",
+    path     = pimg,
+    width    = 5000,
+    height   = 3000,
+    units    = "px"
+  )
+}
+
+fBG <- function(phl, IPH){
+
+  IPH %>%
+    .[, PROMO:= factor(PROMO, levels = c("0", "1"))] %>%
+    ggplot(
+      aes(
+        x     = CALMONTH, 
+        y     = Q,
+        fill  = PROMO
+        # ,
+        # col   = PROMO
+        )
+      ,
+      col  = "white",
+      size = 0.1
+    ) +
+    geom_col() +
+    facet_wrap(
+      # nrow = 1,
+      ~label, 
+      # scales = 'fixed'
+      scales = 'free_y'
+    ) +
+    theme(legend.position = "top") + # Move legend to the top +
+    scale_fill_manual(values  = c("0" = pa_pa_ET_COLSS["CG"], "1" = pa_pa_ET_COLSS["YL"]))   
+  # +
+  #   scale_color_manual(values = c("0" = pa_pa_ET_COLSS["CG"], "1" = pa_pa_ET_COLSS["YL"])) 
+  
+  ggsave(
+    filename = paste(phl, 'bar_sales.png', sep = '_'),
+    device   = "png",
+    path     = pimg,
+    width    = 5000,
+    height   = 3000,
+    units    = "px"
+  )
+}
+```
+
+```{r}
+#| label: Transform
+#| eval: false
+
+dtSLS <- 
+  MATL[, .(MATERIAL, MATERIAL_TMD,
+           PRDH1   , PRDH1_TMD,
+           PRDH2   , PRDH2_TMD,
+           PRDH3   , PRDH3_TMD,
+           PRDH4   , PRDH4_TMD)
+       ]                                                             %>%
+  .[IALL, on = .(MATERIAL)]                                          %>%
+  MATS[, .(MATERIAL = MAT_SALES, SALESORG, PROMO = PRAT7)][          
+    ., on = .(MATERIAL, SALESORG)] 
+
+```
+
+### STL
+
+```{r}
+#| label: STL on Infusion tea
+#| eval: false
+
+ITEA <- 
+  dtSLS[PRDH4 == '00100467' & SALESORG == 'NL10',
+       .(Q = sum(Q)/1000),
+         by = .(label = PRDH4_TMD, CALMONTH)
+  ]
+
+tsTEA <- 
+  ITEA[, year_month:= yearmonth(CALMONTH, '%Y%m')]         %>%
+  as_tsibble(
+    index = "year_month", 
+    key = c("label")
+  )                                                        %>%
+  model(
+    STL(
+      Q ~ trend(window = 7) +
+        season(window = "periodic"),
+      robust = TRUE)
+  )                                                        %>%
+  components()                                             %>%
+  autoplot() +
+  theme(legend.position = "none")
+
+```
+
+```{r}
+#| label: MAT
+#| eval: false
+
+
+MAT <- 
+  dtSLS[PRDH4_TMD %like% "Rice Cakes Plain",
+       .(Q = sum(Q)),
+         by = .(MATERIAL_TMD, SALESORG, CALMONTH)
+  ]
+
+tsSLS <- 
+  MAT[, year_month:= yearmonth(CALMONTH, '%Y%m')]          %>%
+  .[, label:= MATERIAL_TMD ]                               %>%
+  as_tsibble(
+    index = "year_month", 
+    key= c("label", "SALESORG")
+  ) 
+
+gp0M <- 
+  tsSLS                                                    %>%
+  features(Q, feat_stl)                                    %>%
+  ggplot(
+    aes(
+      x     = trend_strength, 
+      y     = seasonal_strength_year,
+      label = label,
+      col   = label
+    )
+  ) +
+  geom_point() +
+  geom_text_repel() +
+  # geom_text(aes(label = PRDH2_TMD),
+  #           vjust = -1, hjust = 0.5,
+  #           size = 12, size.unit = "pt"
+  #           ) +
+  facet_wrap(~SALESORG) +
+  theme(legend.position = "none") +
+  scale_x_continuous(limits = c(0, 1.0)) +
+  scale_y_continuous(limits = c(0, 1.0))
+
+ggsave(
+  filename = "mat_season_trend.png",
+  device   = "png",
+  path     = pimg,
+  width    = 2500,
+  height   = 1500,  
+  units    = "px"
+)
+
+```
+
+```{r}
+#| label: '?'
+#| eval: FALSE
 
 TST <- rbind(
   IPM[, .(SALESORG,  PLANT,  MATERIAL,  CALMONTH,  FTYPE,  VTYPE,  Q)], 
@@ -307,7 +273,7 @@ TST <- rbind(
 
 ```{r}
 #| label: PH1 - Season Trend
-#| eval: true
+#| eval: false
 
 tot <-  dtSLS[, sum(Q)]
 
@@ -341,7 +307,7 @@ fBG(phl = 'ph1', IPH)
 
 ```{r}
 #| label: PH2 - Season Trend
-#| eval: true
+#| eval: false
 
 tot <-  IALL[, sum(DEMND_QTY)]
 
@@ -373,7 +339,7 @@ fMP(phl = 'ph2', IPH)
 
 ```{r}
 #| label: PH3 - Season Trend
-#| eval: true
+#| eval: false
 
 tot <-  IALL[, sum(DEMND_QTY)]
 
@@ -403,8 +369,8 @@ fMP(phl = 'ph3', IPH)
 ## PH4
 
 ```{r}
-#| label: PH4 - Season Trend
-#| eval: true
+#| label: PH4.1 - Season Trend
+#| eval: false
 
 tot <-  IALL[, sum(DEMND_QTY)]
 
@@ -499,7 +465,7 @@ fBG(
 
 ```{r}
 #| label: mat - Season Trend
-#| eval: true
+#| eval: false
 
 tot <-  IALL[, sum(DEMND_QTY)]
 
@@ -530,7 +496,7 @@ fMP(phl = 'mat', IPH)
 
 ```{r}
 #| label: PH2 - Bjorg
-#| eval: true
+#| eval: false
 
 phl <- paste(ph1, sep = "_")
 
@@ -601,7 +567,7 @@ ggsave(
 
 ```{r}
 #| label: PH3
-#| eval: true
+#| eval: false
 
 
 IPH3 <- 
@@ -649,8 +615,8 @@ ggsave(
 ### BJORG PH4
 
 ```{r}
-#| label: PH4
-#| eval: true
+#| label: PH4.2
+#| eval: false
 
 
 IPH4 <- 
@@ -696,8 +662,8 @@ ggsave(
 ```
 
 ```{r}
-#| label: PH4
-#| eval: true
+#| label: PH4.3
+#| eval: false
 
 
 IPH4 <- 
@@ -879,7 +845,7 @@ tsSLS |>
 
 ```{r}
 #| label:  Stock Data
-#| eval:   true
+#| eval: false
 
 # Establish a connection to DuckDB
 con <- dbConnect(duckdb::duckdb())
@@ -950,8 +916,8 @@ dbDisconnect(con)
 # Scoping
 
 ```{r}
-#| label: 'Scoping',
-#| eval:   true
+#| label: 'Scoping'
+#| eval: false
 
 # DD_HISTO_QTY <- DD_HISTO_QTY[SALESORG %chin% c('FR30', 'NL10')]
 # 
@@ -987,7 +953,7 @@ dbDisconnect(con)
 DSCP 2018 - actuals
 
 ```{r}
-#| label:   'get_data_OH_IPM',
+#| label:   'get_data_OH_IPM'
 #| comment: 'OH_IPM002_A: IPM data from Open Hub'
 #| eval:     false
 
@@ -1028,7 +994,7 @@ DSCP 2018 - actuals
 ```
 
 ```{r}
-#| label: 'get_data_BW_IPM',
+#| label: 'get_data_BW_IPM'
 #| eval:  false
 
 # Active Data Table for DataStore IPM00 #### 
@@ -1104,8 +1070,8 @@ system.time({
 ```
 
 ```{r}
-#| label:    'get_data_BW_SDSFRPR1',
-#| comment:  'pre-DR Actuals',
+#| label:    'get_data_BW_SDSFRPR1'
+#| comment:  'pre-DR Actuals'
 #| eval:     false
 
 # Active Data Table for DataStore SDSFRPR1 #### 
@@ -1151,8 +1117,8 @@ system.time({
 pre-demand actuals as-was
 
 ```{r}
-#| label:   'get_data_BW_SDMDMFR12',
-#| comment: 'pre-DR Actuals As-Was',
+#| label:   'get_data_BW_SDMDMFR12'
+#| comment: 'pre-DR Actuals As-Was'
 #| eval:    false
 
 # Active Data Table for DataStore SDMFRPR1 #### 
@@ -1202,9 +1168,9 @@ pre-demand actuals as-was
 Pre-demand Forecast Snapshots
 
 ```{r}
-#| label   : 'get_data_OH_SDSFRPR2',
-#| comment : "pre-DR Forecasts",
-#| eval    : false
+#| label:   get_data_OH_SDSFRPR2
+#| comment: pre-DR Forecasts
+#| eval:    false
 
 # options(scipen=999)
 # 
@@ -1246,8 +1212,8 @@ Pre-demand Forecast Snapshots
 # TransForm
 
 ```{r}
-#| label: 'transform_dtIMP',
-#| eval:  true
+#| label: 'transform_dtIMP'
+#| eval: false
 
 dtIMP <- 
   OH_IPM002_A[SALESORG %chin% c("FR30", "NL10")]                          %>%
@@ -1293,8 +1259,8 @@ dtIMP <-
 ## Comparison Actuals
 
 ```{r}
-#| label: 'dtCMP',
-#| eval:  true
+#| label: 'dtCMP'
+#| eval: false
 
 
 dtCMP <-

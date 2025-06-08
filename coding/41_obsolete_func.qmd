@@ -1,6 +1,30 @@
 ---
-title: "Untitled"
+title: EAISI - Pythia
+subtitle: Obsolete
+author: "F.J. Padt"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+  html:
+    code-fold: 
+      true
+    code-tools:
+      toggle: true
+    self-contained: true
+execute:
+  eval: false
 ---
+
+<img src="../images/logo.png" style="width:20%; float: right; margin-left: 20px; margin-bottom: 10px;"/>
+
+\newpage
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+
+## Purpose
 
 ```{r}
 #| eval: FALSE

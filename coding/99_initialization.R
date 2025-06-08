@@ -1,7 +1,9 @@
 library(fpp3)
-library(feasts)
 library(tsibble)
 library(ggrepel)
+library(feasts)
+library(data.table)
+library(magrittr)
 library("padt")
 
 months_diff <- 
@@ -20,6 +22,7 @@ SORG <- 'FR30'
 dtMATL <- pa_md_mat_get(
   .dataset_name = "material", .scope_matl = FALSE)
 
+# only FR30 and NL10, no Customers
 SLS <-                              # 
   pa_td_dyn_get(
     .vtype       = c('010')  , # 010 = Actuals, 060 = Forecast
@@ -117,6 +120,84 @@ dtSLS <-
 #   file = file.path(PATH_GLD_MD, "SCP_156.csv")
 # ) 
 
+FLD <- "C:/Users/flori/OneDrive/ET/pythia/data/production/Bronze/sales"
+FMD <- "C:/Users/flori/OneDrive/ET/pythia/data/production/Bronze/master_data"
 
+dtCUST <- fread(
+  file = file.path(FMD, "MD_SOLD_TO_CUSTOMER.csv")
+)
+
+
+lstFiles <- list.files(
+  path = FLD, 
+  pattern = "DD_SALES_QTY_*", 
+  full.names = TRUE
+)
+
+get_sales_per_day <- function(){
+   
+    purrr::map(.x = lstFiles, 
+               .f = fread)                                 %>%
+    rbindlist()                                           %T>%
+    setnames(
+      c("MATERIAL"  , "CUSTOMER"  , "PLANT"     , "SALESORG",
+        "CALDAY"    ,
+        "SLS_QT_SO" , "SLS_QT_RET", "SLS_QT_FOC",
+        "SLS_QT_DIR", "SLS_QT_PRO", "SLS_QT_IC" ,
+        "MSQTBUO"))              
+
+}
+
+dtSLS_DAY <- get_sales_per_day()
+nrow(dtSLS_DAY)
+
+dtSLS_CM <- dtSLS_DAY                                      %>%
+  .[, CM:= floor_date(CALDAY, unit = "months")]            %>%
+  .[, .(Q = sum(SLS_QT_SO + SLS_QT_FOC)), 
+    by = .(MATERIAL, CUSTOMER, PLANT, SALESORG, CM)]       %>%
+  .[, `:=` (
+    MATERIAL = pa_matn1_input(MATERIAL),
+    CUSTOMER = pa_matn1_input(CUSTOMER)
+)]                                                        
+
+# Add Customer MD and Article MD
+# Per Art/Cust/Plant determine min CM and MAX CM and calc diff 
+# MATERIAL == pa_matn1_input('10023')
+tictoc::tic("Start")
+dtADI <- 
+  dtSLS_CM[, .(
+    minCM = min(CM),
+    maxCM = max(CM),
+    SLEN  = lubridate::interval(min(CM), max(CM))  %/% months(1) + 1,
+    N     = .N,
+    SIGM  = sd(  Q, na.rm = TRUE),
+    MU    = mean(Q, na.rm = TRUE)
+  ), 
+  by = .(MATERIAL, CUSTOMER, PLANT, SALESORG)] %>%
+  .[, `:=`(
+    ADI = SLEN/N,
+    CV2  = (
+      ifelse(is.na(SIGM)        , 0, SIGM)/
+      ifelse(is.na(MU) | MU == 0, 1, MU))^2
+    )] %>%
+  .[, CLASS := fcase(
+    ADI <= 1.32 & CV2 <= 0.49, "S",    # Smooth
+    ADI <= 1.32 & CV2 >  0.49, "E",    # Erratic  
+    ADI >  1.32 & CV2 <= 0.49, "I",    # Intermittent
+    ADI >  1.32 & CV2 >  0.49, "L"     # Lumpy
+  )] 
+
+# Method 2: Alternative with intermediate step (more explicit)
+dtANA_01 <- dtADI[, .(N = .N), by = .(SLEN, CLASS)][
+  , P := 100 * N / sum(N), by = SLEN
+]
+  
+  
+tictoc::toc()
+
+saveRDS(
+  object = dtADI,
+  file   = file.path("SCOPE_ADI.rds")
+)
 
 

@@ -1,37 +1,42 @@
 ---
-title   : EAISI - Pythia
+title: EAISI - Pythia
 subtitle: Initialization
-author  : "F.J. Padt"
-date    : "`r format(Sys.time(), '%B %d, %Y')`"
-output  :
-  pdf_document:
-    df_print: paged
-    toc: yes
-    toc_depth: 1      
-editor_options:
-  chunk_output_type: console
-  markdown: 
-    wrap: 80  
+author: "F.J. Padt"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+  html:
+    code-fold: 
+      true
+    code-tools:
+      toggle: true
+execute:
+  eval: false
 ---
 
+<img src="../images/logo.png" style="width:20%; float: right; margin-left: 20px; margin-bottom: 10px;"/>
+
 \newpage
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
 
-![](../images/logo.png)
+## Purpose
 
-# Purpose
+Get all meta data needed from SAP to run locally.
+Additional some additional Master Data can be extracted directly from SAP
+for analysis purposes.
 
-Get all meta data needed from SAP to run locally
-
-::: callout-note
-Note: can only be executed from **within Ecotone Network** as a connection to
-SAP is needed
+::: callout-important
+can only be executed from **within BioBalance Network** as a connection to SAP is needed!!!
 :::
 
-# Setup
+### Setup
 
 ```{r}
 #| label:  setup
-#| eval:   true
 
 SID <- "WPB500"
 SYS <- substr(SID, 1, 3)
@@ -60,35 +65,18 @@ fltSTGY_GRP       <- c('Z1')
 # Customer
 fltACCNT_GRP      <- c('0001', 'CPD' , 'ZINC')
 
-```
-
-# padt
-
-```{r}
-#| label: 'install padt package'
-#| eval: true
-
-rstudioapi::restartSession()
-
-if("package:padt" %in% search()){
-  detach("package:padt", unload = TRUE, character.only = TRUE)}
-
-# devtools::load_all(path = "C:/RW/EAISI-Padt")
-1
+# load package: PADT
 library("padt")
-
-rstudioapi::sendToConsole("\f", execute = TRUE)
-
-
 ```
 
-# Master Data
+## Master Data
 
-## Material
+Gather Additional Master Data from SAP for quick analysis.
+
+### Material
 
 ```{r}
 #| label: Global Material Data
-#| eval: true
 
 # General Material Data #### 
 S4_MARA <- 
@@ -588,11 +576,10 @@ saveRDS(
   )
 ```
 
-## Mat Sales
+### Mat Sales
 
 ```{r}
 #| label: Additional Mat Sales Data
-#| eval: true
 
 # Sales Data for Material #### 
 S4_MVKE <- 
@@ -802,11 +789,10 @@ saveRDS(
 
 ```
 
-## Mat Plant
+### Mat Plant
 
 ```{r}
 #| label: Additional Mat Plant Data
-#| eval: true
 
 # Plant Data for Material #### 
 S4_MARC <- 
@@ -1293,11 +1279,10 @@ saveRDS(
 
 ```
 
-## Mat Link
+### Mat BOM-Link
 
 ```{r}
 #| label: Link Material-BOM
-#| eval: true
 
 # Material to BOM Link #### 
 S4_MAST <- 
@@ -1340,46 +1325,15 @@ saveRDS(
   )
 ```
 
-## Mat Combined (obsolete?)
 
-```{r}
-#| label:  Combined Master Data of Material
-#| eval:   FALSE
+## Data Extraction
 
-B4_MAT <- 
-  B4_MATS[, `:=` (MAT_PLANT = MAT_SALES, PLANT = DWERK)][
-    B4_MATP, on = .(MAT_PLANT, PLANT), nomatch = 0][
-      B4_MATL[, MAT_PLANT:= MATERIAL], 
-      on =.(MAT_PLANT), nomatch = 0]
-  
-B4_MAT <- 
-  B4_MAT[, ( fTA(B4_MAT)[UCOUNT == 1, FLDNM]):= NULL]
+### OB - Open Hub Destination
 
-COL_KEY <- c("SALESORG", "PLANT", "MATERIAL")
-COL_ORD <- c(COL_KEY, 
-             setdiff(names(B4_MAT), COL_KEY) %>% sort()
-)
-setcolorder(B4_MAT, COL_ORD, after = "MAT_PLANT")
-
-saveRDS(
-  object = B4_MAT, 
-  file   = file.path(PS02, SYS, "B4", "B4_MAT.rds")
-  )
-
-# View(
-#   B4_MAT[, .N, by = .(SALESORG, PLANT, DWERK)] %T>%
-#     setorder(SALESORG, PLANT, DWERK)
-#   )
-```
-
-# OB - Open Hub
-
-Get a list of all available Open Hubs in BW with description and save as:
-B4_RSBOHDEST.csv
+Get a list of all available Open Hubs in BW with description and save as: B4_RSBOHDEST.csv
 
 ```{r}
 #| label:  RSBOHDEST
-#| eval:   true
 
 # Directory of Open Hub Destinations #### 
 B4_RSBOHDEST <- 
@@ -1459,14 +1413,12 @@ fwrite(
 )
 ```
 
-## Fields
+### Open Hub - Fields
 
-Get a list of all available Open Hub fields with description and save as:
-B4_RSBOHFIELDS.csv
+Get a list of all available Open Hub fields with description and save as: B4_RSBOHFIELDS.csv
 
 ```{r}
 #| label:  RSBOHFIELDS
-#| eval:   true
 
 # Fields of the Open Hub Destination #### 
 B4_RSBOHFIELDS <- 
@@ -1534,19 +1486,15 @@ fwrite(
 
 ```
 
-## Pythia
+### Pythia Relevant 
 
-Open Hub with fields and description which are relevant for Pythia, save as:
-PA_OPEN_HUB.csv
+Open Hub with fields and description which are relevant for Pythia, save as: PA_OPEN_HUB.csv
 
 -   RW_DSCP
 -   RW_PYTHIA
--   DML_SOP
--   RW_MD_SOP
 
 ```{r}
 #| label:  PA_OPEN_HUB
-#| eval:   true
 
 # Pythia Info pa_AREA's
 PA_IA <- c('RW_DSCP', 'RW_PYTHIA', 'DML_SOP', 'RW_MD_SOP')
@@ -1570,13 +1518,12 @@ fwrite(
 
 ```
 
-# IB - Data Sources
+### IB - Data Sources
 
 Get list of Data Sources into BW with
 
 ```{r}
 #| label:  SAP Data Sources
-#| eval:   true
 
 # Inbound DataSources - Dynasys -> BW
 # DataSource - Segment Fields #### 
@@ -1626,7 +1573,6 @@ fwrite(
 
 ```{r}
 #| label:  SAP File Names
-#| eval:   true
 
 # Platform-Independent File Names, Cross-Client #### 
 B4_FILENAMECI <- 
@@ -1651,12 +1597,13 @@ fwrite(
 
 ```
 
-# PipeLines
+## PipeLines
+
+Generate transformation rules for Open Hub fields and save as: transformation_rules_org.csv to be used by DuckDB.
 
 ```{r}
 #| label:  Write_pipeline
-#| label:  true 
-
+#| 
 B4_RSBOHFIELDS[, .(                      ,
   OHDEST                             ,
   POSIT     = as.integer(POSIT) * 100,

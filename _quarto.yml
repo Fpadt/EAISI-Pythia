@@ -1,24 +1,8 @@
 project:
-  title: "Pythia's Advice"
-
-  
-editor: visual
+  type: default
+  output-dir: "../eaisi"
 
 format:
-  html: 
-    toc: true
-    comments:
-      hypothesis: true  
-    theme: solar
-  jss-pdf:
-    keep-tex: true 
-    journal:
-      type: article 
-      cite-shortnames: false
-      suppress: 
-      include-jss-default: true    
-  pdf: default
-  typst: default
-
-execute:
-  freeze: auto
+  html:
+    theme: default
+    include-in-header: favicon.html

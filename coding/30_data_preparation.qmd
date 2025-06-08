@@ -1,28 +1,37 @@
 ---
-title   : EAISI - Pythia
+title: EAISI - Pythia
 subtitle: Data Preparation
-author  : "F.J. Padt"
-date    : "`r format(Sys.time(), '%B %d, %Y')`"
-output  :
-  pdf_document:
-    df_print: paged
-    toc: yes
-    toc_depth: 1      
-editor_options:
-  chunk_output_type: console
-  markdown: 
-    wrap: 80  
+author: "F.J. Padt"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+  html:
+    code-fold: 
+      true
+    code-tools:
+      toggle: true
+    self-contained: true
+execute:
+  eval: false
 ---
 
-\newpage
+<img src="../images/logo.png" style="width:20%; float: right; margin-left: 20px; margin-bottom: 10px;"/>
 
-![](../images/logo.png)
+\newpage
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+
+## Purpose
+Purpose
 
 # Setup
 
 ```{r}
 #| label: setup
-#| eval:   true
+#| eval: false
 
 # public functions ---------------------------------------------------------
 invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
@@ -52,12 +61,11 @@ SC_0 <-
 sum(SC0$Q)
 ```
 
-
 ## Cleansing
 
-1. get data set with all sales 2024
-2. FR30
-3. 
+1.  get data set with all sales 2024
+2.  FR30
+3.  
 
 ## Promotional Articles
 
@@ -81,10 +89,9 @@ sum(SC1$Q)
 100*sum(SC1$Q)/sum(SC0$Q)
 ```
 
-
 ```{r}
 #| label: 'Exclude Promotions for FR30'
-#| eval:   true
+#| eval: false
 
 # focus on FR30
 Q0 <- sum(SC1[,  Q])
@@ -141,10 +148,9 @@ sum(SC2$Q)
 100*sum(SC2$Q)/sum(SC0$Q)
 ```
 
-
 ```{r}
 #| label: 'Exclude Articles with a BOM for FR30'
-#| eval:   true
+#| eval: false
 
 dtACC2 <- 
   copy(dtACC1)                                                       %>%
@@ -193,7 +199,7 @@ sum(SC3$Q)
 
 ```{r}
 #| label: 'Only Base Unit EA'
-#| eval:   true
+#| eval: false
 
 dtACC3 <- 
   copy(dtACC2)                                                       %>%
@@ -247,7 +253,7 @@ Decided to focus on EA
 
 ```{r}
 #| label: 'ABC Classification - function'
-#| eval:   true
+#| eval: false
 #| 
 abc_classify <- function(
     dt, 
@@ -320,10 +326,9 @@ sum(SC4$Q)
 100*sum(SC4$Q)/sum(SC0$Q)
 ```
 
-
 ```{r}
 #| label: 'ABC Classification'
-#| eval:   true
+#| eval: false
 
 # Add ABC- Classification
 dtACC5 <- 
@@ -430,4 +435,3 @@ fwrite(
 )
 
 ```
-

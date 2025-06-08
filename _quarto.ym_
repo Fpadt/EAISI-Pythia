@@ -1,0 +1,13 @@
+project:
+  title: "Pythia's Advice"
+
+editor: source
+
+format:
+  html
+#     code-fold: true
+#     code-tools:
+#       toggle: true
+#     self-contained: true
+# execute: 
+#   eval: false

@@ -1,28 +1,36 @@
 ---
-title   : EAISI - Pythia
-subtitle: EVALUATION
-author  : "F.J. Padt"
-date    : "`r format(Sys.time(), '%B %d, %Y')`"
-output  :
-  pdf_document:
-    df_print: paged
-    toc: yes
-    toc_depth: 1      
-editor_options:
-  chunk_output_type: console
-  markdown: 
-    wrap: 80  
+title: EAISI - Pythia
+subtitle: Evaluation
+author: "F.J. Padt"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+  html:
+    code-fold: 
+      true
+    code-tools:
+      toggle: true
+    self-contained: true
+execute:
+  eval: false
 ---
 
-\newpage
+<img src="../images/logo.png" style="width:20%; float: right; margin-left: 20px; margin-bottom: 10px;"/>
 
-![](../images/logo.png)
+\newpage
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+
+## Purpose
 
 # Setup
 
 ```{r}
 #| label: 'setup'
-#| eval:   true
+#| eval: false
 
 # public functions ---------------------------------------------------------
 invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
@@ -102,7 +110,7 @@ httr::BROWSE(paste0(WTB_ADSO, "SDMFRCAC"))
 
 ```{r}
 #| label: 'display sales'
-#| eval: True
+#| eval: false
 
 MAT <- '07'
 
@@ -155,7 +163,7 @@ ggplot(
 
 ```{r}
 #| label: 'violin plot of Forecast Accuracy'
-#| eval: true
+#| eval: false
 
 # ACC_BCK <-  copy(ACC)
 # ACC     <- copy(dtACC7)
@@ -256,7 +264,7 @@ fivenum(dtACC0[STEP == 1 & AE < 15000, AE])
 
 ```{r}
 #| label:  'SC-113B for M-1, M-2, M-3'
-#| eval:   true
+#| eval: false
 
 tst <- DYN[MATERIAL == MAT & 
              ((VTYPE == '010' & FTYPE == 1 & STEP == -1) | (VTYPE == '060' & FTYPE == 2))]
@@ -350,7 +358,7 @@ ggplot(
 
 ```{r}
 #| label: 'violin plot of Forecast Accuracy PA'
-#| eval: true
+#| eval: false
 
 # ACC_BCK <-  copy(ACC)
 # ACC     <- copy(dtACC7)

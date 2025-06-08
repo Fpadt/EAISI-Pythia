@@ -1,28 +1,36 @@
 ---
-title   : EAISI - Pythia
-subtitle: MODELING
-author  : "F.J. Padt"
-date    : "`r format(Sys.time(), '%B %d, %Y')`"
-output  :
-  pdf_document:
-    df_print: paged
-    toc: yes
-    toc_depth: 1      
-editor_options:
-  chunk_output_type: console
-  markdown: 
-    wrap: 80  
+title: EAISI - Pythia
+subtitle: Modelling
+author: "F.J. Padt"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+  html:
+    code-fold: 
+      true
+    code-tools:
+      toggle: true
+    self-contained: true
+execute:
+  eval: false
 ---
 
-\newpage
+<img src="../images/logo.png" style="width:20%; float: right; margin-left: 20px; margin-bottom: 10px;"/>
 
-![](../images/logo.png)
+\newpage
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+
+## Purpose
 
 # Setup
 
 ```{r}
 #| label: 'setup'
-#| eval:   true
+#| eval: false
 
 # MATL <- pa_matn1_input('10023')
 SORG <- 'FR30'
@@ -58,7 +66,7 @@ dtMAT <-
 
 ```{r}
 #| label: 'TS Features'
-#| eval: true
+#| eval: false
 
 tsFT <- 
   tsMat %>%
@@ -333,7 +341,7 @@ pa_forecast_dfu_with_moving_average <-
 
 ```{r}
 #| label: 'Advanced_function'
-#| eval: true   
+#| eval: false   
 
 
 # .dt is data.table with DFU, CALMONTH and Q
@@ -470,7 +478,7 @@ pa_forecast_dfu_with_advanced_models <-
 
 ```{r}
 #| label: 'BW Export'
-#| eval: true
+#| eval: false
 
 # Store the original scipen value
 old_scipen <- getOption("scipen")
@@ -635,7 +643,7 @@ dtAGG <-
 ## Prepare Data
 
 ```{r}
-#| eval: TRUE
+#| eval: false
 #| 
 dtSLS_PRDH <-
   copy(dtSLS)                                                   %>%
@@ -1368,7 +1376,7 @@ DT_processed <- cbind(
 
 ```{r}
 #| label: 'OHE with data.table'
-#| eval: TRUE
+#| eval: false
 
 DT <- dtMATL[, .(MATERIAL, MATL_GROUP, PRDH4, PRDH3, PRDH2, PRDH1)] %>%
   .[dtSLS, on = .(MATERIAL)] %>%
@@ -1396,7 +1404,7 @@ DT_processed <-  copy(dummy_dt)
 
 ```{r}
 #| label: PCA
-#| eval: TRUE
+#| eval: false
 
 # 2. PCA
 # Prepare matrix for PCA
