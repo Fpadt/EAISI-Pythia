@@ -62,31 +62,8 @@ fltSTGY_GRP       <- c('Z1')
 # Customer
 fltACCNT_GRP      <- c('0001', 'CPD' , 'ZINC')
 
-<<<<<<< HEAD:coding/11_initialization.qmd
 # load package: PADT
 library("padt")
-=======
-```
-
-# padt
-
-```{r}
-#| label: 'install padt package'
-#| eval: true
-
-# rstudioapi::restartSession()
-# 
-# if("package:padt" %in% search()){
-#   detach("package:padt", unload = TRUE, character.only = TRUE)}
-
-# devtools::load_all(path = "C:/RW/EAISI-Padt")
-# remotes::install_github("Fpadt/EAISI-Padt")
-library("padt")
-
-# rstudioapi::sendToConsole("\f", execute = TRUE)
-
-
->>>>>>> 14365c0e1430e39300e80d17205b8ca9662e3bac:notebooks/11_initialization.qmd
 ```
 
 ## Master Data
@@ -94,6 +71,8 @@ library("padt")
 Gather Additional Master Data from SAP for quick analysis.
 
 ### Material
+
+#### Global Material Data
 
 ```{r}
 #| label: Global Material Data
@@ -596,7 +575,7 @@ saveRDS(
   )
 ```
 
-### Mat Sales
+#### Mat Sales
 
 ```{r}
 #| label: Additional Mat Sales Data
@@ -809,7 +788,7 @@ saveRDS(
 
 ```
 
-### Mat Plant
+#### Mat Plant
 
 ```{r}
 #| label: Additional Mat Plant Data
@@ -1299,7 +1278,7 @@ saveRDS(
 
 ```
 
-### Mat BOM-Link
+#### Mat BOM-Link
 
 ```{r}
 #| label: Link Material-BOM
@@ -1345,6 +1324,150 @@ saveRDS(
   )
 ```
 
+### Customer
+
+#### Customer Sales
+
+```{r}
+#| label: Customer Sales
+
+# Customer Master Sales Data #### 
+S4_KNVV <- 
+   fRead_and_Union(
+     pSIDCLNT  = "WPE500",
+     pTable    = "KNVV",
+     pOptions  = list(),
+     pFields   = list(
+        # "MANDT"                , # Client                                                       X
+        "KUNNR"                , # Customer Number                                              X
+        "VKORG"                , # Sales Organization                                           X
+        # "VTWEG"                , # Distribution Channel                                         X
+        # "SPART"                , # Division                                                     X
+        # "ERNAM"                , # Name of Person Responsible for Creating the Object           
+        # "ERDAT"                , # Record Creation Date                                         
+        # "BEGRU"                , # Authorization Group                                          
+        # "LOEVM"                , # Deletion flag for customer (sales level)                     
+        # "VERSG"                , # Customer Statistics Group                                    
+        # "AUFSD"                , # Customer order block (sales area)                            
+        # "KALKS"                , # Customer Classification for Pricing Procedure Determination  
+        # "KDGRP"                , # Customer Group                                               
+        # "BZIRK"                , # Sales District                                               
+        # "KONDA"                , # Customer Price Group                                         
+        # "PLTYP"                , # Price List Type                                              
+        # "AWAHR"                , # Order Probability of the Item                                
+        # "INCO1"                , # Incoterms (Part 1)                                           
+        # "INCO2"                , # Incoterms (Part 2)                                           
+        # "LIFSD"                , # Customer delivery block (sales area)                         
+        # "AUTLF"                , # Complete Delivery Defined for Each Sales Order               
+        # "ANTLF"                , # Maximum Number of Partial Deliveries Allowed Per Item        
+        # "KZTLF"                , # Partial delivery at item level                               
+        # "KZAZU"                , # Order Combination Indicator                                  
+        # "CHSPL"                , # Batch split allowed                                          
+        # "LPRIO"                , # Delivery Priority                                            
+        # "EIKTO"                , # Shipper's (Our) Account Number at the Customer or Vendor     
+        # "VSBED"                , # Shipping Conditions                                          
+        # "FAKSD"                , # Billing block for customer (sales and distribution)          
+        # "MRNKZ"                , # Manual Invoice Maintenance                                   
+        # "PERFK"                , # Invoice Dates (Calendar Identification)                      
+        # "PERRL"                , # Invoice List Schedule (calendar identification)              
+        # "KVAKZ"                , # Cost estimate indicator (inactive)                           
+        # "KVAWT"                , # Value limit for cost estimate (inactive)                     
+        # "WAERS"                , # Currency                                                     
+        # "KLABC"                , # Customer classification (ABC analysis)                       
+        # "KTGRD"                , # Account Assignment Group for Customer                        
+        # "ZTERM"                , # Terms of Payment Key                                         
+        # "VWERK"                , # Delivering Plant (Own or External)                           
+        # "VKGRP"                , # Sales Group                                                  
+        # "VKBUR"                , # Sales Office                                                 
+        # "VSORT"                , # Item proposal                                                
+        # "KVGR1"                , # Forecast group                                               
+        # "KVGR2"                , # Control price inv.print                                      
+        # "KVGR3"                , # Shelf life group                                             
+        # "KVGR4"                , # Deliv. GSL grp                                               
+        # "KVGR5"                , # Customer Group 5                                             
+        # "BOKRE"                , # Indicator: Customer Is Rebate-Relevant                       
+        # "BOIDT"                , # Start of validity per.for the rebate index for the customer  
+        # "KURST"                , # Exchange Rate Type                                           
+        # "PRFRE"                , # Relevant for price determination ID                          
+        # "PRAT1"                , # ID for product attribute 1                                   
+        # "PRAT2"                , # ID for product attribute 2                                   
+        # "PRAT3"                , # ID for product attribute 3                                   
+        # "PRAT4"                , # ID for product attribute 4                                   
+        # "PRAT5"                , # ID for product attribute 5                                   
+        # "PRAT6"                , # ID for product attribute 6                                   
+        # "PRAT7"                , # ID for product attribute 7                                   
+        # "PRAT8"                , # No Competitor                                                
+        # "PRAT9"                , # ID for product attribute 9                                   
+        # "PRATA"                , # ID for product attribute 10                                  
+        # "KABSS"                , # Customer payment guarantee procedure                         
+        # "KKBER"                , # Credit Control Area                                          
+        # "CASSD"                , # Sales Block for Customer (Sales Area)                        
+        # "RDOFF"                , # Switch off rounding?                                         
+        # "AGREL"                , # Indicator: Relevant for Settlement Management                
+        # "MEGRU"                , # Unit of Measure Group                                        
+        # "UEBTO"                , # Overdelivery Tolerance                                       
+        # "UNTTO"                , # Underdelivery Tolerance                                      
+        # "UEBTK"                , # Unlimited Overdelivery Allowed                               
+        # "PVKSM"                , # Customer procedure for product proposal                      
+        # "PODKZ"                , # Relevant for POD processing                                  
+        # "PODTG"                , # Timeframe for Confirmation of POD                            
+        # "BLIND"                , # Index Structure Active for Subsequent Settlement             
+        # "CARRIER_NOTIF"        , # Carrier is to be notified                                    
+        # "CVP_XBLCK_V"          , # Business Purpose Completed Flag                              
+        # "INCOV"                , # Incoterms Version                                            
+        # "INCO2_L"              , # Incoterms Location 1                                         
+        # "INCO3_L"              , # Incoterms Location 2                                         
+        # "INCO2_KEY"            , # Incoterm Location 1 - Place of Destination                   
+        # "INCO3_KEY"            , # Incoterm Location 2 - Place of Delivery                      
+        # "INCO4_KEY"            , # Incoterm - Deviating Place of Destination                    
+        # "KNVV_EEW_CONTACT"     , # Data element Extension for Contact                           
+        # "STATUS_OBJ_GUID"      , # Globally Unique Identifier                                   
+        # "BILLPLAN_PROC"        , # Billing Plan Procedure                                       
+        # "KNVV_ADDR_EEW_CUST"   , # Customer sales addr. dep. extensibility                      
+        # "/BEV1/EMLGPFAND"      , # Deposit on Empties                                           
+        # "/BEV1/EMLGFORTS"      , # Indicator for Empties Update                                 
+        # "J_1NBOESL"            , # Exchange Key for NF Processing                               
+        # "FSH_KVGR6"            , # Customer Group 6                                             
+        # "FSH_KVGR7"            , # Customer Group 7                                             
+        # "FSH_KVGR8"            , # Customer Group 8                                             
+        # "FSH_KVGR9"            , # Customer Group 9                                             
+        # "FSH_KVGR10"           , # Customer Group 10                                            
+        # "FSH_GRREG"            , # Grouping Rule                                                
+        # "FSH_RESGY"            , # Release Strategy                                             
+        # "FSH_SC_CID"           , # Customer/Supplier Identifier                                 
+        # "FSH_VAS_DETC"         , # VAS Determination Mode                                       
+        # "FSH_VAS_CG"           , # Value-Added Services Customer Group                          
+        # "FSH_GRSGY"            , # ARUN Grouping Strategy                                       
+        # "FSH_SS"               , # Order Scheduling Strategy                                    
+        # "FSH_FRATE"            , # Fill Rate %                                                  
+        # "FSH_FRATE_AGG_LEVEL"  , # Fill Rate Aggregation Level                                  
+        # "FSH_MSOCDC"           , # Distribution Center of Customer                              
+        # "FSH_MSOPID"           , # Customer Identification in the Partner System                
+        # "RFM_PSST_RULE"        , # PSST Grouping Rule                                           
+        # "RFM_PSST_EXCLUDE"     , # Exclude from PSST Grouping Rule Determination                
+        # "SUPID1"               , # Account Number of Supplier                                   
+        # "KONDM1"               , # Material Price Group                                         
+        # "SUPID2"               , # Account Number of Supplier                                   
+        # "KONDM2"               , # Material Price Group                                         
+        # "SUPID3"               , # Account Number of Supplier                                   
+        # "KONDM3"               , # Material Price Group                                         
+        # "SUPID4"               , # Account Number of Supplier                                   
+        # "KONDM4"               , # Material Price Group                                         
+        # "SUPID5"               , # Account Number of Supplier                                   
+        # "KONDM5"               , # Material Price Group                                         
+        # "SUPID6"               , # Account Number of Supplier                                   
+        # "KONDM6"               , # Material Price Group                                         
+        # "ZZFIELD1"             , # Promotion Pack                                               
+        # "ZZFIELD2"             , # Instore Leaflets                                             
+        # "ZZFIELD3"             , # Extra field 3                                                
+        # "ZZFIELD4"             , # ExtraFld4                                                    
+        # "ZZFIELD5"             , # ExtraFld5                                                    
+        # "ZZFIELD6"               # ExtraFld6                                                    
+    ),
+    pRowcount = Inf
+   )
+
+```
 
 ## Data Extraction
 
