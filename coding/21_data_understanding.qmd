@@ -1,17 +1,145 @@
 ---
-title: "21_data_understanding"
-author: "F,J,Padt"
+title: EAISI - Pythia
+subtitle: Data Understanding
+author: "F.J. Padt"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+  html:
+    code-fold: 
+      true
+    code-tools:
+      toggle: true
+    self-contained: true
+execute:
+  eval: true
 ---
 
+<img src="../images/logo.png" style="width:20%; float: right; margin-left: 20px; margin-bottom: 10px;"/>
+
+\newpage
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+</BR>
+
+## Purpose
+
+
+Refresh data sets for the Pythia project from BW OpenHub to Pythia on OneDrive
+ET.
+
+::: callout-note
+
+:::
+
+# Setup
+
 ```{r}
+#| label: setup
+#| eval: true
+
+# public functions ---------------------------------------------------------
+invisible(source("C:/RW/EAISI-Pythia/library/General.R"))
+library(padt)
+
+# Get OneDrive paths from environment variables
+odc   <- fs::path_abs(Sys.getenv("OneDriveConsumer"  , "")) #onedrive_consumer
+# onedrive_commercial <- fs::path_abs(Sys.getenv("OneDriveCommercial", ""))
+
+PDATA <- file.path(odc  , "ET", "pythia", "data")
+ET2BB <- file.path(PDATA, "ET2BB.xlsx")
+```
+## Master Data
+```{r}
+# Read the data into a data.table
+MATHIER <- c("BRAND", "PRODCAT", "SUBCAT", "FAMILY", "MATERIAL")
+dtMAT   <- wb_read(
+  file            = ET2BB,
+  sheet           = "MASP",
+  start_row       = 19,
+  start_col       = 6,
+  skip_empty_cols = TRUE,
+  skip_empty_rows = TRUE
+)         %T>%
+  setDT() %T>%
+  setnames(
+    c(1      , 3        , 5       , 7       , 9), 
+    MATHIER
+  )        %>%
+  .[, MATHIER, with = FALSE] %>%
+  unique() %>%
+  .[, MATERIAL := pa_matn1_input(MATERIAL)] 
+
+CSTHIER <- c("CHANNEL", "KEYACC", "ACC", "SOLDTO", "CUSTOMER")
+dtCUS    <- wb_read(
+  file            = ET2BB,
+  sheet           = "CUST",
+  start_row       = 19,
+  start_col       = 9,
+  skip_empty_cols = TRUE,
+  skip_empty_rows = TRUE
+)         %T>%
+  setDT() %T>%
+  setnames(
+    c(1, 3, 5, 7, 9), 
+    CSTHIER
+  )            %>%
+  .[, CSTHIER, with = FALSE] %>%
+  unique() %>%
+  .[, c("SALESORG", "CUSTOMER"):= tstrsplit(CUSTOMER, split = "/")] %>%   
+  .[, CUSTOMER := str_pad(trimws(CUSTOMER), 10, "left", pad = "0")]    
+```
+
+## ABC-Function
+
+```{r}
+#| label: Create ABC function
+
+
+calc_ABC <- function(
+    dt, 
+    agg_lvl, 
+    thresholds = c(A = 0.8, B = 0.95), 
+    value_col  = "Q") {
+  
+  # Create a copy to avoid modifying original
+  temp_dt <- copy(dt)
+  
+  # Create aggregation
+  agg_dt <- temp_dt[, .(Q_total = sum(get(value_col), na.rm = TRUE)), by = agg_lvl]
+  
+  # Calculate ABC classification
+  setorder(agg_dt, -Q_total)
+  agg_dt[, cum_pct := cumsum(Q_total) / sum(Q_total)]
+  agg_dt[, ABC_class := fcase(
+    cum_pct <= thresholds["A"], "A",
+    cum_pct <= thresholds["B"], "B",
+    default = "C"
+  )]
+  
+  # Add row indices to preserve order
+  temp_dt[, orig_order := .I]
+  
+  # Merge classification back
+  result_dt <- merge(temp_dt, agg_dt[, c(agg_lvl, "ABC_class"), with = FALSE], 
+                     by = agg_lvl, all.x = TRUE)
+  
+  # Restore original order and return classification
+  setorder(result_dt, orig_order)
+  return(result_dt$ABC_class)
+}
+```
+
+## Get & Classify Time Series
+
+```{r}
+#| label: convert Raw sales into SBC dataset (3 min)
+#| eval: true
 
 FLD <- "C:/Users/flori/OneDrive/ET/pythia/data/production/Bronze/sales"
 FMD <- "C:/Users/flori/OneDrive/ET/pythia/data/production/Bronze/master_data"
-
-dtCUST <- fread(
-  file = file.path(FMD, "MD_SOLD_TO_CUSTOMER.csv")
-)
-
 
 lstFiles <- list.files(
   path = FLD, 
@@ -20,37 +148,36 @@ lstFiles <- list.files(
 )
 
 get_sales_per_day <- function(){
-   
-    purrr::map(.x = lstFiles, 
-               .f = fread)                                 %>%
-    rbindlist()                                           %T>%
+  
+  purrr::map(.x = lstFiles, 
+             .f = fread)                                             %>%
+    rbindlist()                                                     %T>%
     setnames(
       c("MATERIAL"  , "CUSTOMER"  , "PLANT"     , "SALESORG",
         "CALDAY"    ,
         "SLS_QT_SO" , "SLS_QT_RET", "SLS_QT_FOC",
         "SLS_QT_DIR", "SLS_QT_PRO", "SLS_QT_IC" ,
         "MSQTBUO"))              
-
+  
 }
 
+# raw data sales per day
 dtSLS_DAY <- get_sales_per_day()
-nrow(dtSLS_DAY)
 
 # aggregate sales per month
-dtSLS_CM <- dtSLS_DAY                                      %>%
-  .[, CM:= floor_date(CALDAY, unit = "months")]            %>%
+dtSLS_CM <- dtSLS_DAY                                                %>%
+  .[, CM:= floor_date(CALDAY, unit = "months")]                      %>%
   .[, .(Q = sum(SLS_QT_SO + SLS_QT_FOC)), 
-    by = .(MATERIAL, CUSTOMER, PLANT, SALESORG, CM)]       %>%
+    by = .(MATERIAL, CUSTOMER, PLANT, SALESORG, CM)]                 %>%
   .[, `:=` (
-    MATERIAL = pa_matn1_input(MATERIAL),
-    CUSTOMER = pa_matn1_input(CUSTOMER)
-)]                                                        %T>%
+    MATERIAL = str_pad(MATERIAL, 18, "left", pad = "0"),
+    CUSTOMER = str_pad(CUSTOMER, 10, "left", pad = "0")
+  )]                                    %>%
+  dtMAT[., on = .(MATERIAL)]            %>%
+  dtCUS[., on = .(CUSTOMER, SALESORG)] %T>%
   setkey(MATERIAL, CUSTOMER, PLANT, SALESORG)
 
-# Add Customer MD and Article MD
-# Per Art/Cust/Plant determine min CM and MAX CM and calc diff 
-
-dtADI <- 
+dtCLS <- 
   dtSLS_CM[Q != 0, {
     # Calculate the range of CM (Calendar Month)
     cm_range <- range(CM)
@@ -67,11 +194,11 @@ dtADI <-
     # calculate statistical values
     stats <- c(
       count = .N,
-      sum   = sum(     Q)                                              ,
-      mu    = mean(    Q)                                              ,
-      sigma = sd(      Q)                                              ,
-      min   = min(     Q)                                              ,
-      max   = max(     Q)
+      sum   = sum( Q),
+      mu    = mean(Q),
+      sigma = sd(  Q),
+      min   = min( Q),
+      max   = max( Q)
     )
     
     # Calculate quantiles
@@ -94,14 +221,30 @@ dtADI <-
       MAX   = stats['max']
     )
   }, 
-  by = .(MATERIAL, CUSTOMER, PLANT, SALESORG)]       %>%
+  by = .(MATERIAL, CUSTOMER, PLANT, SALESORG)]                       %>%
   .[, `:=`(
     ADI = SLEN/N,
-    CV2  = (
+    CV  = (
       ifelse(is.na(SIGMA)        , 0, SIGMA)/
-      ifelse(is.na(MU)  | MU == 0, 1, MU))^2
-    )] %>%
-  .[, CLASS := fcase(
+        ifelse(is.na(MU)  | MU == 0, 1, MU))
+  )] %>%
+  .[, CV2 := CV^2]                                                   %>%
+  .[, ABC:=  calc_ABC(
+    dt         = .,
+    agg_lvl    = c("MATERIAL", "CUSTOMER", "PLANT", "SALESORG"),
+    thresholds = c(A = 0.8, B = 0.95),
+    value_col  = "Q"
+  )]                                                                 %>%
+  .[, XYZ := fcase(
+    # X: Low      — highly predictable
+    CV <  0.5         , "X",
+    # Y: Moderate — somewhat predictable    
+    CV >= 0.5 & CV < 1, "Y",    
+    # Z: High     — unpredictable or lumpy 
+    CV >= 1           , "Z",
+    default           = "U" # Unclassified
+  )]                                                                 %>%
+  .[, SBC := fcase(
     ADI <= 1.32 & CV2 <= 0.49, "S",    # Smooth
     ADI <= 1.32 & CV2 >  0.49, "E",    # Erratic  
     ADI >  1.32 & CV2 <= 0.49, "I",    # Intermittent
@@ -109,46 +252,612 @@ dtADI <-
     default                  = "U"     # Unclassified
   )] 
 
-saveRDS(
-  object = dtADI,
-  file   = file.path("SCOPE_ADI.rds")
-)
 
+```
+
+`r nrow(dtSLS_DAY)` time series with sales per day`
+
+
+## SB-Classes distribution by time series length
+
+```{r}
+#| label: 'Function to plot SB-Classes distribution by time series length'
+
+create_plot_sbc_by_ts <- 
+  function(dt_plot){
+    # Calculate percentages and label positions by SLEN
+    dt_plot[, total:= sum(N), by = SLEN]                             %>%
+      .[, percentage:= N / total * 100]
+    
+    # Calculate global percentages for reference lines
+    summary_dt <- dt_plot[, .(N = .N), by = SBC]                     %>%
+      .[, Percentage := round(N / sum(N) * 100, 1)]                 %T>% 
+      setorder(-Percentage)                                          %>%
+      .[, subtitle:= paste0(SBC, "(", Percentage, "%) ")]                                     
+    
+    # Determine the stacking order (smallest to largest average)
+    actual_sbc_order <-
+      summary_dt[, SBC] 
+    
+    # Create subtitle with overall percentages
+    subtitle_clean <- paste0(
+      "Stable distribution, excluding boundary-induced variation \n ",
+      paste(summary_dt$subtitle, collapse = " "  ))
+    
+    # CREATE FACTOR LEVELS to control stacking order
+    dt_plot[, SBC := factor(SBC, levels = rev(actual_sbc_order))]
+    
+    # Sort data by SLEN (no need to sort by percentage anymore - factor levels control stacking)
+    dt_plot_ordered <- setorder(dt_plot, SLEN)
+    
+    # Calculate cumulative percentages in the SAME order
+    summary_dt_ordered <- summary_dt[match(actual_sbc_order, SBC)]       %>%
+      .[, cum_percentage := cumsum(Percentage)]
+    
+    # Extract cumulative percentages - only the ones we need (not the 100% line)
+    cum_percentages <- summary_dt_ordered$cum_percentage
+    cum_classes     <- summary_dt_ordered$SBC
+    
+    # Define colors for each class
+    SBC_colors <- c("S" = "#0f5e3c", "E" = "#F39C12", "I" = "#38e56d", "L" = "#E74C3C")
+    cum_colors   <- SBC_colors[cum_classes]
+    
+    ap <- 1.0  # Alpha for dashed lines
+    lw <- 1.7  # Line width for dashed lines
+    # Create  plot
+    ggplot(
+      dt_plot_ordered, 
+      aes(
+        x    = factor(SLEN), 
+        y    = percentage, 
+        fill = SBC)) +
+      geom_col(position = "stack", alpha = 0.7) +
+      # Add cumulative dashed horizontal lines manually
+      {if(length(cum_percentages) >= 1) 
+        geom_hline(yintercept = cum_percentages[1], 
+                   color      = cum_colors[1], 
+                   linetype   = "dashed", 
+                   alpha      = ap, 
+                   linewidth  = lw)} +
+      {if(length(cum_percentages) >= 2) 
+        geom_hline(yintercept = cum_percentages[2], 
+                   color      = cum_colors[2], 
+                   linetype   = "dashed", 
+                   alpha      = ap, 
+                   linewidth  = lw)} +
+      {if(length(cum_percentages) >= 3) 
+        geom_hline(yintercept = cum_percentages[3], 
+                   color      = cum_colors[3], 
+                   linetype   = "dashed", 
+                   alpha      = ap, 
+                   linewidth  = lw)} +
+      scale_fill_manual(
+        values = SBC_colors,
+        labels = c(
+          "S" = "Smooth (S)",
+          "E" = "Erratic (E)", 
+          "I" = "Intermittent (I)",
+          "L" = "Lumpy (L)"
+        ),
+        guide = guide_legend(reverse = TRUE)
+      ) +
+      # scale_y_continuous(labels = function(x) paste0(x, "%"), 
+      #                    expand = c(0, 0)) +
+      labs(
+        title    = "% Distribution of SB-Classes by time series length",
+        subtitle = subtitle_clean,
+        x        = "time series length in months",
+        y        = "Percentage (%)",
+        fill     = "SBC",
+        caption  = paste0(
+          "SBC requires > 6 months for to be reliable \n"  , 
+          "Dashed lines show cumulative global percentages \n",
+          "**Note the large % of smooth time series at the right end (> 46 months)**"
+        )
+      ) +
+      theme_minimal() +
+      theme(
+        plot.title         = element_text(size = 14, face = "bold", hjust = 0.5),
+        plot.subtitle      = element_text(size = 10, hjust = 0.5, color = "gray60"),
+        axis.title         = element_text(size = 11, face = "bold"),
+        legend.title       = element_text(size = 10, face = "bold"),
+        legend.position    = "bottom",
+        legend.direction   = "horizontal",
+        legend.box         = "horizontal",
+        legend.margin      = margin(b = 10),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor   = element_blank()
+      )
+    
+    
+  }
+
+```
+
+::: {#fig-sbc-by-ts .figure}
+```{r}
+print(create_plot_sbc_by_ts(dtCLS))
+```
+
+SB-Classes distribution by time series length
+:::
+
+```{r}
+#| label: Analysis of SBC data
+
+# add YEAR and CALMONTH
+dtANA_00 <- copy(dtSLS_CM) %>%
+  .[CM %between% c(ymd("2024-01-01"), ymd("2024-12-01"))] %>%
+  .[, `:=` (
+    CLASS_SORG   = calc_ABC(
+      dt = .,
+      agg_lvl    = c("SALESORG"),
+      thresholds = c(A = 0.8, B = 0.95),
+      value_col  = "Q"
+    ),
+    CLASS_PLNT   = calc_ABC(
+      dt = .,
+      agg_lvl    = c("PLANT"),
+      thresholds = c(A = 0.8, B = 0.95),
+      value_col  = "Q"
+    ),
+    CLASS_MAT   = calc_ABC(
+      dt = .,
+      agg_lvl    = c("MATERIAL"),
+      thresholds = c(A = 0.8, B = 0.95),
+      value_col  = "Q"
+    ),
+    CLASS_MTCS   = calc_ABC(
+      dt = .,
+      agg_lvl    = c("MATERIAL", "CUSTOMER"),
+      thresholds = c(A = 0.8, B = 0.95),
+      value_col  = "Q"
+    )       
+  )] 
+
+dtANA_01 <- 
+  dtCLS[, 
+        .(MATERIAL, CUSTOMER, PLANT, SALESORG, SLEN) ]      %>%
+  .[dtANA_00, on = .(MATERIAL, CUSTOMER, PLANT, SALESORG)] 
+
+dtABC_SORG <- 
+  dtANA_00[, .(N = .N, Q = sum(Q)), 
+           by = .(SALESORG, CLASS_SORG)]         %>%
+  .[, P:= 100 * Q/sum(Q)]                       %T>% 
+  setorder(CLASS_SORG, -P)
+
+dtABC_PLNT <- 
+  dtANA_00[, .(N = .N, Q = sum(Q)), 
+           by = .(PLANT, CLASS_PLNT)]            %>%
+  .[, P:= 100 * Q/sum(Q)]                       %T>%
+  setorder(CLASS_PLNT, -P)
+
+dtABC_MAT <- 
+  dtANA_00[PLANT == 'FR30', .(N = .N, Q = sum(Q)), 
+           by = .(MATERIAL, CLASS_MAT)]          %>%
+  .[, P:= 100 * Q/sum(Q)]                       %T>%
+  setorder(CLASS_MAT, -P)
+
+dtABC_SLEN <- 
+  dtANA_01[, .(N = .N, Q = sum(Q)), 
+           by = .(SLEN, CLASS_MTCS)]             %>%
+  .[, p:= 100 * Q/sum(Q), by = .(SLEN)]         %T>%
+  .[, P:= 100 * Q/sum(Q)]                       %T>%
+  setorder(-P)
 
 # only time series with a full year in 2024 
 # 2401 articles for all Plants
 # 643 for FR30
-dtSCP <- dtADI[minCM <= ymd("2024-01-01") & maxCM >= ymd("2024-12-01")] 
 
-dtSCP %>%
-  .[PLANT == 'FR30', .(MATERIAL)] %>% unique() %>% nrow()
+dtABC_MCSL <- 
+  dtANA_00[, .(N = .N, Q = sum(Q)), 
+           by = .(SLEN, CLASS_MCSL)]                    %>%
+  .[, P:= 100 * Q/sum(Q)]                              %T>%
+  setorder(CLASS_MCSL, -P)
 
 # Number of time series per LEN/CLASS
-dtANA_01 <- dtSCP %>%
+dtANA_10 <- dtANA_00 %>%
   .[, .(
-      MAT_CNT = uniqueN(MATERIAL),
-      CST_CNT = uniqueN(CUSTOMER),
-      CMP_CNT = .N
-    ), by = .(SLEN, CLASS)] 
+    MAT_CNT = uniqueN(MATERIAL),
+    CST_CNT = uniqueN(CUSTOMER),
+    CMP_CNT = .N
+  ), by = .(SLEN, SBC)] 
 
-dtANA_02 <- dtANA_01 %>%
+dtANA_20 <- dtANA_10 %>%
   .[, POG := 100 * CMP_CNT / sum(CMP_CNT), 
     by = SLEN] %>%
   .[, POT:= 100 * CMP_CNT/ sum(CMP_CNT)
   ]
 
-dtANA_02_wide <- dtANA_02 %>%
+dtANA_20_wide <- dtANA_20 %>%
   dcast(
-    SLEN ~ CLASS, 
-    value.var = c("P", "CMP_CNT"), 
+    SLEN ~ SBC, 
+    value.var = c("POT", "CMP_CNT"), 
     fill = 0
   ) 
 
-dtANA_02 <- dtSCP %>%
-  # .[, .N, by = .(MATERIAL, CUSTOMER, SLEN, CLASS)] %>%
-  .[, , by = .(SLEN, CLASS)] 
+```
+
+
+```{r}
+#| label: 'Create table with analysis of SBC data'
+
+# Enhanced flexible function with total_column parameter
+create_compact_table <- function(
+    dt, 
+    type = "P",
+    X_order = NULL,  # Custom X-axis order
+    Y_order = NULL,  # Custom Y-axis order
+    V_order = c('S', 'I', 'E', 'L'),
+    X = 'XYZ', 
+    Y = 'ABC',
+    V = 'SBC',
+    total_column = NULL  # NEW: Column to use for totals instead of count
+)
+{
   
+  # Validate inputs
+  if (!type %in% c("P", "C")) {
+    stop("type must be either 'P' (percentage) or 'C' (count)")
+  }
+  
+  required_cols <- c(Y, X, V)
+  if (!is.null(total_column)) {
+    required_cols <- c(required_cols, total_column)
+  }
+  
+  if (!all(required_cols %in% names(dt))) {
+    stop(paste("Columns", paste(required_cols, collapse = ", "), "must exist in the data.table"))
+  }
+  
+  # Get unique values and set default orders if not provided
+  unique_Y <- unique(dt[[Y]])
+  unique_X <- unique(dt[[X]])
+  unique_V <- unique(dt[[V]])
+  
+  # Set default orders if not provided
+  if (is.null(Y_order)) {
+    Y_order <- sort(unique_Y)
+  }
+  if (is.null(X_order)) {
+    X_order <- sort(unique_X)
+  }
+  
+  # Validate orders
+  if (!all(Y_order %in% unique_Y)) {
+    missing_Y <- Y_order[!Y_order %in% unique_Y]
+    warning(paste("Y_order contains values not in data:", paste(missing_Y, collapse = ", ")))
+  }
+  if (!all(X_order %in% unique_X)) {
+    missing_X <- X_order[!X_order %in% unique_X]
+    warning(paste("X_order contains values not in data:", paste(missing_X, collapse = ", ")))
+  }
+  if (!all(V_order %in% unique_V)) {
+    missing_V <- V_order[!V_order %in% unique_V]
+    warning(paste("order contains values not in data:", paste(missing_V, collapse = ", ")))
+  }
+  
+  # Calculate counts/totals and percentages for each Y-X combination
+  if (is.null(total_column)) {
+    # Original behavior: use count (.N)
+    summary_dt <- dt[, .N, by = c(Y, X, V)]
+    setnames(summary_dt, c(Y, X, V), c("Y_col", "X_col", "V_col"))
+    summary_dt[, total := sum(N), by = .(Y_col, X_col)]
+    summary_dt[, percentage := round(N / total * 100, 1)]
+    value_col_name <- "N"
+  } else {
+    # New behavior: use specified column for totals
+    summary_dt <- dt[, .(total_value = sum(get(total_column), na.rm = TRUE)), by = c(Y, X, V)]
+    setnames(summary_dt, c(Y, X, V), c("Y_col", "X_col", "V_col"))
+    summary_dt[, total := sum(total_value), by = .(Y_col, X_col)]
+    summary_dt[, percentage := round(total_value / total * 100, 1)]
+    value_col_name <- "total_value"
+  }
+  
+  # Create the compact format based on type
+  compact_dt <- summary_dt[, {
+    # Ensure all V categories are present, fill missing with 0
+    all_values <- data.table(V_col = V_order)
+    
+    if (type == "P") {
+      # Percentage format
+      current <- .SD[, .(V_col, value = percentage)]
+      merged <- merge(all_values, current, by = "V_col", all.x = TRUE)
+      merged[is.na(value), value := 0]
+      
+      # Fix: Extract the match operation outside the data.table context
+      order_indices <- match(merged$V_col, V_order)
+      merged <- merged[order(order_indices)]
+      
+      paste0("(", paste(merged$value, "%", sep = "", collapse = ", "), ")")
+      
+    } else {
+      # Count format - use the appropriate value column
+      if (is.null(total_column)) {
+        current <- .SD[, .(V_col, value = N)]
+      } else {
+        current <- .SD[, .(V_col, value = total_value)]
+      }
+      merged <- merge(all_values, current, by = "V_col", all.x = TRUE)
+      merged[is.na(value), value := 0]
+      
+      # Fix: Extract the match operation outside the data.table context  
+      order_indices <- match(merged$V_col, V_order)
+      merged <- merged[order(order_indices)]
+      
+      paste0("(", paste(merged$value, collapse = ", "), ")")
+    }
+  }, by = .(Y_col, X_col)]
+  
+  # Reshape to matrix format
+  result_table <- dcast(compact_dt, Y_col ~ X_col, value.var = "V1", 
+                        fill = if(type == "P") 
+                          paste0("(", paste(rep("0%", length(V_order)), collapse = ", "), ")") else 
+                            paste0("(", paste(rep("0", length(V_order)), collapse = ", "), ")"))
+  
+  # Rename columns back to original names
+  setnames(result_table, "Y_col", Y)
+  
+  # Apply custom ordering to Y-axis (rows)
+  if (Y %in% names(result_table)) {
+    # Create factor with custom order for Y
+    result_table[[Y]] <- factor(result_table[[Y]], levels = Y_order)
+    setorderv(result_table, Y)
+    # Convert back to character to avoid factor display issues
+    result_table[[Y]] <- as.character(result_table[[Y]])
+  }
+  
+  # Apply custom ordering to X-axis (columns)
+  # Reorder columns based on X_order
+  existing_X_cols <- intersect(X_order, names(result_table)[-1])  # Exclude Y column
+  final_col_order <- c(Y, existing_X_cols)
+  
+  # Add any missing columns that might exist but weren't in X_order
+  missing_cols <- setdiff(names(result_table), final_col_order)
+  if (length(missing_cols) > 0) {
+    final_col_order <- c(final_col_order, missing_cols)
+  }
+  
+  result_table <- result_table[, ..final_col_order]
+  
+  return(result_table)
+}
+
+# Enhanced display function (unchanged except for total_column parameter)
+display_compact <- function(
+    table_data, 
+    type = "P",
+    X_order = NULL,    
+    Y_order = NULL,
+    V_order = c('S', 'I', 'E', 'L'),
+    Y = 'ABC',
+    X = 'XYZ', 
+    V = 'SBC',
+    total_column = NULL  # Added for consistency (not used in display)
+) {
+  
+  type_label   <- if(type == "P") "Percentages" else "Counts"
+  format_label <- if(type == "P") 
+    paste0("(", paste(V_order, "%", sep = "", collapse = ", "), ")") else
+      paste0("(", paste(V_order, collapse = ", "), ")")
+  
+  # Get column names (first column is Y, rest are X values)
+  col_names <- names(table_data)
+  x_cols    <- col_names[-1]
+  
+  table_data %>%
+    kable(format = "html", 
+          caption = paste0(V, " Distribution by ", Y, "-", X, " Classification - ", 
+                           type_label, " ", format_label),
+          col.names = c(Y, x_cols)) %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                  full_width = FALSE) %>%
+    add_header_above(stats::setNames(c(1, length(x_cols)), c(" ", paste(X, "Classification")))) %>%
+    column_spec(1, bold = TRUE, background = "#f8f9fa")
+}
+
+# Example usage with your original call (unchanged behavior)
+table4 <- create_compact_table(
+  dtCLS, 
+  type = "P", 
+  X_order = c('S', 'I', 'E', 'L'),
+  Y_order = c('A', 'B', 'C'),      
+  V_order = c('X', 'Y', 'Z'),   
+  X = 'SBC', 
+  Y = 'ABC', 
+  V = 'XYZ'
+)
+
+# Example usage with total_column parameter
+table4_weighted <- create_compact_table(
+  dtCLS, 
+  type = "P", 
+  X_order = c('S', 'I', 'E', 'L'),
+  Y_order = c('A', 'B', 'C'),      
+  V_order = c('X', 'Y', 'Z'),   
+  X = 'SBC', 
+  Y = 'ABC', 
+  V = 'XYZ',
+  total_column = "Q"  # NEW: Use column Q for weighting
+)
+
+cat("EXAMPLE 1: Default ordering (count-based)\n")
+print(table4)
+
+cat("EXAMPLE 2: Weighted by Q column\n")
+print(table4_weighted)
+
+display_compact(
+  table4, 
+  type = "P", 
+  X_order = c('S', 'I', 'E', 'L'),
+  Y_order = c('A', 'B', 'C'),      
+  V_order = c('X', 'Y', 'Z'),   
+  X = 'SBC', 
+  Y = 'ABC', 
+  V = 'XYZ'
+)
+
+```
+
+```{r}
+# Simple summary function for SBC percentages
+summarize_sbc <- function(
+    dt, 
+    order        = c('S', 'I', 'E', 'L'), 
+    total_column = NULL,
+    mat_lvl      = 'Unknown',
+    cus_lvl      = 'Unknown'
+    ) {
+  
+  # Validate input
+  if (!"SBC" %in% names(dt)) {
+    stop("Column 'SBC' must exist in the data.table")
+  }
+  
+  if (!is.null(total_column) && !total_column %in% names(dt)) {
+    stop(paste("Column", total_column, "must exist in the data.table"))
+  }
+  
+  # Calculate percentages
+  if (is.null(total_column)) {
+    # Count-based percentages
+    summary_dt <- dt[, .N, by = SBC]
+    summary_dt[, percentage := round(N / sum(N) * 100, 1)]
+  } else {
+    # Value-based percentages using total_column
+    summary_dt <- dt[, .(total_value = sum(get(total_column), na.rm = TRUE)), by = SBC]
+    summary_dt[, percentage := round(total_value / sum(total_value) * 100, 1)]
+  }
+  
+  # Ensure all SBC categories are present
+  all_sbc <- data.table(SBC = order)
+  merged <- merge(all_sbc, summary_dt, by = "SBC", all.x = TRUE)
+  merged[is.na(percentage), percentage := 0]
+  
+  # Order according to specified order
+  order_indices <- match(merged$SBC, order)
+  merged <- merged[order(order_indices)]
+  
+  # Create output string
+  result <- data.table(
+    MATH = mat_lvl,
+    CUSH = cus_lvl,
+    SIEL = paste0(
+      "(", paste(merged$percentage, "%", sep = "", 
+                 collapse = ", "), ")"
+    )
+  )
+  
+  return(result)
+}
+
+# # Test the function
+# cat("Count-based summary:\n")
+# result1 <- summarize_sbc(dtCLS)
+# print(result1)
+# 
+# cat("\nWeighted summary (using Q column):\n")
+# result2 <- summarize_sbc(dtCLS, total_column = "Q")
+# print(result2)
+```
+
+```{r}
+#| label: 'Create result for Matrix'
+
+aggregate_mc_combinations_flexible <- function(
+    dt, 
+    agg_function = sum, 
+    value_col = "Q",
+    m_cols = paste0("M", 0:4),
+    c_cols = paste0("C", 0:4)
+    ) {
+  
+  # Validate inputs
+  if (!value_col %in% names(dt)) {
+    stop(paste("Column", value_col, "must exist in the data.table"))
+  }
+  
+  # Check if all required columns exist
+  missing_m <- m_cols[!m_cols %in% names(dt)]
+  missing_c <- c_cols[!c_cols %in% names(dt)]
+  
+  if (length(missing_m) > 0) {
+    warning(paste("Missing M columns:", paste(missing_m, collapse = ", ")))
+    m_cols <- m_cols[m_cols %in% names(dt)]
+  }
+  
+  if (length(missing_c) > 0) {
+    warning(paste("Missing C columns:", paste(missing_c, collapse = ", ")))
+    c_cols <- c_cols[c_cols %in% names(dt)]
+  }
+  
+  if (length(m_cols) == 0 || length(c_cols) == 0) {
+    stop("No valid M or C columns found in the data.table")
+  }
+  
+  # Create all combinations
+  combinations <- expand.grid(M = m_cols, C = c_cols, stringsAsFactors = FALSE)
+  
+  # Initialize result list
+  result_list <- list()
+  
+  # Process each combination
+  for (i in 1:nrow(combinations)) {
+    m_col <- combinations$M[i]
+    c_col <- combinations$C[i]
+    
+    # Create the combination name - extract the suffix for cleaner names
+    m_suffix <- gsub("^.*_", "", m_col)  # Handle column names like "Material_Type"
+    c_suffix <- gsub("^.*_", "", c_col)  # Handle column names like "Customer_Type"
+    
+    # If columns follow M0, M1 pattern, use those, otherwise use full names
+    if (grepl("^M[0-9]+$", m_col) && grepl("^C[0-9]+$", c_col)) {
+      combo_name <- paste0(m_col, c_col)
+    } else {
+      combo_name <- paste0(m_col, "_", c_col)
+    }
+    
+    # Aggregate by the M and C column combination
+    agg_table <- dt[, .(aggregated_value = agg_function(get(value_col), na.rm = TRUE)), 
+                    by = c(m_col, c_col)]
+    
+    # Rename columns for clarity
+    setnames(
+      agg_table, 
+      c(m_col, c_col, "aggregated_value"), 
+      c("M_value", "C_value", value_col)
+      )
+    
+    # Add metadata columns
+    agg_table[, M_column    := m_col]
+    agg_table[, C_column    := c_col]
+    agg_table[, combination := combo_name]
+    
+    # Reorder columns for better readability
+    setcolorder(
+      agg_table, 
+      c("combination", "M_column", "C_column", "M_value", "C_value", value_col)
+      )
+    
+    # Store in result list
+    result_list[[combo_name]] <- agg_table
+  }
+  
+  return(result_list)
+}
+
 
 
 ```
+
+```{r}
+result3 <- aggregate_mc_combinations_flexible(
+  dtSLS_CM,
+  m_cols       = MATHIER,
+  c_cols       = CSTHIER,
+  agg_function = sum
+)
+```
+
 
