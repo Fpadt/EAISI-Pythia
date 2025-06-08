@@ -1,0 +1,154 @@
+---
+title: "21_data_understanding"
+author: "F,J,Padt"
+---
+
+```{r}
+
+FLD <- "C:/Users/flori/OneDrive/ET/pythia/data/production/Bronze/sales"
+FMD <- "C:/Users/flori/OneDrive/ET/pythia/data/production/Bronze/master_data"
+
+dtCUST <- fread(
+  file = file.path(FMD, "MD_SOLD_TO_CUSTOMER.csv")
+)
+
+
+lstFiles <- list.files(
+  path = FLD, 
+  pattern = "DD_SALES_QTY_*", 
+  full.names = TRUE
+)
+
+get_sales_per_day <- function(){
+   
+    purrr::map(.x = lstFiles, 
+               .f = fread)                                 %>%
+    rbindlist()                                           %T>%
+    setnames(
+      c("MATERIAL"  , "CUSTOMER"  , "PLANT"     , "SALESORG",
+        "CALDAY"    ,
+        "SLS_QT_SO" , "SLS_QT_RET", "SLS_QT_FOC",
+        "SLS_QT_DIR", "SLS_QT_PRO", "SLS_QT_IC" ,
+        "MSQTBUO"))              
+
+}
+
+dtSLS_DAY <- get_sales_per_day()
+nrow(dtSLS_DAY)
+
+# aggregate sales per month
+dtSLS_CM <- dtSLS_DAY                                      %>%
+  .[, CM:= floor_date(CALDAY, unit = "months")]            %>%
+  .[, .(Q = sum(SLS_QT_SO + SLS_QT_FOC)), 
+    by = .(MATERIAL, CUSTOMER, PLANT, SALESORG, CM)]       %>%
+  .[, `:=` (
+    MATERIAL = pa_matn1_input(MATERIAL),
+    CUSTOMER = pa_matn1_input(CUSTOMER)
+)]                                                        %T>%
+  setkey(MATERIAL, CUSTOMER, PLANT, SALESORG)
+
+# Add Customer MD and Article MD
+# Per Art/Cust/Plant determine min CM and MAX CM and calc diff 
+
+dtADI <- 
+  dtSLS_CM[Q != 0, {
+    # Calculate the range of CM (Calendar Month)
+    cm_range <- range(CM)
+    
+    # Extract year and month from min/max dates
+    min_year  <- year( cm_range[1])
+    min_month <- month(cm_range[1])
+    max_year  <- year( cm_range[2])
+    max_month <- month(cm_range[2])
+    
+    # Calculate month difference: (year_diff * 12) + month_diff
+    months_diff <- (max_year - min_year) * 12L + (max_month - min_month)
+    
+    # calculate statistical values
+    stats <- c(
+      count = .N,
+      sum   = sum(     Q)                                              ,
+      mu    = mean(    Q)                                              ,
+      sigma = sd(      Q)                                              ,
+      min   = min(     Q)                                              ,
+      max   = max(     Q)
+    )
+    
+    # Calculate quantiles
+    quants <- quantile(Q, c(0.05, 0.25, 0.5, 0.75, 0.95))
+    
+    .(
+      minCM = cm_range[1]   ,
+      maxCM = cm_range[2]   ,  
+      SLEN  = months_diff   ,
+      N     = stats['count'],
+      Q     = stats['sum']  ,
+      MU    = stats['mu']   ,
+      SIGMA = stats['sigma'],
+      MIN   = stats['min']  ,
+      Q05   = quants[1]     ,
+      Q25   = quants[2]     ,
+      Q50   = quants[3]     ,
+      Q75   = quants[4]     ,
+      Q95   = quants[5]     ,
+      MAX   = stats['max']
+    )
+  }, 
+  by = .(MATERIAL, CUSTOMER, PLANT, SALESORG)]       %>%
+  .[, `:=`(
+    ADI = SLEN/N,
+    CV2  = (
+      ifelse(is.na(SIGMA)        , 0, SIGMA)/
+      ifelse(is.na(MU)  | MU == 0, 1, MU))^2
+    )] %>%
+  .[, CLASS := fcase(
+    ADI <= 1.32 & CV2 <= 0.49, "S",    # Smooth
+    ADI <= 1.32 & CV2 >  0.49, "E",    # Erratic  
+    ADI >  1.32 & CV2 <= 0.49, "I",    # Intermittent
+    ADI >  1.32 & CV2 >  0.49, "L",    # Lumpy
+    default                  = "U"     # Unclassified
+  )] 
+
+saveRDS(
+  object = dtADI,
+  file   = file.path("SCOPE_ADI.rds")
+)
+
+
+# only time series with a full year in 2024 
+# 2401 articles for all Plants
+# 643 for FR30
+dtSCP <- dtADI[minCM <= ymd("2024-01-01") & maxCM >= ymd("2024-12-01")] 
+
+dtSCP %>%
+  .[PLANT == 'FR30', .(MATERIAL)] %>% unique() %>% nrow()
+
+# Number of time series per LEN/CLASS
+dtANA_01 <- dtSCP %>%
+  .[, .(
+      MAT_CNT = uniqueN(MATERIAL),
+      CST_CNT = uniqueN(CUSTOMER),
+      CMP_CNT = .N
+    ), by = .(SLEN, CLASS)] 
+
+dtANA_02 <- dtANA_01 %>%
+  .[, POG := 100 * CMP_CNT / sum(CMP_CNT), 
+    by = SLEN] %>%
+  .[, POT:= 100 * CMP_CNT/ sum(CMP_CNT)
+  ]
+
+dtANA_02_wide <- dtANA_02 %>%
+  dcast(
+    SLEN ~ CLASS, 
+    value.var = c("P", "CMP_CNT"), 
+    fill = 0
+  ) 
+
+dtANA_02 <- dtSCP %>%
+  # .[, .N, by = .(MATERIAL, CUSTOMER, SLEN, CLASS)] %>%
+  .[, , by = .(SLEN, CLASS)] 
+  
+
+
+```
+
