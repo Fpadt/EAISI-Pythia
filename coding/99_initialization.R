@@ -168,10 +168,11 @@ dtADI <-
   dtSLS_CM[, .(
     minCM = min(CM),
     maxCM = max(CM),
-    SLEN  = lubridate::interval(min(CM), max(CM))  %/% months(1) + 1,
+    SLEN  = lubridate::interval(min(CM), max(CM))  %/% months(1) ,
     N     = .N,
-    SIGM  = sd(  Q, na.rm = TRUE),
-    MU    = mean(Q, na.rm = TRUE)
+    Q     = sum( Q, na.rm = TRUE),
+    MU    = mean(Q, na.rm = TRUE),
+    SIGM  = sd(  Q, na.rm = TRUE)
   ), 
   by = .(MATERIAL, CUSTOMER, PLANT, SALESORG)] %>%
   .[, `:=`(
@@ -187,17 +188,67 @@ dtADI <-
     ADI >  1.32 & CV2 >  0.49, "L"     # Lumpy
   )] 
 
-# Method 2: Alternative with intermediate step (more explicit)
-dtANA_01 <- dtADI[, .(N = .N), by = .(SLEN, CLASS)][
-  , P := 100 * N / sum(N), by = SLEN
-]
-  
-  
-tictoc::toc()
-
 saveRDS(
   object = dtADI,
   file   = file.path("SCOPE_ADI.rds")
 )
 
+
+# only time series with a full year in 2024 
+# 2401 articles for all Plants
+# 643 for FR30
+dtSCP <- dtADI[minCM <= ymd("2024-01-01") & maxCM >= ymd("2024-12-01")] 
+
+dtSCP %>%
+  .[PLANT == 'FR30', .(MATERIAL)] %>% unique() %>% nrow()
+
+# Number of time series per LEN/CLASS
+dtANA_01 <- dtSCP %>%
+  .[, .(
+      MAT_CNT = uniqueN(MATERIAL),
+      CST_CNT = uniqueN(CUSTOMER),
+      CMP_CNT = .N
+    ), by = .(SLEN, CLASS)] 
+
+dtANA_02 <- dtANA_01 %>%
+  .[, POG := 100 * CMP_CNT / sum(CMP_CNT), 
+    by = SLEN] %>%
+  .[, POT:= 100 * CMP_CNT/ sum(CMP_CNT)
+  ]
+
+%>%
+  dcast(
+    SLEN ~ CLASS, 
+    value.var = c("P", "CMP_CNT"), 
+    fill = 0
+  ) 
+
+dtANA_02 <- dtSCP %>%
+  # .[, .N, by = .(MATERIAL, CUSTOMER, SLEN, CLASS)] %>%
+  .[, , by = .(SLEN, CLASS)] 
+  
+
+tictoc::toc()
+
+tictoc::tic()
+dtADI_TST <- 
+  dtSLS_CM[, {
+    minCM = min(CM)
+    maxCM = max(CM)
+    N     = .N
+    Q     = sum( Q, na.rm = TRUE)
+    MU    = mean(Q, na.rm = TRUE)
+    SIGMA = sd(  Q, na.rm = TRUE)
+    .(
+      minCM,
+      maxCM,  
+      SLEN  = lubridate::interval(minCM, maxCM)  %/% months(1) ,
+      N,
+      Q,
+      MU,
+      SIGMA
+    )
+  }, 
+  by = .(MATERIAL, CUSTOMER, PLANT, SALESORG)]
+tictoc::toc()
 
