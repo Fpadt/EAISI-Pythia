@@ -138,8 +138,9 @@ calc_ABC <- function(
 #| label: convert Raw sales into SBC dataset (3 min)
 #| eval: true
 
-FLD <- "C:/Users/flori/OneDrive/ET/pythia/data/production/Bronze/sales"
-FMD <- "C:/Users/flori/OneDrive/ET/pythia/data/production/Bronze/master_data"
+
+FLD <- file.path(odc, "/ET/pythia/data/production/Bronze/sales/202505")
+FMD <- file.path(odc, "/ET/pythia/data/production/Bronze/master_data")
 
 lstFiles <- list.files(
   path = FLD, 
